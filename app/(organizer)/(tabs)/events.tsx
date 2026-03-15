@@ -1,12 +1,8 @@
+import ManageEventsScreen from "@/feature/organizer/events/ManageEventsScreen";
 import React from "react";
-import { Text, View } from "react-native";
 
 const EventsScreen = () => {
-  return (
-    <View>
-      <Text>EventsScreen</Text>
-    </View>
-  );
+  return <ManageEventsScreen />;
 };
 
 export default EventsScreen;

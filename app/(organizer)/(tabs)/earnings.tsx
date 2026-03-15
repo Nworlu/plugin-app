@@ -1,12 +1,7 @@
-import React from "react";
-import { Text, View } from "react-native";
+import EarningsScreen from "@/feature/organizer/earnings/EarningsScreen";
 
-const EarningsScreen = () => {
-  return (
-    <View>
-      <Text>EarningsScreen</Text>
-    </View>
-  );
+const EarningsRoute = () => {
+  return <EarningsScreen />;
 };
 
-export default EarningsScreen;
+export default EarningsRoute;

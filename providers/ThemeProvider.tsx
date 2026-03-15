@@ -7,10 +7,9 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
-import { Appearance, AppState } from "react-native";
+import { Appearance } from "react-native";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -26,7 +25,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const colorScheme = useColorScheme();
+  const { setColorScheme } = useColorScheme();
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => {
     const current = Appearance.getColorScheme();
     // console.log("📱 Initial system theme:", current);
@@ -34,15 +33,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
   const [themeMode, setThemeModeState] = useState<ThemeMode>("system");
   const [isLoaded, setIsLoaded] = useState(false);
-  const appState = useRef(AppState.currentState);
-
-  const current = Appearance.getColorScheme();
-
-  console.log("📱 Initial system theme:", current, colorScheme.colorScheme);
 
   useEffect(() => {
     const sub = Appearance.addChangeListener(({ colorScheme }) => {
-      console.log({ colorScheme });
       const theme = colorScheme === "dark" ? "dark" : "light";
       setSystemTheme(theme);
     });
@@ -122,10 +115,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Sync NativeWind with resolved theme
   useEffect(() => {
-    // if (!isLoaded) return;
-    console.log("🎨 Setting NativeWind colorScheme to:", resolvedTheme);
-    // colorScheme.set(resolvedTheme);
-  }, [resolvedTheme, isLoaded]);
+    setColorScheme(resolvedTheme);
+  }, [resolvedTheme, setColorScheme]);
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
@@ -141,7 +132,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       resolvedTheme,
       colors: Colors[resolvedTheme],
     }),
-    [themeMode, setThemeMode, resolvedTheme]
+    [themeMode, setThemeMode, resolvedTheme],
   );
 
   if (!isLoaded) {

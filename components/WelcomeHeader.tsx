@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { TabListType } from "@/feature/organizer/constants/home";
+import { useTheme } from "@/providers/ThemeProvider";
 import { getIsActive } from "@/utils/services";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -17,9 +18,15 @@ const WelcomeHeader = <T extends TabListType>({
   activeTab,
   onTabChange,
 }: WelcomeHeaderProps<T>) => {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
   return (
     <View className="gap-4">
-      <ThemedText weight="500" className="text-[#020912] text-[22px]">
+      <ThemedText
+        weight="500"
+        className={`text-[22px] ${isDark ? "text-white" : "text-[#020912]"}`}
+      >
         {title}
       </ThemedText>
 
@@ -30,17 +37,27 @@ const WelcomeHeader = <T extends TabListType>({
             <TouchableOpacity
               onPress={() => onTabChange(item)}
               key={index}
-              className={` ${
-                isActive ? "border border-[#101928]" : ""
+              className={`${
+                isActive
+                  ? isDark
+                    ? "border border-white"
+                    : "border border-[#101928]"
+                  : ""
               } rounded-full px-2.5 py-2`}
             >
               <ThemedText
                 weight={isActive ? "500" : "400"}
-                className={`${
-                  isActive ? "text-[#101928] text-xs" : "text-[#586170] text-xs"
-                } `}
+                className={`text-xs ${
+                  isActive
+                    ? isDark
+                      ? "text-white"
+                      : "text-[#101928]"
+                    : isDark
+                      ? "text-[#9CA3AF]"
+                      : "text-[#586170]"
+                }`}
               >
-                {item.title} {item.hasNumber && "(0)"}
+                {item.title} {item.hasNumber && `(${item.count ?? 0})`}
               </ThemedText>
             </TouchableOpacity>
           );

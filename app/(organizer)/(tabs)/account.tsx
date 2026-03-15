@@ -1,12 +1,6 @@
+import AccountScreen from "@/feature/organizer/account/AccountScreen";
 import React from "react";
-import { Text, View } from "react-native";
 
-const AccountScreen = () => {
-  return (
-    <View>
-      <Text>AccountScreen</Text>
-    </View>
-  );
-};
+const AccountRoute = () => <AccountScreen />;
 
-export default AccountScreen;
+export default AccountRoute;

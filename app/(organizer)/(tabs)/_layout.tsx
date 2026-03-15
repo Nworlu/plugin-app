@@ -3,13 +3,13 @@ import CalendarAltIcon from "@/components/svgs/calendar-alt-icon";
 import HomeIcon from "@/components/svgs/home-icon";
 import MoneyIcon from "@/components/svgs/money-icon";
 import UserCircleIcon from "@/components/svgs/user-circle-icon";
-import BottomSheet from "@gorhom/bottom-sheet";
+import CreateActionBottomSheet from "@/feature/organizer/home/components/CreateActionBottomSheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { Tabs } from "expo-router";
 import { useRef } from "react";
-import { Text, View } from "react-native";
 
 export default function OrganisersTabs() {
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const getColor = (isFocused: boolean) => {
     if (isFocused)
@@ -18,7 +18,7 @@ export default function OrganisersTabs() {
   };
 
   const handleCenterButtonPress = () => {
-    bottomSheetRef.current?.expand();
+    bottomSheetRef.current?.present();
   };
 
   return (
@@ -96,20 +96,7 @@ export default function OrganisersTabs() {
           }}
         />
       </Tabs>
-
-      {/* Bottom Sheet */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={["50%", "90%"]}
-        enablePanDownToClose
-        backgroundStyle={{ backgroundColor: "#FFFFFF" }}
-      >
-        <View className="flex-1 p-6">
-          <Text className="text-2xl font-bold mb-4">Create New</Text>
-          <Text className="text-gray-600">Your bottom sheet content here</Text>
-        </View>
-      </BottomSheet>
+      <CreateActionBottomSheet ref={bottomSheetRef} />
     </>
   );
 }

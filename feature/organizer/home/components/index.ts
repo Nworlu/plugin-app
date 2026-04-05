@@ -4,3 +4,5 @@ export { default as EventList } from "./EventList";
 export { default as ResourceCard } from "./ResourceCard";
 export { default as ResourceList } from "./ResourceList";
 export { default as SetupChecklist } from "./SetupChecklist";
+export { default as VenueCard } from "./VenueCard";
+export { default as VenueList } from "./VenueList";

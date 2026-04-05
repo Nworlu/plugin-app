@@ -1,3 +1,4 @@
+import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import { ThemedText } from "@/components/themed-text";
@@ -80,7 +81,9 @@ const TicketSalesScreen = () => {
           SALES SUMMARY
         </ThemedText>
 
-        <TicketTypeCard label="Individual Package" value="4,000/10,000" />
+        <AnimatedEntry index={0}>
+          <TicketTypeCard label="Individual Package" value="4,000/10,000" />
+        </AnimatedEntry>
 
         {/* List or Empty State */}
         {hasData ? (
@@ -90,14 +93,15 @@ const TicketSalesScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             {ticketSaleRows.map((row, index) => (
-              <TicketSaleRow
-                key={row.id}
-                reference={row.reference}
-                packageName={row.packageName}
-                sold={row.sold}
-                price={row.price}
-                showDivider={index < ticketSaleRows.length - 1}
-              />
+              <AnimatedEntry key={row.id} index={index + 1}>
+                <TicketSaleRow
+                  reference={row.reference}
+                  packageName={row.packageName}
+                  sold={row.sold}
+                  price={row.price}
+                  showDivider={index < ticketSaleRows.length - 1}
+                />
+              </AnimatedEntry>
             ))}
           </ScrollView>
         ) : (

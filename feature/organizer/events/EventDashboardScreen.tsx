@@ -1,3 +1,4 @@
+import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import { ThemedText } from "@/components/themed-text";
@@ -65,43 +66,51 @@ const EventDashboardScreen = () => {
             </View>
           </View>
 
-          <DashboardMetrics
-            className="mt-4"
-            ticketsSold="5,500"
-            ticketsTotal="25,000"
-            netSale="N24.4k"
-            saleProfits="N24.4k"
-            attendees="4.4k"
-          />
+          <AnimatedEntry index={0}>
+            <DashboardMetrics
+              className="mt-4"
+              ticketsSold="5,500"
+              ticketsTotal="25,000"
+              netSale="N24.4k"
+              saleProfits="N24.4k"
+              attendees="4.4k"
+            />
+          </AnimatedEntry>
 
-          <PromotionCampaignBanner className="mt-4" />
+          <AnimatedEntry index={1}>
+            <PromotionCampaignBanner className="mt-4" />
+          </AnimatedEntry>
 
-          <SectionTabs
-            className="mt-4"
-            tabs={SALES_TABS}
-            activeKey={salesTab}
-            onChange={(key) => setSalesTab(key as SalesTabKey)}
-          />
+          <AnimatedEntry index={2}>
+            <SectionTabs
+              className="mt-4"
+              tabs={SALES_TABS}
+              activeKey={salesTab}
+              onChange={(key) => setSalesTab(key as SalesTabKey)}
+            />
+          </AnimatedEntry>
 
           <View className="mt-3 gap-3">
             {salesTab === "recent"
-              ? SALES_ROWS.map((sale) => (
-                  <SalesRecordCard
-                    key={sale.id}
-                    reference={sale.ref}
-                    packageName={sale.packageName}
-                    date={sale.date}
-                    amount={sale.amount}
-                  />
+              ? SALES_ROWS.map((sale, i) => (
+                  <AnimatedEntry key={sale.id} index={i + 3}>
+                    <SalesRecordCard
+                      reference={sale.ref}
+                      packageName={sale.packageName}
+                      date={sale.date}
+                      amount={sale.amount}
+                    />
+                  </AnimatedEntry>
                 ))
-              : TICKET_TYPE_ROWS.map((row) => (
-                  <TicketTypeRow
-                    key={row.id}
-                    reference={row.ref}
-                    packageName={row.packageName}
-                    sold={row.sold}
-                    price={row.price}
-                  />
+              : TICKET_TYPE_ROWS.map((row, i) => (
+                  <AnimatedEntry key={row.id} index={i + 3}>
+                    <TicketTypeRow
+                      reference={row.ref}
+                      packageName={row.packageName}
+                      sold={row.sold}
+                      price={row.price}
+                    />
+                  </AnimatedEntry>
                 ))}
           </View>
         </ScrollView>

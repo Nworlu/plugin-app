@@ -1,3 +1,4 @@
+import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import {
@@ -135,30 +136,42 @@ const EarningsScreen = () => {
         </ThemedText>
 
         {showBanner ? (
-          <TopUpBanner
-            amount="N320,000"
-            onDismiss={() => setShowBanner(false)}
-          />
+          <AnimatedEntry index={1}>
+            <TopUpBanner
+              amount="N320,000"
+              onDismiss={() => setShowBanner(false)}
+            />
+          </AnimatedEntry>
         ) : null}
 
-        <BalanceCard
-          hideBalance={hideBalance}
-          onToggleBalance={() => setHideBalance((value) => !value)}
-          onWithdraw={() => setShowWithdrawalModal(true)}
-        />
+        <AnimatedEntry index={2}>
+          <BalanceCard
+            hideBalance={hideBalance}
+            onToggleBalance={() => setHideBalance((value) => !value)}
+            onWithdraw={() => setShowWithdrawalModal(true)}
+          />
+        </AnimatedEntry>
 
-        <TotalEarningsCard />
+        <AnimatedEntry index={3}>
+          <TotalEarningsCard />
+        </AnimatedEntry>
 
-        <PayoutInformationCard
-          linkedAccount={linkedAccount}
-          onAddBankAccount={() => setShowPayoutModal(true)}
-          onEditLinkedAccount={handleEditLinkedAccount}
-          onRemoveLinkedAccount={handleRemoveLinkedAccount}
-        />
+        <AnimatedEntry index={4}>
+          <PayoutInformationCard
+            linkedAccount={linkedAccount}
+            onAddBankAccount={() => setShowPayoutModal(true)}
+            onEditLinkedAccount={handleEditLinkedAccount}
+            onRemoveLinkedAccount={handleRemoveLinkedAccount}
+          />
+        </AnimatedEntry>
 
-        <WithdrawalSummaryCard />
+        <AnimatedEntry index={5}>
+          <WithdrawalSummaryCard />
+        </AnimatedEntry>
 
-        <WithdrawalHistoryCard />
+        <AnimatedEntry index={6}>
+          <WithdrawalHistoryCard />
+        </AnimatedEntry>
       </ScrollView>
 
       <AddPayoutInformationModal

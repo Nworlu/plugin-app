@@ -5,7 +5,7 @@ import MoneyIcon from "@/components/svgs/money-icon";
 import UserCircleIcon from "@/components/svgs/user-circle-icon";
 import CreateActionBottomSheet from "@/feature/organizer/home/components/CreateActionBottomSheet";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { useRef } from "react";
 
 export default function OrganisersTabs() {
@@ -96,7 +96,7 @@ export default function OrganisersTabs() {
           }}
         />
       </Tabs>
-      <CreateActionBottomSheet ref={bottomSheetRef} />
+      <CreateActionBottomSheet onPublishPress={()=>router.push("/(organizer)/create-event")} ref={bottomSheetRef} />
     </>
   );
 }

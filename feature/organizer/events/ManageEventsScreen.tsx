@@ -1,3 +1,4 @@
+import { AnimatedListItem } from "@/components/animated-list-item";
 import { ThemedText } from "@/components/themed-text";
 import {
   EventStatus,
@@ -9,6 +10,7 @@ import EventActionMenu, {
   EventActionMenuItem,
 } from "@/feature/organizer/events/components/EventActionMenu";
 import ManagedEventCard from "@/feature/organizer/events/components/ManagedEventCard";
+import { useViewableList } from "@/hooks/use-viewable-list";
 import { useTheme } from "@/providers/ThemeProvider";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -50,6 +52,8 @@ const ManageEventsScreen = () => {
   const [events, setEvents] = useState(managedEvents);
   const [activeStatus, setActiveStatus] = useState<EventStatus>("upcoming");
   const [openMenuEventId, setOpenMenuEventId] = useState<string | null>(null);
+  const { visibleIds, onViewableItemsChanged, viewabilityConfig } =
+    useViewableList();
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 16, y: 16 });
   const [selectedMenuActionId, setSelectedMenuActionId] = useState<
@@ -251,17 +255,21 @@ const ManageEventsScreen = () => {
         data={filteredEvents}
         keyExtractor={(item) => item.id}
         style={{ backgroundColor: isDark ? "#0A0A0A" : "#F4F5F7" }}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         renderItem={({ item }) => (
-          <ManagedEventCard
-            event={item}
-            onMorePress={handleOpenMoreMenu}
-            onPress={() => {
-              router.push({
-                pathname: "/event-insights",
-                params: { eventId: item.id },
-              });
-            }}
-          />
+          <AnimatedListItem isVisible={visibleIds.has(item.id)}>
+            <ManagedEventCard
+              event={item}
+              onMorePress={handleOpenMoreMenu}
+              onPress={() => {
+                router.push({
+                  pathname: "/event-insights",
+                  params: { eventId: item.id },
+                });
+              }}
+            />
+          </AnimatedListItem>
         )}
         contentContainerStyle={{
           paddingHorizontal: 14,

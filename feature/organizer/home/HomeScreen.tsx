@@ -1,6 +1,8 @@
+import { AnimatedEntry } from "@/components/animated-list-item";
 import ScreenView from "@/components/screen-view";
 import EventList from "@/feature/organizer/home/components/EventList";
 import SetupChecklist from "@/feature/organizer/home/components/SetupChecklist";
+import VenueList from "@/feature/organizer/home/components/VenueList";
 import useChangeTabs from "@/hooks/use-change-tabs";
 import React from "react";
 import { View } from "react-native";
@@ -19,11 +21,21 @@ const HomeScreen = () => {
         onTabChange={onTabChange}
       />
       <View className="mt-4" />
-      <EventList activeTag={activeTab.tag} />
+      <AnimatedEntry index={0}>
+        <EventList activeTag={activeTab.tag} />
+      </AnimatedEntry>
       <View className="mt-8" />
-      <SetupChecklist />
+      <AnimatedEntry index={1}>
+        <SetupChecklist />
+      </AnimatedEntry>
       <View className="mt-8" />
-      <ResourceLists />
+      <AnimatedEntry index={2}>
+        <VenueList />
+      </AnimatedEntry>
+      <View className="mt-8" />
+      <AnimatedEntry index={3}>
+        <ResourceLists />
+      </AnimatedEntry>
       <View className="mt-8" />
     </ScreenView>
   );

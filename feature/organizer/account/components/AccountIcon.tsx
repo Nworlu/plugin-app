@@ -1,6 +1,7 @@
 import type { AccountIconName } from "@/feature/organizer/account/constants/account";
 import {
   Bell,
+  Building2,
   CircleHelp,
   File,
   FileLock2,
@@ -60,6 +61,8 @@ const AccountIcon = ({
       return <FileLock2 size={size} color={color} />;
     case "sun-moon":
       return <SunMoon size={size} color={color} />;
+    case "building":
+      return <Building2 size={size} color={color} />;
     default:
       return <List size={size} color={color} />;
   }

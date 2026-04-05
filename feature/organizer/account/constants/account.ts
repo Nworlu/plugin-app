@@ -13,7 +13,8 @@ export type AccountIconName =
   | "send"
   | "file"
   | "file-lock"
-  | "sun-moon";
+  | "sun-moon"
+  | "building";
 
 export type AccountMenuItem = {
   key: string;
@@ -27,7 +28,9 @@ export type AccountMenuItem = {
     | "/(organizer)/help-center"
     | "/(organizer)/terms-of-service"
     | "/(organizer)/privacy-policy"
-    | "/(organizer)/appearance";
+    | "/(organizer)/appearance"
+    | "/(organizer)/organizer-settings"
+    | "/(organizer)/booked-venues";
 };
 
 export type AccountMenuSection = {
@@ -46,6 +49,12 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
     title: "Quick Links",
     items: [
       { key: "create-event", label: "Create event", icon: "list" },
+      {
+        key: "booked-venues",
+        label: "Booked Venues",
+        icon: "building",
+        route: "/(organizer)/booked-venues",
+      },
       {
         key: "start-campaign",
         label: "Start a Campaign",
@@ -68,6 +77,7 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
         key: "organizer-settings",
         label: "Organizer Settings",
         icon: "settings",
+        route: "/(organizer)/organizer-settings",
       },
       { key: "collaborators", label: "Collaborators", icon: "users" },
     ],

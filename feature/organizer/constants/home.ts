@@ -47,7 +47,7 @@ export const upcomingEvents: OrganizerEvent[] = [
     location: "Silverbird cinemas gallery, Uduodoma Avenue.",
     ticketsSold: 2,
     ticketsTotal: 40,
-      image: require("@/assets/images/event/event-3.jpg"),
+    image: require("@/assets/images/event/event-3.jpg"),
     isFavorite: true,
   },
 ];
@@ -61,7 +61,7 @@ export const currentlyHappeningEvents: OrganizerEvent[] = [
     location: "Silverbird cinemas gallery, Uduodoma Avenue.",
     ticketsSold: 22,
     ticketsTotal: 40,
-        image: require("@/assets/images/event/event-3.jpg"),
+    image: require("@/assets/images/event/event-3.jpg"),
     isFavorite: false,
   },
   {
@@ -137,3 +137,76 @@ export type OrganizerEvent = {
   image: any;
   isFavorite?: boolean;
 };
+
+export type Venue = {
+  id: string;
+  name: string;
+  location: string;
+  city: string;
+  capacity: number;
+  pricePerDay: number;
+  rating: number;
+  reviewCount: number;
+  description: string;
+  amenities: string[];
+  image: any;
+};
+
+export const venuesList: Venue[] = [
+  {
+    id: "venue-1",
+    name: "The Grand Ballroom",
+    location: "Plot 12, Wuse Zone 4",
+    city: "Abuja",
+    capacity: 500,
+    pricePerDay: 250000,
+    rating: 4.8,
+    reviewCount: 64,
+    description:
+      "A stunning ballroom with state-of-the-art AV equipment, built-in stage, and elegant chandeliers. Perfect for large conferences, gala dinners, and corporate events.",
+    amenities: ["Stage", "AV Equipment", "Wi-Fi", "Parking", "Catering", "AC"],
+    image: require("@/assets/images/event/event-1.png"),
+  },
+  {
+    id: "venue-2",
+    name: "Creatives Hub",
+    location: "14B Admiralty Way, Lekki Phase 1",
+    city: "Lagos",
+    capacity: 120,
+    pricePerDay: 80000,
+    rating: 4.5,
+    reviewCount: 38,
+    description:
+      "A modern co-working and events space designed for workshops, product launches, art exhibitions, and networking events. Vibrant atmosphere with flexible layouts.",
+    amenities: ["Wi-Fi", "Projector", "Lounge", "Kitchenette", "Whiteboards"],
+    image: require("@/assets/images/event/event-2.jpg"),
+  },
+  {
+    id: "venue-3",
+    name: "Outdoor Arena Uyo",
+    location: "Aka Road, Off stadium",
+    city: "Uyo",
+    capacity: 2000,
+    pricePerDay: 400000,
+    rating: 4.6,
+    reviewCount: 52,
+    description:
+      "A spacious open-air arena ideal for concerts, festivals, outdoor markets, and large community events. Covered stage, flood lights, and generator backup included.",
+    amenities: ["Stage", "Flood Lights", "Generator", "Security", "Parking"],
+    image: require("@/assets/images/event/event-3.jpg"),
+  },
+  {
+    id: "venue-4",
+    name: "Summit Conference Centre",
+    location: "22 Adeola Odeku Street, VI",
+    city: "Lagos",
+    capacity: 200,
+    pricePerDay: 150000,
+    rating: 4.7,
+    reviewCount: 29,
+    description:
+      "A professional conference centre with breakout rooms, high-speed internet, and premium catering options. Ideal for summits, training sessions, and AGMs.",
+    amenities: ["Breakout Rooms", "Wi-Fi", "Catering", "AC", "AV Equipment"],
+    image: require("@/assets/images/home/publish-1.png"),
+  },
+];

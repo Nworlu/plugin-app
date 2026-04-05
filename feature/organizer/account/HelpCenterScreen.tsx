@@ -1,3 +1,4 @@
+import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -184,50 +185,51 @@ const HelpCenterScreen = () => {
           </ScrollView>
 
           <View className="mt-4 gap-3">
-            {filteredArticles.map((article) => (
-              <View
-                key={article.id}
-                className={`rounded-2xl px-3.5 py-3.5 border ${
-                  isDark
-                    ? "bg-[#111] border-[#2A2A2A]"
-                    : "bg-white border-[#EAECF0]"
-                }`}
-              >
-                <View className="flex-row items-start justify-between gap-2">
-                  <View className="flex-row items-start gap-2.5 flex-1">
-                    <CircleHelp size={16} color="#F59E0B" />
-                    <View className="flex-1">
+            {filteredArticles.map((article, i) => (
+              <AnimatedEntry key={article.id} index={i}>
+                <View
+                  className={`rounded-2xl px-3.5 py-3.5 border ${
+                    isDark
+                      ? "bg-[#111] border-[#2A2A2A]"
+                      : "bg-white border-[#EAECF0]"
+                  }`}
+                >
+                  <View className="flex-row items-start justify-between gap-2">
+                    <View className="flex-row items-start gap-2.5 flex-1">
+                      <CircleHelp size={16} color="#F59E0B" />
+                      <View className="flex-1">
+                        <ThemedText
+                          weight="700"
+                          className={`text-[15px] ${isDark ? "text-[#E5E7EB]" : "text-[#101828]"}`}
+                        >
+                          {article.title}
+                        </ThemedText>
+                        <ThemedText
+                          className={`text-[13px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
+                        >
+                          {article.excerpt}
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      className="flex-row items-center gap-1"
+                    >
                       <ThemedText
                         weight="700"
-                        className={`text-[15px] ${isDark ? "text-[#E5E7EB]" : "text-[#101828]"}`}
+                        className={`text-[14px] ${isDark ? "text-[#9CA3AF]" : "text-[#344054]"}`}
                       >
-                        {article.title}
+                        Read
                       </ThemedText>
-                      <ThemedText
-                        className={`text-[13px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
-                      >
-                        {article.excerpt}
-                      </ThemedText>
-                    </View>
+                      <ChevronDown
+                        size={14}
+                        color={isDark ? "#9CA3AF" : "#344054"}
+                      />
+                    </TouchableOpacity>
                   </View>
-
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    className="flex-row items-center gap-1"
-                  >
-                    <ThemedText
-                      weight="700"
-                      className={`text-[14px] ${isDark ? "text-[#9CA3AF]" : "text-[#344054]"}`}
-                    >
-                      Read
-                    </ThemedText>
-                    <ChevronDown
-                      size={14}
-                      color={isDark ? "#9CA3AF" : "#344054"}
-                    />
-                  </TouchableOpacity>
                 </View>
-              </View>
+              </AnimatedEntry>
             ))}
           </View>
         </View>

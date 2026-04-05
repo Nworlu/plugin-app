@@ -1,3 +1,4 @@
+import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import {
@@ -39,18 +40,21 @@ const AccountScreen = () => {
           Account
         </ThemedText>
 
-        <ProfileHeaderCard
-          fullName="Koffee Jayden"
-          email="KoffeeJay@outlook.com"
-        />
-
-        {ACCOUNT_SECTIONS.map((section) => (
-          <AccountSectionCard
-            key={section.title}
-            title={section.title}
-            items={section.items}
-            onPressItem={handlePressItem}
+        <AnimatedEntry index={0}>
+          <ProfileHeaderCard
+            fullName="Koffee Jayden"
+            email="KoffeeJay@outlook.com"
           />
+        </AnimatedEntry>
+
+        {ACCOUNT_SECTIONS.map((section, i) => (
+          <AnimatedEntry key={section.title} index={i + 1}>
+            <AccountSectionCard
+              title={section.title}
+              items={section.items}
+              onPressItem={handlePressItem}
+            />
+          </AnimatedEntry>
         ))}
 
         <View className="h-6" />

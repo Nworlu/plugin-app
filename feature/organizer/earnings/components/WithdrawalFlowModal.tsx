@@ -1,25 +1,26 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useBankDetails, useCreateWithdrawal } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
+import type { Withdrawal } from "@/utils/api/types";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { AlertCircle, Building2, X } from "lucide-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { TextInput, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-type WithdrawalStep = "form" | "otp" | "saving" | "summary";
-type SummaryStatus = "Processing" | "Completed";
+type WithdrawalStep = "form" | "otp" | "summary";
 
 type WithdrawalFlowModalProps = {
+  balance: number;
   onClose: () => void;
 };
 
@@ -101,7 +102,7 @@ const OtpInput = ({
 const WithdrawalFlowModal = React.forwardRef<
   BottomSheetModal,
   WithdrawalFlowModalProps
->(({ onClose }, ref) => {
+>(({ onClose, balance }, ref) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const snapPoints = useMemo(() => ["74%"], []);
@@ -117,18 +118,31 @@ const WithdrawalFlowModal = React.forwardRef<
     [],
   );
 
+  const {
+    data: bankDetails,
+    isLoading: isBankDetailsLoading,
+    isError: isBankDetailsError,
+  } = useBankDetails();
+  const { mutate: createWithdrawal, isPending: isCreatingWithdrawal } =
+    useCreateWithdrawal();
+
   const [step, setStep] = useState<WithdrawalStep>("form");
   const [amountValue, setAmountValue] = useState("");
   const [otpDigits, setOtpDigits] = useState<string[]>(
     Array.from({ length: OTP_LENGTH }).map(() => ""),
   );
-  const [summaryStatus, setSummaryStatus] =
-    useState<SummaryStatus>("Processing");
+  const [withdrawalResult, setWithdrawalResult] = useState<Withdrawal | null>(
+    null,
+  );
+  const [withdrawalError, setWithdrawalError] = useState("");
 
-  const currentBalance = 4000000;
+  const bankAccountId = bankDetails?._id ?? bankDetails?.id;
+
   const amountNumber = Number(amountValue || "0");
-  const canContinue = amountNumber > 0 && amountNumber <= currentBalance;
-  const canSubmitOtp = otpDigits.every((digit) => digit.length === 1);
+  const canContinue =
+    amountNumber > 0 && amountNumber <= balance && !!bankAccountId;
+  const canSubmitOtp =
+    otpDigits.every((digit) => digit.length === 1) && !isCreatingWithdrawal;
 
   const handleOtpChange = (index: number, value: string) => {
     setOtpDigits((prev) => {
@@ -142,32 +156,15 @@ const WithdrawalFlowModal = React.forwardRef<
     setStep("form");
     setAmountValue("");
     setOtpDigits(Array.from({ length: OTP_LENGTH }).map(() => ""));
-    setSummaryStatus("Processing");
+    setWithdrawalResult(null);
+    setWithdrawalError("");
     onClose();
   };
-
-  useEffect(() => {
-    if (step !== "saving") return;
-
-    const savingTimer = setTimeout(() => {
-      setStep("summary");
-      setSummaryStatus("Processing");
-    }, 1200);
-
-    const completedTimer = setTimeout(() => {
-      setSummaryStatus("Completed");
-    }, 2800);
-
-    return () => {
-      clearTimeout(savingTimer);
-      clearTimeout(completedTimer);
-    };
-  }, [step]);
 
   const title =
     step === "form"
       ? "Make withdrawal"
-      : step === "otp" || step === "saving"
+      : step === "otp"
         ? "Enter OTP to approve withdrawal"
         : "Withdrawal Summary";
 
@@ -238,6 +235,27 @@ const WithdrawalFlowModal = React.forwardRef<
               </ThemedText>
             </View>
 
+            {isBankDetailsLoading ? (
+              <View className="mt-4 rounded-xl border border-[#E4E7EC] bg-[#F9FAFB] px-3 py-3 flex-row items-center gap-2">
+                <ActivityIndicator size="small" color="#C5162A" />
+                <ThemedText className="text-[#667085] text-sm">
+                  Checking linked account...
+                </ThemedText>
+              </View>
+            ) : isBankDetailsError ? (
+              <View className="mt-4 rounded-xl border border-[#FDA29B] bg-[#FEF3F2] px-3 py-3">
+                <ThemedText className="text-[#D92D20] text-sm text-center">
+                  Failed to load bank details. Please try again.
+                </ThemedText>
+              </View>
+            ) : !bankAccountId ? (
+              <View className="mt-4 rounded-xl border border-[#F59E0B] bg-[#FFFAEB] px-3 py-3">
+                <ThemedText className="text-[#D97706] text-sm text-center">
+                  No bank account linked. Add payout information first.
+                </ThemedText>
+              </View>
+            ) : null}
+
             <View className="mt-7 items-center">
               <View
                 className="rounded-full px-4 py-2 flex-row items-center gap-3"
@@ -251,7 +269,7 @@ const WithdrawalFlowModal = React.forwardRef<
                   Current Balance
                 </ThemedText>
                 <ThemedText weight="700" className="text-[20px]">
-                  N 4,000,000
+                  ₦{balance.toLocaleString()}
                 </ThemedText>
               </View>
             </View>
@@ -300,7 +318,7 @@ const WithdrawalFlowModal = React.forwardRef<
           </>
         ) : null}
 
-        {step === "otp" || step === "saving" ? (
+        {step === "otp" ? (
           <>
             <ThemedText className="text-[#667085] text-sm">
               Enter code sent to email address
@@ -309,7 +327,7 @@ const WithdrawalFlowModal = React.forwardRef<
             <OtpInput
               digits={otpDigits}
               onChange={handleOtpChange}
-              disabled={step === "saving"}
+              disabled={isCreatingWithdrawal}
               isDark={isDark}
             />
 
@@ -330,12 +348,35 @@ const WithdrawalFlowModal = React.forwardRef<
               </ThemedText>
             </View>
 
+            {withdrawalError ? (
+              <ThemedText className="text-[#D92D20] text-sm mt-3 text-center">
+                {withdrawalError}
+              </ThemedText>
+            ) : null}
+
             <View className="mt-auto pt-6">
               <GradientButton
-                label={step === "saving" ? "Saving" : "Submit Withdrawal"}
-                onPress={() => setStep("saving")}
-                disabled={step === "saving" || !canSubmitOtp}
-                loading={step === "saving"}
+                label="Submit Withdrawal"
+                onPress={() => {
+                  if (!bankDetails?.id) return;
+                  setWithdrawalError("");
+                  createWithdrawal(
+                    { amount: amountNumber, accountId: bankAccountId! },
+                    {
+                      onSuccess: (data) => {
+                        setWithdrawalResult(data);
+                        setStep("summary");
+                      },
+                      onError: () => {
+                        setWithdrawalError(
+                          "Withdrawal failed. Please try again.",
+                        );
+                      },
+                    },
+                  );
+                }}
+                disabled={!canSubmitOtp || !bankAccountId}
+                loading={isCreatingWithdrawal}
                 height={48}
               />
             </View>
@@ -356,30 +397,17 @@ const WithdrawalFlowModal = React.forwardRef<
                 <Building2 size={22} color="#101828" />
                 <View>
                   <ThemedText weight="500" className="text-[#101828] text-sm">
-                    Olivia Magaret
+                    {bankDetails?.accountHolderName ?? "—"}
                   </ThemedText>
                   <ThemedText className="text-[#667085] text-xs mt-1">
-                    Acc number - 1234567890
+                    Acc number - {bankDetails?.accountNumber ?? "—"}
                   </ThemedText>
                 </View>
               </View>
 
-              <View
-                className={`rounded-full px-3 py-1.5 ${
-                  summaryStatus === "Processing"
-                    ? "border border-[#F59E0B] bg-[#FFFAEB]"
-                    : "border border-[#44C062] bg-[#ECFDF3]"
-                }`}
-              >
-                <ThemedText
-                  weight="500"
-                  className={
-                    summaryStatus === "Processing"
-                      ? "text-[#D97706] text-sm"
-                      : "text-[#16A34A] text-sm"
-                  }
-                >
-                  {summaryStatus}
+              <View className="rounded-full px-3 py-1.5 border border-[#F59E0B] bg-[#FFFAEB]">
+                <ThemedText weight="500" className="text-[#D97706] text-sm">
+                  {withdrawalResult?.status ?? "Processing"}
                 </ThemedText>
               </View>
             </View>
@@ -399,7 +427,7 @@ const WithdrawalFlowModal = React.forwardRef<
                   Reference Number
                 </ThemedText>
                 <ThemedText weight="500" className="text-[#1D2939] text-sm">
-                  TRX890123456
+                  {withdrawalResult?.id ?? "—"}
                 </ThemedText>
               </View>
               <View className="flex-row items-start justify-between">
@@ -407,7 +435,10 @@ const WithdrawalFlowModal = React.forwardRef<
                   Amount
                 </ThemedText>
                 <ThemedText weight="500" className="text-[#1D2939] text-sm">
-                  N{formatAmount(amountValue)}
+                  ₦
+                  {withdrawalResult
+                    ? withdrawalResult.amount.toLocaleString()
+                    : formatAmount(amountValue)}
                 </ThemedText>
               </View>
               <View className="flex-row items-start justify-between">
@@ -416,8 +447,16 @@ const WithdrawalFlowModal = React.forwardRef<
                   weight="500"
                   className="text-[#1D2939] text-sm text-right"
                 >
-                  01 September, 2022,{"\n"}
-                  4:00 pm
+                  {withdrawalResult
+                    ? new Date(withdrawalResult.createdAt).toLocaleDateString(
+                        "en-NG",
+                        {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      )
+                    : "—"}
                 </ThemedText>
               </View>
             </View>

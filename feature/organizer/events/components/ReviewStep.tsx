@@ -1,12 +1,11 @@
 import { ThemedText } from "@/components/themed-text";
 import NativeDateTimePicker from "@/feature/organizer/events/components/NativeDateTimePicker";
 import { Ticket } from "@/feature/organizer/events/types";
+import { useOrganizer } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
-import * as ImagePicker from "expo-image-picker";
 import {
   Calendar,
   Clock,
-  ImageIcon,
   MapPin,
   Pencil,
   RefreshCw,
@@ -27,6 +26,7 @@ type Props = {
   city: string;
   country: string;
   tickets: Ticket[];
+  userId: string;
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -65,15 +65,16 @@ export default function ReviewStep({
   city,
   country,
   tickets,
+  userId,
 }: Props) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   const placeholderColor = isDark ? "#4A4A4E" : "#98A2B3";
 
+  const { data: organizer } = useOrganizer(userId);
+
   const [showFull, setShowFull] = useState(true);
-  const [organizerName, setOrganizerName] = useState("");
-  const [organizerPhoto, setOrganizerPhoto] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [publishOption, setPublishOption] = useState<"now" | "schedule">("now");
   const [scheduleDate, setScheduleDate] = useState(new Date());
@@ -129,16 +130,6 @@ export default function ReviewStep({
   };
 
   const locationString = [address, city, country].filter(Boolean).join(", ");
-
-  const pickPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setOrganizerPhoto(result.assets[0].uri);
-    }
-  };
 
   return (
     <View>
@@ -245,52 +236,43 @@ export default function ReviewStep({
         {"WHO'S ORGANIZING THIS EVENT ?"}
       </ThemedText>
 
-      {/* Photo + Name row */}
-      <View className="flex-row items-start gap-[14px] mb-7">
-        <TouchableOpacity
-          onPress={pickPhoto}
-          activeOpacity={0.8}
-          className="items-center gap-[6px]"
-        >
-          {organizerPhoto ? (
-            <Image
-              source={{ uri: organizerPhoto }}
-              className="w-[72px] h-[72px] rounded-full"
-              resizeMode="cover"
-            />
-          ) : (
-            <View
-              className={`w-[72px] h-[72px] rounded-full items-center justify-center ${isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]"}`}
-            >
-              <ImageIcon size={28} color="#D92D20" />
-            </View>
-          )}
-          <ThemedText
-            weight="500"
-            className={`text-[13px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
+      {/* Organizer card */}
+      <View
+        className={`flex-row items-center gap-3 p-[14px] border rounded-xl mb-7 ${
+          isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"
+        }`}
+      >
+        {organizer?.thumbnail ? (
+          <Image
+            source={{ uri: organizer.thumbnail }}
+            style={{ width: 48, height: 48, borderRadius: 24 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View
+            className={`w-12 h-12 rounded-full items-center justify-center ${isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]"}`}
           >
-            Photo
-          </ThemedText>
-        </TouchableOpacity>
-
-        {/* Name input */}
+            <ThemedText weight="700" className="text-[18px] text-[#D92D20]">
+              {organizer?.name?.charAt(0)?.toUpperCase() ?? "?"}
+            </ThemedText>
+          </View>
+        )}
         <View className="flex-1">
           <ThemedText
-            className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+            weight="700"
+            className={`text-[15px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
+            numberOfLines={1}
           >
-            Organizer Name *
+            {organizer?.name ?? "Loading..."}
           </ThemedText>
-          <TextInput
-            value={organizerName}
-            onChangeText={setOrganizerName}
-            placeholder="Enter Organizer name"
-            placeholderTextColor={placeholderColor}
-            className={`border rounded-[10px] px-[14px] py-[13px] text-[14px] ${
-              isDark
-                ? "border-[#2C2C2E] text-[#F2F4F7] bg-[#1C1C1E]"
-                : "border-[#E4E7EC] text-[#101828] bg-white"
-            }`}
-          />
+          {organizer?.tagline ? (
+            <ThemedText
+              className="text-[12px] text-[#667085] mt-[2px]"
+              numberOfLines={1}
+            >
+              {organizer.tagline}
+            </ThemedText>
+          ) : null}
         </View>
       </View>
 

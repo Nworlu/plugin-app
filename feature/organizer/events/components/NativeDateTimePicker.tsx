@@ -53,11 +53,12 @@ const NativeDateTimePicker = ({
 
   const label =
     mode === "date" ? formatDateValue(value) : formatTimeValue(value);
+  const iconColor = isDark ? "#D0D5DD" : "#101828";
   const icon =
     mode === "date" ? (
-      <Calendar size={21} color="#101828" />
+      <Calendar size={21} color={iconColor} />
     ) : (
-      <ChevronDown size={20} color="#101828" />
+      <ChevronDown size={20} color={iconColor} />
     );
 
   return (
@@ -79,7 +80,10 @@ const NativeDateTimePicker = ({
           },
         ]}
       >
-        <ThemedText weight="400" className="text-[#2C2B2E] text-sm">
+        <ThemedText
+          weight="400"
+          className={`text-sm ${isDark ? "text-[#F2F4F7]" : "text-[#2C2B2E]"}`}
+        >
           {label}
         </ThemedText>
         {icon}
@@ -106,12 +110,18 @@ const NativeDateTimePicker = ({
                 activeOpacity={0.85}
                 className="py-2"
               >
-                <ThemedText weight="500" className="text-[#344054] text-[16px]">
+                <ThemedText
+                  weight="500"
+                  className={`text-[16px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                >
                   Cancel
                 </ThemedText>
               </TouchableOpacity>
 
-              <ThemedText weight="700" className="text-[#101828] text-[16px]">
+              <ThemedText
+                weight="700"
+                className={`text-[16px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
+              >
                 {mode === "date" ? "Select date" : "Select time"}
               </ThemedText>
 

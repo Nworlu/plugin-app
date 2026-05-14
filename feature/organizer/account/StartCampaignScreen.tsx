@@ -19,7 +19,10 @@ import SponsoredCampaignReviewModal, {
   SponsoredCampaignReviewPayload,
 } from "@/feature/organizer/account/components/SponsoredCampaignReviewModal";
 import GlassCard from "@/feature/organizer/events/components/GlassCard";
+import { useOrganizerEvents } from "@/hooks/api/use-events";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useAuthStore } from "@/store/auth-store";
+import type { RawEvent } from "@/utils/api/types";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import { ChevronLeft, Layers, Mail, Megaphone } from "lucide-react-native";
@@ -62,9 +65,86 @@ const CAMPAIGN_TYPES: CampaignType[] = [
   },
 ];
 
+/* ─── Helpers ──────────────────────────────────────────────── */
+
+function formatEventDate(date?: string, time?: string): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
+  const month = d.toLocaleDateString("en-US", { month: "long" });
+  const day = d.getDate();
+  const suffix =
+    day % 10 === 1 && day !== 11
+      ? "st"
+      : day % 10 === 2 && day !== 12
+        ? "nd"
+        : day % 10 === 3 && day !== 13
+          ? "rd"
+          : "th";
+  const timePart = time ? ` @ ${time}` : "";
+  return `${dayName}, ${month} ${day}${suffix}, ${d.getFullYear()}${timePart}`;
+}
+
+function getAmountRange(event: RawEvent): string {
+  const prices: number[] = [];
+  if (event?.ticketPrice) prices.push(event.ticketPrice);
+  (event.groupedTicket ?? []).forEach((t) => {
+    if (t.ticketPrice) prices.push(t.ticketPrice);
+  });
+  if (prices.length === 0) return "Free";
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const fmt = (n: number) => `₦${n.toLocaleString("en-NG")}`;
+  return min === max ? fmt(min) : `${fmt(min)} - ${fmt(max)}`;
+}
+
+function getSaleProgress(event: RawEvent): number {
+  const sold =
+    (event.entryTicket?.ticketsSold ?? 0) +
+    (event.groupedTicket ?? []).reduce((s, t) => s + (t.ticketsSold ?? 0), 0);
+  const total =
+    (event.entryTicket?.ticketQuantity ?? 0) +
+    (event.groupedTicket ?? []).reduce(
+      (s, t) => s + (t.ticketQuantity ?? 0),
+      0,
+    );
+  if (total === 0) return 0;
+  return Math.round((sold / total) * 100);
+}
+
+function mapEventToItem(event: RawEvent): CampaignEventItem {
+  const imageUri = event.eventBanner ?? event.thumbnail;
+  console.log("Mapping event to item:", {
+    title: event.eventName,
+    imageUri,
+    price: event,
+  });
+  return {
+    id: event._id,
+    title: event.eventName,
+    date: formatEventDate(event.startDate, event.startTime),
+    amountRange: getAmountRange(event),
+    saleProgress: getSaleProgress(event),
+    image: imageUri
+      ? { uri: imageUri }
+      : require("@/assets/images/event/event-1.png"),
+  };
+}
+
 const StartCampaignScreen = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+
+  const user = useAuthStore((s) => s.user);
+  const organizerId = user?._id ?? "";
+  const { data: rawEvents = [], isLoading: isLoadingEvents } =
+    useOrganizerEvents(organizerId);
+
+  const campaignEvents = useMemo(
+    () => rawEvents.map(mapEventToItem),
+    [rawEvents],
+  );
+
   const eventSheetRef = useRef<BottomSheetModal>(null);
   const adSheetRef = useRef<BottomSheetModal>(null);
   const adReviewSheetRef = useRef<BottomSheetModal>(null);
@@ -80,7 +160,7 @@ const StartCampaignScreen = () => {
   const [showAdReviewModal, setShowAdReviewModal] = useState(false);
   const [adReviewPayload, setAdReviewPayload] =
     useState<AdCampaignReviewPayload | null>(null);
-  const [showEmailReviewModal, setShowEmailReviewModal] = useState(false); // can be removed, but keep for now for logic
+  const [showEmailReviewModal, setShowEmailReviewModal] = useState(false);
   const [emailReviewPayload, setEmailReviewPayload] =
     useState<EmailCampaignReviewPayload | null>(null);
   const [showSponsoredReviewModal, setShowSponsoredReviewModal] =
@@ -96,33 +176,6 @@ const StartCampaignScreen = () => {
     location: string;
   } | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  const CAMPAIGN_EVENTS: CampaignEventItem[] = [
-    {
-      id: "ce-1",
-      title: "Designer's Connect",
-      date: "Saturday , September 7th, 2023 @ 7:30pm GMT",
-      amountRange: "N3,000 - N75,000",
-      saleProgress: 20,
-      image: require("@/assets/images/event/event-1.png"),
-    },
-    {
-      id: "ce-2",
-      title: "Designer's Connect",
-      date: "Saturday , September 7th, 2023 @ 7:30pm GMT",
-      amountRange: "N3,000 - N75,000",
-      saleProgress: 20,
-      image: require("@/assets/images/event/event-1.png"),
-    },
-    {
-      id: "ce-3",
-      title: "Designer's Connect",
-      date: "Saturday , September 7th, 2023 @ 7:30pm GMT",
-      amountRange: "N3,000 - N75,000",
-      saleProgress: 20,
-      image: require("@/assets/images/event/event-1.png"),
-    },
-  ];
 
   const canProceed = useMemo(
     () => selectedCampaign !== null,
@@ -265,7 +318,8 @@ const StartCampaignScreen = () => {
 
       <CampaignEventSelectionModal
         ref={eventSheetRef}
-        events={CAMPAIGN_EVENTS}
+        events={campaignEvents}
+        isLoading={isLoadingEvents}
         selectedEventId={selectedEventId}
         onSelectEvent={setSelectedEventId}
         onClose={() => setShowEventModal(false)}
@@ -305,7 +359,7 @@ const StartCampaignScreen = () => {
         onNext={(payload) => {
           setAdCampaignPayload(payload);
           // Prepare review payload
-          const event = CAMPAIGN_EVENTS.find((e) => e.id === selectedEventId);
+          const event = campaignEvents.find((e) => e.id === selectedEventId);
           setAdReviewPayload({
             event: event!,
             campaignType: "Social Media Ads - NGN 8,000",
@@ -354,7 +408,7 @@ const StartCampaignScreen = () => {
         }}
         onSubmit={(payload) => {
           // Prepare review payload
-          const event = CAMPAIGN_EVENTS.find((e) => e.id === selectedEventId);
+          const event = campaignEvents.find((e) => e.id === selectedEventId);
           setEmailReviewPayload({
             event: event!,
             campaignType: "Email Campaigns - NGN 25,000",
@@ -371,16 +425,20 @@ const StartCampaignScreen = () => {
       {emailReviewPayload && (
         <EmailCampaignReviewModal
           ref={emailReviewSheetRef}
+          visible={showEmailReviewModal}
           payload={emailReviewPayload}
           onBack={() => {
+            setShowEmailReviewModal(false);
             emailReviewSheetRef.current?.dismiss();
             setTimeout(() => setShowEmailModal(true), 120);
           }}
           onEdit={() => {
+            setShowEmailReviewModal(false);
             emailReviewSheetRef.current?.dismiss();
             setTimeout(() => setShowEventModal(true), 120);
           }}
           onSubmit={() => {
+            setShowEmailReviewModal(false);
             emailReviewSheetRef.current?.dismiss();
             setTimeout(() => setShowSuccessModal(true), 120);
           }}
@@ -398,7 +456,7 @@ const StartCampaignScreen = () => {
         }}
         onSubmit={(payload) => {
           // Prepare review payload
-          const event = CAMPAIGN_EVENTS.find((e) => e.id === selectedEventId);
+          const event = campaignEvents.find((e) => e.id === selectedEventId);
           setSponsoredReviewPayload({
             event: event!,
             campaignType: "Sponsored Listings - NGN 35,000",
@@ -436,7 +494,7 @@ const StartCampaignScreen = () => {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          router.replace("/(organizer)/account");
+          router.replace("/(organizer)/account" as any);
         }}
       />
     </AppSafeArea>

@@ -1,15 +1,20 @@
 import { ThemedText } from "@/components/themed-text";
 import NativeDateTimePicker from "@/feature/organizer/events/components/NativeDateTimePicker";
 import { useTheme } from "@/providers/ThemeProvider";
-import { ChevronDown, Copy, MapPin, X } from "lucide-react-native";
-import React, { useState } from "react";
+import * as Location from "expo-location";
+import { ChevronDown, Copy, Crosshair, MapPin, X } from "lucide-react-native";
+import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  FlatList,
   Modal,
   Pressable,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+
+const PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ?? "";
 
 const ONLINE_VENUES = [
   "Zoom",
@@ -26,6 +31,8 @@ const VENUE_COLORS: Record<string, string> = {
   "YouTube Live": "#FF0000",
   Webex: "#00BCEB",
 };
+
+type Prediction = { place_id: string; description: string };
 
 type Props = {
   locationType: "physical" | "online";
@@ -44,6 +51,10 @@ type Props = {
   setOnlineVenue: (v: string) => void;
   venueLink: string;
   setVenueLink: (v: string) => void;
+  latitude?: number;
+  setLatitude?: (v: number) => void;
+  longitude?: number;
+  setLongitude?: (v: number) => void;
 };
 
 export default function LocationStep({
@@ -63,6 +74,8 @@ export default function LocationStep({
   setOnlineVenue,
   venueLink,
   setVenueLink,
+  setLatitude,
+  setLongitude,
 }: Props) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -72,6 +85,125 @@ export default function LocationStep({
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
+
+  // Google Places autocomplete state
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const useCurrentLocation = async () => {
+    setIsLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const { latitude, longitude } = loc.coords;
+
+      setLatitude?.(latitude);
+      setLongitude?.(longitude);
+
+      const url =
+        `https://maps.googleapis.com/maps/api/geocode/json` +
+        `?latlng=${latitude},${longitude}&key=${PLACES_API_KEY}&language=en`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status !== "OK" || !data.results?.[0]) return;
+
+      const result = data.results[0];
+      setAddress(result.formatted_address ?? "");
+      setPredictions([]);
+
+      const components: {
+        long_name: string;
+        short_name: string;
+        types: string[];
+      }[] = result.address_components ?? [];
+      const get = (type: string) =>
+        components.find((c) => c.types.includes(type))?.long_name ?? "";
+
+      setCity(
+        get("locality") ||
+          get("postal_town") ||
+          get("administrative_area_level_2"),
+      );
+      setLocationState(get("administrative_area_level_1"));
+      setCountry(get("country"));
+      setZipcode(get("postal_code"));
+    } catch {
+      // silently ignore
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const fetchPredictions = (text: string) => {
+    setAddress(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (text.length < 3) {
+      setPredictions([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const url =
+          `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
+          `?input=${encodeURIComponent(text)}&key=${PLACES_API_KEY}&language=en`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === "OK") {
+          setPredictions(data.predictions ?? []);
+        } else {
+          setPredictions([]);
+        }
+      } catch {
+        setPredictions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+  };
+
+  const selectPlace = async (prediction: Prediction) => {
+    setAddress(prediction.description);
+    setPredictions([]);
+    try {
+      const url =
+        `https://maps.googleapis.com/maps/api/place/details/json` +
+        `?place_id=${encodeURIComponent(prediction.place_id)}&fields=address_components,geometry&key=${PLACES_API_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status !== "OK") return;
+      const components: {
+        long_name: string;
+        short_name: string;
+        types: string[];
+      }[] = data.result?.address_components ?? [];
+
+      const get = (type: string) =>
+        components.find((c) => c.types.includes(type))?.long_name ?? "";
+
+      setCity(
+        get("locality") ||
+          get("postal_town") ||
+          get("administrative_area_level_2"),
+      );
+      setLocationState(get("administrative_area_level_1"));
+      setCountry(get("country"));
+      setZipcode(get("postal_code"));
+
+      const geo = data.result?.geometry?.location;
+      if (geo) {
+        setLatitude?.(geo.lat);
+        setLongitude?.(geo.lng);
+      }
+    } catch {
+      // silently ignore — address is still set
+    }
+  };
 
   const DarkChip = ({
     label,
@@ -177,27 +309,111 @@ export default function LocationStep({
           >
             Address
           </ThemedText>
-          <View
-            className={`flex-row items-center border rounded-[10px] px-3 mb-[14px] ${
+          {/* Use current location */}
+          <TouchableOpacity
+            onPress={useCurrentLocation}
+            disabled={isLocating}
+            activeOpacity={0.8}
+            className={`flex-row items-center gap-2 mb-3 self-start border rounded-full px-3 py-[6px] ${
               isDark
                 ? "border-[#2C2C2E] bg-[#1C1C1E]"
-                : "border-[#E4E7EC] bg-white"
+                : "border-[#E4E7EC] bg-[#F9FAFB]"
             }`}
           >
-            <MapPin size={16} color="#667085" />
-            <TextInput
-              value={address}
-              onChangeText={setAddress}
-              placeholder="Search for location or address"
-              placeholderTextColor={placeholderColor}
-              style={{
-                flex: 1,
-                fontSize: 13,
-                color: isDark ? "#F2F4F7" : "#101828",
-                paddingVertical: 12,
-                paddingLeft: 8,
-              }}
-            />
+            {isLocating ? (
+              <ActivityIndicator size="small" color="#F04438" />
+            ) : (
+              <Crosshair size={14} color="#F04438" />
+            )}
+            <ThemedText
+              className={`text-[12px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+            >
+              {isLocating ? "Detecting location…" : "Use current location"}
+            </ThemedText>
+          </TouchableOpacity>
+          {/* Address autocomplete */}
+          <View>
+            <View
+              className={`flex-row items-center border rounded-[10px] px-3 mb-0 ${
+                isDark
+                  ? "border-[#2C2C2E] bg-[#1C1C1E]"
+                  : "border-[#E4E7EC] bg-white"
+              }`}
+            >
+              <MapPin size={16} color="#667085" />
+              <TextInput
+                value={address}
+                onChangeText={fetchPredictions}
+                placeholder="Search for location or address"
+                placeholderTextColor={placeholderColor}
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  color: isDark ? "#F2F4F7" : "#101828",
+                  paddingVertical: 12,
+                  paddingLeft: 8,
+                }}
+              />
+              {isSearching && (
+                <ActivityIndicator
+                  size="small"
+                  color="#667085"
+                  style={{ marginLeft: 4 }}
+                />
+              )}
+              {address.length > 0 && !isSearching && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setAddress("");
+                    setPredictions([]);
+                  }}
+                  className="p-1"
+                >
+                  <X size={14} color="#667085" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {predictions.length > 0 && (
+              <View
+                className={`border rounded-[10px] mt-1 mb-[14px] overflow-hidden ${
+                  isDark
+                    ? "border-[#2C2C2E] bg-[#1C1C1E]"
+                    : "border-[#E4E7EC] bg-white"
+                }`}
+                style={{ maxHeight: 220 }}
+              >
+                <FlatList
+                  data={predictions}
+                  keyExtractor={(item) => item.place_id}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item, index }) => (
+                    <TouchableOpacity
+                      onPress={() => selectPlace(item)}
+                      activeOpacity={0.8}
+                      className={`flex-row items-start gap-2 px-3 py-[11px] ${
+                        index < predictions.length - 1
+                          ? `border-b ${isDark ? "border-b-[#2C2C2E]" : "border-b-[#F2F4F7]"}`
+                          : ""
+                      }`}
+                    >
+                      <MapPin
+                        size={14}
+                        color="#667085"
+                        style={{ marginTop: 1 }}
+                      />
+                      <ThemedText
+                        className={`text-[13px] flex-1 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                        numberOfLines={2}
+                      >
+                        {item.description}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
+            {predictions.length === 0 && <View className="mb-[14px]" />}
           </View>
 
           <View className="flex-row gap-[10px] mb-[14px]">

@@ -2,72 +2,84 @@ import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useAddAgent, useAgents, useEvent } from "@/hooks/api/use-events";
 import { useTheme } from "@/providers/ThemeProvider";
+import type { RawAgent } from "@/utils/api/types";
 import { router, useLocalSearchParams } from "expo-router";
-import { ChevronDown, X } from "lucide-react-native";
+import { ChevronDown } from "lucide-react-native";
 import React, { useState } from "react";
-import { Modal, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-type TicketType = "Barn member" | "Barn chief" | "VIP" | "General";
-
-const TICKET_TYPES: TicketType[] = [
-  "Barn member",
-  "Barn chief",
-  "VIP",
-  "General",
-];
-
-type Agent = {
-  id: string;
-  email: string;
-  ticketType: TicketType;
-};
+type TicketDef = { ticketId: string; ticketName: string };
 
 const CheckInAgentScreen = () => {
-  useLocalSearchParams<{ eventId?: string }>();
+  const { eventId = "" } = useLocalSearchParams<{ eventId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
+  const { data: eventData } = useEvent(eventId);
+  const { data: agents = [], isLoading: isLoadingAgents } = useAgents(eventId);
+  const { mutateAsync: addAgent, isPending: isAdding } = useAddAgent();
+
   const [agentEmail, setAgentEmail] = useState("");
-  const [selectedTicketType, setSelectedTicketType] =
-    useState<TicketType | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([
-    { id: "1", email: "Khalid@gmail.com", ticketType: "Barn member" },
-    { id: "2", email: "Maryjuanez@yahoomail.com", ticketType: "Barn chief" },
-  ]);
+  const [selectedDef, setSelectedDef] = useState<TicketDef | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [agentDropdownId, setAgentDropdownId] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
 
-  const canAdd = agentEmail.trim().length > 0 && selectedTicketType !== null;
+  /* Build ticket definitions from the event */
+  const ticketDefs: TicketDef[] = [];
+  if (eventData?.entryTicket) {
+    ticketDefs.push({
+      ticketId: eventData.entryTicket._id,
+      ticketName: eventData.entryTicket.ticketName ?? "Entry Ticket",
+    });
+  }
+  (eventData?.groupedTicket ?? []).forEach((t) => {
+    ticketDefs.push({ ticketId: t._id, ticketName: t.ticketName });
+  });
 
-  const handleAddAgent = () => {
-    if (!canAdd || !selectedTicketType) return;
-    const newAgent: Agent = {
-      id: Date.now().toString(),
-      email: agentEmail.trim(),
-      ticketType: selectedTicketType,
-    };
-    setAgents((prev) => [...prev, newAgent]);
-    setAgentEmail("");
-    setSelectedTicketType(null);
-  };
+  const canAdd =
+    agentEmail.trim().length > 0 && selectedDef !== null && !isAdding;
 
-  const handleRemoveAgent = (id: string) => {
-    setAgents((prev) => prev.filter((a) => a.id !== id));
-  };
-
-  const handleChangeAgentType = (id: string, type: TicketType) => {
-    setAgents((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, ticketType: type } : a)),
-    );
-    setAgentDropdownId(null);
+  const handleAddAgent = async () => {
+    if (!canAdd || !selectedDef || !eventId) return;
+    setAddError(null);
+    try {
+      await addAgent({
+        event: eventId,
+        email: agentEmail.trim(),
+        tickets: [
+          {
+            ticketId: selectedDef.ticketId,
+            ticketName: selectedDef.ticketName,
+          },
+        ],
+      });
+      setAgentEmail("");
+      setSelectedDef(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to add agent";
+      setAddError(msg);
+    }
   };
 
   const hasAgents = agents.length > 0;
 
   return (
     <AppSafeArea>
-      <View className="flex-1 px-4 pt-3">
+      <ScrollView
+        className="flex-1 px-4 pt-3"
+        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <BackHeader
           label="Back"
           onPress={() => router.back()}
@@ -78,11 +90,15 @@ const CheckInAgentScreen = () => {
         {/* Title */}
         <ThemedText
           weight="700"
-          className="text-[#020912] text-2xl leading-9 mt-4"
+          className="text-2xl leading-9 mt-4"
+          style={{ color: isDark ? "#E4E7EC" : "#020912" }}
         >
           Check-in Agents
         </ThemedText>
-        <ThemedText className="text-[#515A6A] text-base mt-0.5 leading-5">
+        <ThemedText
+          className="text-base mt-0.5 leading-5"
+          style={{ color: isDark ? "#8A96A8" : "#515A6A" }}
+        >
           Add Check-in agents to your event to{"\n"}manage specific ticket
           check-in
         </ThemedText>
@@ -99,12 +115,20 @@ const CheckInAgentScreen = () => {
         >
           {/* Add agents card */}
           <View className="">
-            <ThemedText weight="500" className="text-[#020912] text-xl mb-3">
+            <ThemedText
+              weight="500"
+              className="text-xl mb-3"
+              style={{ color: isDark ? "#E4E7EC" : "#020912" }}
+            >
               Add agents
             </ThemedText>
 
             {/* Email field */}
-            <ThemedText weight="400" className="text-[#344054] text-sm mb-1.5">
+            <ThemedText
+              weight="400"
+              className="text-sm mb-1.5"
+              style={{ color: isDark ? "#9BA8B9" : "#344054" }}
+            >
               Agent email address
             </ThemedText>
             <View
@@ -112,6 +136,7 @@ const CheckInAgentScreen = () => {
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: isDark ? "#374151" : "#D0D5DD",
+                backgroundColor: isDark ? "#111827" : "#FFFFFF",
                 paddingHorizontal: 12,
                 height: 44,
                 justifyContent: "center",
@@ -122,7 +147,7 @@ const CheckInAgentScreen = () => {
                 value={agentEmail}
                 onChangeText={setAgentEmail}
                 placeholder="e.g (mary@gmail.com)"
-                placeholderTextColor="#98A2B3"
+                placeholderTextColor={isDark ? "#4B5563" : "#98A2B3"}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 style={{ color: isDark ? "#E4E7EC" : "#101928", fontSize: 14 }}
@@ -130,7 +155,11 @@ const CheckInAgentScreen = () => {
             </View>
 
             {/* Ticket type dropdown */}
-            <ThemedText weight="500" className="text-[#344054] text-sm mb-1.5">
+            <ThemedText
+              weight="500"
+              className="text-sm mb-1.5"
+              style={{ color: isDark ? "#9BA8B9" : "#344054" }}
+            >
               Ticket type
             </ThemedText>
             <TouchableOpacity
@@ -140,6 +169,7 @@ const CheckInAgentScreen = () => {
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: isDark ? "#374151" : "#D0D5DD",
+                backgroundColor: isDark ? "#111827" : "#FFFFFF",
                 paddingHorizontal: 12,
                 height: 44,
                 flexDirection: "row",
@@ -149,27 +179,36 @@ const CheckInAgentScreen = () => {
               }}
             >
               <ThemedText
-                className={
-                  selectedTicketType
-                    ? "text-[#101928] text-[14px]"
-                    : "text-[#98A2B3] text-[14px]"
-                }
+                style={{
+                  color: selectedDef
+                    ? isDark
+                      ? "#E4E7EC"
+                      : "#101928"
+                    : isDark
+                      ? "#4B5563"
+                      : "#98A2B3",
+                  fontSize: 14,
+                }}
               >
-                {selectedTicketType ?? "Select type"}
+                {selectedDef ? selectedDef.ticketName : "Select type"}
               </ThemedText>
-              <ChevronDown size={16} color="#667185" />
+              <ChevronDown size={16} color={isDark ? "#9CA3AF" : "#667185"} />
             </TouchableOpacity>
 
             {/* Add Agent button */}
             <GradientButton
-              label="Add Agent"
+              label={isAdding ? "Adding…" : "Add Agent"}
               onPress={handleAddAgent}
               disabled={!canAdd}
               height={48}
               style={{ width: "100%" }}
             />
 
-            {!canAdd ? (
+            {addError ? (
+              <ThemedText className="text-[#D92D20] text-xs mt-2">
+                {addError}
+              </ThemedText>
+            ) : !canAdd ? (
               <ThemedText className="text-[#98A2B3] text-xs mt-2">
                 Enter an email and select a ticket type to enable Add Agent.
               </ThemedText>
@@ -186,27 +225,30 @@ const CheckInAgentScreen = () => {
           />
 
           {/* Agent list or empty state */}
-          {hasAgents ? (
+          {isLoadingAgents ? (
+            <View className="mt-7 pb-3 items-center">
+              <ActivityIndicator size="small" color="#D92D20" />
+            </View>
+          ) : hasAgents ? (
             <View className="mt-5 pb-2">
               <ThemedText
                 weight="700"
-                className="text-[#101928] text-[15px] mb-3"
+                className="text-[15px] mb-3"
+                style={{ color: isDark ? "#E4E7EC" : "#101928" }}
               >
                 Ticket agents
               </ThemedText>
 
               {agents.map((agent) => (
                 <AgentRow
-                  key={agent.id}
+                  key={agent._id}
                   agent={agent}
-                  onRemove={() => handleRemoveAgent(agent.id)}
-                  onChangeType={(type) => handleChangeAgentType(agent.id, type)}
-                  dropdownOpen={agentDropdownId === agent.id}
                   onToggleDropdown={() =>
                     setAgentDropdownId((prev) =>
-                      prev === agent.id ? null : agent.id,
+                      prev === agent._id ? null : agent._id,
                     )
                   }
+                  dropdownOpen={agentDropdownId === agent._id}
                 />
               ))}
             </View>
@@ -216,14 +258,15 @@ const CheckInAgentScreen = () => {
             </View>
           )}
         </View>
-      </View>
+      </ScrollView>
 
       {/* Global ticket-type picker modal */}
       <TicketTypePickerModal
         visible={showDropdown}
-        selected={selectedTicketType}
-        onSelect={(type) => {
-          setSelectedTicketType(type);
+        selected={selectedDef}
+        ticketDefs={ticketDefs}
+        onSelect={(def) => {
+          setSelectedDef(def);
           setShowDropdown(false);
         }}
         onClose={() => setShowDropdown(false)}
@@ -235,20 +278,12 @@ const CheckInAgentScreen = () => {
 /* ─── Agent Row ────────────────────────────────────────────── */
 
 type AgentRowProps = {
-  agent: Agent;
-  onRemove: () => void;
-  onChangeType: (type: TicketType) => void;
+  agent: RawAgent;
   dropdownOpen: boolean;
   onToggleDropdown: () => void;
 };
 
-const AgentRow = ({
-  agent,
-  onRemove,
-  onChangeType,
-  dropdownOpen,
-  onToggleDropdown,
-}: AgentRowProps) => {
+const AgentRow = ({ agent, dropdownOpen, onToggleDropdown }: AgentRowProps) => {
   const initials = agent.email.charAt(0).toUpperCase();
   const bgColors = ["#F2A735", "#3F8CE8", "#9B59B6", "#16A34A", "#D92D20"];
   const colorIndex = agent.email.charCodeAt(0) % bgColors.length;
@@ -268,25 +303,42 @@ const AgentRow = ({
           </ThemedText>
         </View>
 
-        {/* Email + type selector */}
+        {/* Email + assigned tickets */}
         <View className="flex-1">
-          <ThemedText weight="500" className="text-[#101928] text-[14px] mb-1">
+          <ThemedText
+            weight="500"
+            className="text-[14px] mb-1"
+            style={{ color: isDark ? "#E4E7EC" : "#101928" }}
+          >
             {agent.email}
           </ThemedText>
 
-          {/* Inline ticket type dropdown */}
+          {/* Inline tickets dropdown */}
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={onToggleDropdown}
-            className="self-start flex-row items-center gap-1.5 rounded-lg border border-[#D0D5DD] px-2.5 py-1"
+            style={{
+              alignSelf: "flex-start",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: isDark ? "#374151" : "#D0D5DD",
+              backgroundColor: isDark ? "#1F2937" : "#F9FAFB",
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+            }}
           >
-            <ThemedText className="text-[#344054] text-[13px]">
-              {agent.ticketType}
+            <ThemedText
+              style={{ color: isDark ? "#9BA8B9" : "#344054", fontSize: 13 }}
+            >
+              {agent.tickets.map((t) => t.ticketName).join(", ")}
             </ThemedText>
-            <ChevronDown size={12} color="#667185" />
+            <ChevronDown size={12} color={isDark ? "#9CA3AF" : "#667185"} />
           </TouchableOpacity>
 
-          {/* Inline dropdown list */}
+          {/* Inline dropdown list of assigned tickets */}
           {dropdownOpen && (
             <View
               style={{
@@ -294,34 +346,33 @@ const AgentRow = ({
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: isDark ? "#374151" : "#E4E7EC",
-                backgroundColor: isDark ? "#2D2D2D" : "#FFFFFF",
+                backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
                 overflow: "hidden",
               }}
             >
-              {TICKET_TYPES.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  activeOpacity={0.85}
-                  onPress={() => onChangeType(type)}
-                  className="px-3 py-2.5 border-b border-[#F2F4F7] last:border-b-0"
+              {agent.tickets.map((t) => (
+                <View
+                  key={t.ticketId}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: isDark ? "#374151" : "#F2F4F7",
+                  }}
                 >
-                  <ThemedText className="text-[#344054] text-[14px]">
-                    {type}
+                  <ThemedText
+                    style={{
+                      color: isDark ? "#D1D5DB" : "#344054",
+                      fontSize: 14,
+                    }}
+                  >
+                    {t.ticketName}
                   </ThemedText>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           )}
         </View>
-
-        {/* Remove button */}
-        <TouchableOpacity
-          activeOpacity={0.75}
-          onPress={onRemove}
-          className="w-7 h-7 items-center justify-center"
-        >
-          <X size={16} color="#F04438" />
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -331,14 +382,16 @@ const AgentRow = ({
 
 type TicketTypePickerModalProps = {
   visible: boolean;
-  selected: TicketType | null;
-  onSelect: (type: TicketType) => void;
+  selected: TicketDef | null;
+  ticketDefs: TicketDef[];
+  onSelect: (def: TicketDef) => void;
   onClose: () => void;
 };
 
 const TicketTypePickerModal = ({
   visible,
   selected,
+  ticketDefs,
   onSelect,
   onClose,
 }: TicketTypePickerModalProps) => {
@@ -368,45 +421,64 @@ const TicketTypePickerModal = ({
               paddingBottom: 32,
             }}
           >
-            <View className="w-10 h-1 rounded-full bg-[#E4E7EC] self-center mb-4" />
+            <View
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 99,
+                backgroundColor: isDark ? "#4B5563" : "#E4E7EC",
+                alignSelf: "center",
+                marginBottom: 16,
+              }}
+            />
             <ThemedText
               weight="700"
-              className="text-[#101928] text-[17px] mb-3"
+              className="text-[17px] mb-3"
+              style={{ color: isDark ? "#E4E7EC" : "#101928" }}
             >
               Select ticket type
             </ThemedText>
-            {TICKET_TYPES.map((type) => {
-              const isSelected = type === selected;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  activeOpacity={0.85}
-                  onPress={() => onSelect(type)}
-                  style={[
-                    {
-                      paddingVertical: 14,
-                      paddingHorizontal: 12,
-                      borderRadius: 12,
-                      marginBottom: 6,
-                    },
-                    isSelected
-                      ? { backgroundColor: isDark ? "#3B1A1A" : "#FEF0EF" }
-                      : { backgroundColor: isDark ? "#2D2D2D" : "#F9FAFB" },
-                  ]}
-                >
-                  <ThemedText
-                    weight={isSelected ? "700" : "400"}
-                    className={
+            {ticketDefs.length === 0 ? (
+              <ThemedText className="text-[#98A2B3] text-[14px] text-center py-4">
+                No ticket types available for this event.
+              </ThemedText>
+            ) : (
+              ticketDefs.map((def) => {
+                const isSelected = def.ticketId === selected?.ticketId;
+                return (
+                  <TouchableOpacity
+                    key={def.ticketId}
+                    activeOpacity={0.85}
+                    onPress={() => onSelect(def)}
+                    style={[
+                      {
+                        paddingVertical: 14,
+                        paddingHorizontal: 12,
+                        borderRadius: 12,
+                        marginBottom: 6,
+                      },
                       isSelected
-                        ? "text-[#D92D20] text-[15px]"
-                        : "text-[#344054] text-[15px]"
-                    }
+                        ? { backgroundColor: isDark ? "#3B1A1A" : "#FEF0EF" }
+                        : { backgroundColor: isDark ? "#2D2D2D" : "#F9FAFB" },
+                    ]}
                   >
-                    {type}
-                  </ThemedText>
-                </TouchableOpacity>
-              );
-            })}
+                    <ThemedText
+                      weight={isSelected ? "700" : "400"}
+                      style={{
+                        fontSize: 15,
+                        color: isSelected
+                          ? "#D92D20"
+                          : isDark
+                            ? "#D1D5DB"
+                            : "#344054",
+                      }}
+                    >
+                      {def.ticketName}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -416,42 +488,119 @@ const TicketTypePickerModal = ({
 
 /* ─── Empty State ──────────────────────────────────────────── */
 
-const EmptyState = () => (
-  <View className="items-center">
-    {/* Simple people/sitting illustration using shapes */}
-    <View className="w-[120px] h-[90px] items-center justify-center mb-3">
-      {/* Person 1 - left */}
-      <View className="absolute left-4 bottom-4">
-        {/* Head */}
-        <View className="w-[18px] h-[18px] rounded-full bg-[#270302] self-center" />
-        {/* Body */}
-        <View className="w-[28px] h-[22px] rounded-t-full bg-[#270302] mt-1" />
-        {/* Legs */}
-        <View className="flex-row gap-1 mt-0.5">
-          <View className="w-[10px] h-[16px] rounded-full bg-[#270302]" />
-          <View className="w-[10px] h-[16px] rounded-full bg-[#270302]" />
+const EmptyState = () => {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const figureColor = isDark ? "#6B3F38" : "#270302";
+  return (
+    <View className="items-center">
+      {/* Simple people/sitting illustration using shapes */}
+      <View className="w-[120px] h-[90px] items-center justify-center mb-3">
+        {/* Person 1 - left */}
+        <View className="absolute left-4 bottom-4">
+          <View
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: 9,
+              backgroundColor: figureColor,
+              alignSelf: "center",
+            }}
+          />
+          <View
+            style={{
+              width: 28,
+              height: 22,
+              borderTopLeftRadius: 14,
+              borderTopRightRadius: 14,
+              backgroundColor: figureColor,
+              marginTop: 4,
+            }}
+          />
+          <View style={{ flexDirection: "row", gap: 4, marginTop: 2 }}>
+            <View
+              style={{
+                width: 10,
+                height: 16,
+                borderRadius: 5,
+                backgroundColor: figureColor,
+              }}
+            />
+            <View
+              style={{
+                width: 10,
+                height: 16,
+                borderRadius: 5,
+                backgroundColor: figureColor,
+              }}
+            />
+          </View>
         </View>
-      </View>
-      {/* Person 2 - right */}
-      <View className="absolute right-4 bottom-4">
-        {/* Head */}
-        <View className="w-[18px] h-[18px] rounded-full bg-[#270302] self-center" />
-        {/* Body */}
-        <View className="w-[28px] h-[22px] rounded-t-full bg-[#270302] mt-1" />
-        {/* Legs */}
-        <View className="flex-row gap-1 mt-0.5">
-          <View className="w-[10px] h-[16px] rounded-full bg-[#270302]" />
-          <View className="w-[10px] h-[16px] rounded-full bg-[#270302]" />
+        {/* Person 2 - right */}
+        <View className="absolute right-4 bottom-4">
+          <View
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: 9,
+              backgroundColor: figureColor,
+              alignSelf: "center",
+            }}
+          />
+          <View
+            style={{
+              width: 28,
+              height: 22,
+              borderTopLeftRadius: 14,
+              borderTopRightRadius: 14,
+              backgroundColor: figureColor,
+              marginTop: 4,
+            }}
+          />
+          <View style={{ flexDirection: "row", gap: 4, marginTop: 2 }}>
+            <View
+              style={{
+                width: 10,
+                height: 16,
+                borderRadius: 5,
+                backgroundColor: figureColor,
+              }}
+            />
+            <View
+              style={{
+                width: 10,
+                height: 16,
+                borderRadius: 5,
+                backgroundColor: figureColor,
+              }}
+            />
+          </View>
         </View>
+        {/* Bench / base */}
+        <View
+          style={{
+            position: "absolute",
+            bottom: 12,
+            width: 80,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: figureColor,
+          }}
+        />
       </View>
-      {/* Bench / base */}
-      <View className="absolute bottom-3 w-[80px] h-[6px] rounded-full bg-[#270302]" />
-    </View>
 
-    <ThemedText className="text-[#98A2B3] text-[14px] text-center mt-2">
-      You do not have any Agents for this event.
-    </ThemedText>
-  </View>
-);
+      <ThemedText
+        style={{
+          color: isDark ? "#6B7280" : "#98A2B3",
+          fontSize: 14,
+          textAlign: "center",
+          marginTop: 8,
+        }}
+      >
+        You do not have any Agents for this event.
+      </ThemedText>
+    </View>
+  );
+};
 
 export default CheckInAgentScreen;

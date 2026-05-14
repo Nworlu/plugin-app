@@ -2,7 +2,9 @@ import AppSafeArea from "@/components/app-safe-area";
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import { ProfileInputField } from "@/feature/organizer/account/components";
+import { useUpdateUser } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
 import { ChevronDown, ChevronLeft } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
@@ -12,11 +14,14 @@ const ProfileInformationScreen = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
+  const user = useAuthStore((s) => s.user);
+  const refreshUser = useAuthStore((s) => s.refreshUser);
+
   const initialForm = {
-    email: "KoffeeJay@outlook.com",
-    firstName: "Koffee",
-    lastName: "Jayden",
-    phone: "76 - 346 - 9888",
+    email: user?.email ?? "",
+    firstName: user?.name?.firstname ?? "",
+    lastName: user?.name?.lastname ?? "",
+    phone: user?.contact?.phone ?? "",
   };
 
   const [email, setEmail] = useState(initialForm.email);
@@ -39,6 +44,28 @@ const ProfileInformationScreen = () => {
       isDirty,
     [email, firstName, lastName, phone, isDirty],
   );
+
+  const { mutate: updateUser, isPending } = useUpdateUser(user?._id ?? "");
+
+  const handleSave = () => {
+    if (!canSave) return;
+    updateUser(
+      { 
+        name: { firstname: firstName, lastname: lastName },
+        email,
+        contact: { phone, country: user?.contact?.country },
+       },
+      {
+        onSuccess: async () => {
+          await refreshUser();
+          router.back();
+        },
+      },
+    );
+  };
+
+  const initials =
+    `${(user?.name?.firstname ?? "?")[0]}${(user?.name?.lastname ?? "?")[0]}`.toUpperCase();
 
   return (
     <AppSafeArea>
@@ -72,7 +99,7 @@ const ProfileInformationScreen = () => {
         <View className="mt-5 items-center">
           <View className="w-[60px] h-[60px] rounded-full bg-[#2B211B] items-center justify-center">
             <ThemedText weight="700" className="text-white text-[24px]">
-              OM
+              {initials}
             </ThemedText>
           </View>
         </View>
@@ -141,9 +168,9 @@ const ProfileInformationScreen = () => {
         </View>
 
         <GradientButton
-          label="Save Changes"
-          onPress={() => {}}
-          disabled={!canSave}
+          label={isPending ? "Saving..." : "Save Changes"}
+          onPress={handleSave}
+          disabled={!canSave || isPending}
           height={56}
           style={{ marginTop: 32 }}
         />

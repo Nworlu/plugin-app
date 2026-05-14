@@ -4,58 +4,56 @@ import BackHeader from "@/components/back-header";
 import { ThemedText } from "@/components/themed-text";
 import TicketSaleRow from "@/feature/organizer/events/components/TicketSaleRow";
 import TicketTypeCard from "@/feature/organizer/events/components/TicketTypeCard";
+import { useEvent, useTicketsForEvent } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { ScrollView, View } from "react-native";
-
-const ticketSaleRows = [
-  {
-    id: "ts-1",
-    reference: "#1242801",
-    packageName: "Individual package",
-    sold: "400/500",
-    price: "₦ 3,000",
-  },
-  {
-    id: "ts-2",
-    reference: "#1242801",
-    packageName: "Individual package",
-    sold: "400/500",
-    price: "₦ 3,000",
-  },
-  {
-    id: "ts-3",
-    reference: "#1242801",
-    packageName: "Group package",
-    sold: "400/500",
-    price: "₦ 3,000",
-  },
-  {
-    id: "ts-4",
-    reference: "#1242801",
-    packageName: "Individual package",
-    sold: "400/500",
-    price: "₦ 3,000",
-  },
-  {
-    id: "ts-5",
-    reference: "#1242801",
-    packageName: "Individual package",
-    sold: "400/500",
-    price: "₦ 3,000",
-  },
-];
-
-// Toggle this to preview the empty state
-const SHOW_EMPTY = false;
+import { ActivityIndicator, ScrollView, View } from "react-native";
 
 const TicketSalesScreen = () => {
-  useLocalSearchParams<{ eventId?: string }>();
+  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
-  const hasData = !SHOW_EMPTY && ticketSaleRows.length > 0;
+  const { data: tickets, isLoading } = useTicketsForEvent(eventId ?? "");
+  const { data: event } = useEvent(eventId ?? "");
+
+  // Ticket definitions from the event (shown even before any sales)
+  type TicketDef = {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    sold: number;
+  };
+  const ticketDefs: TicketDef[] = [];
+  if (event?.entryTicket) {
+    const et = event.entryTicket;
+    ticketDefs.push({
+      id: et._id,
+      name: et.ticketName,
+      price: et.ticketPrice ?? 0,
+      quantity: et.ticketQuantity ?? 0,
+      sold: et.ticketsSold ?? 0,
+    });
+  }
+  (event?.groupedTicket ?? []).forEach((gt) => {
+    ticketDefs.push({
+      id: gt._id,
+      name: gt.ticketName,
+      price: gt.ticketPrice ?? 0,
+      quantity: gt.ticketQuantity ?? 0,
+      sold: gt.ticketsSold ?? 0,
+    });
+  });
+
+  const hasData = !isLoading && (tickets?.length ?? 0) > 0;
+  const hasDefs = ticketDefs.length > 0;
+
+  // Derived summary
+  const totalSold = tickets?.filter((t) => t.checkedIn).length ?? 0;
+  const totalCount = tickets?.length ?? 0;
+  const summaryLabel = `${totalSold.toLocaleString()}/${totalCount.toLocaleString()}`;
 
   return (
     <AppSafeArea>
@@ -71,7 +69,7 @@ const TicketSalesScreen = () => {
           Ticket Sales
         </ThemedText>
 
-        {/* Sales Summary */}
+        {/* Sales Summary — one card per ticket type */}
         <ThemedText
           weight="700"
           className={`text-[13px] tracking-widest mt-5 mb-3 ${
@@ -81,25 +79,66 @@ const TicketSalesScreen = () => {
           SALES SUMMARY
         </ThemedText>
 
-        <AnimatedEntry index={0}>
-          <TicketTypeCard label="Individual Package" value="4,000/10,000" />
-        </AnimatedEntry>
+        {hasDefs ? (
+          ticketDefs.map((def, i) => (
+            <AnimatedEntry key={def.id} index={i}>
+              <View className="mb-3">
+                <TicketTypeCard
+                  label={def.name}
+                  value={`${def.sold.toLocaleString()}/${def.quantity.toLocaleString()} sold · ₦${def.price.toLocaleString()}`}
+                />
+              </View>
+            </AnimatedEntry>
+          ))
+        ) : (
+          <AnimatedEntry index={0}>
+            <TicketTypeCard label="Individual Package" value={summaryLabel} />
+          </AnimatedEntry>
+        )}
 
-        {/* List or Empty State */}
-        {hasData ? (
+        {/* List or Definition rows or Empty State */}
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#F15827" />
+          </View>
+        ) : hasData ? (
           <ScrollView
             className="flex-1 mt-5"
             contentContainerStyle={{ paddingBottom: 28 }}
             showsVerticalScrollIndicator={false}
           >
-            {ticketSaleRows.map((row, index) => (
-              <AnimatedEntry key={row.id} index={index + 1}>
+            {tickets!.map((ticket, index) => (
+              <AnimatedEntry key={ticket.id} index={index + 1}>
                 <TicketSaleRow
-                  reference={row.reference}
-                  packageName={row.packageName}
-                  sold={row.sold}
-                  price={row.price}
-                  showDivider={index < ticketSaleRows.length - 1}
+                  reference={`#${ticket.id.slice(0, 7).toUpperCase()}`}
+                  packageName={ticket.ticketData?.name ?? "General Admission"}
+                  sold={`${totalSold}/${totalCount}`}
+                  price={
+                    ticket.ticketData?.price
+                      ? `₦ ${ticket.ticketData.price.toLocaleString()}`
+                      : "—"
+                  }
+                  showDivider={index < tickets!.length - 1}
+                />
+              </AnimatedEntry>
+            ))}
+          </ScrollView>
+        ) : hasDefs ? (
+          <ScrollView
+            className="flex-1 mt-5"
+            contentContainerStyle={{ paddingBottom: 28 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {ticketDefs.map((def, index) => (
+              <AnimatedEntry key={def.id} index={index + 1}>
+                <TicketSaleRow
+                  reference={`#${def.id.slice(0, 7).toUpperCase()}`}
+                  packageName={def.name}
+                  sold={`${def.sold.toLocaleString()}/${def.quantity.toLocaleString()}`}
+                  price={
+                    def.price > 0 ? `₦ ${def.price.toLocaleString()}` : "Free"
+                  }
+                  showDivider={index < ticketDefs.length - 1}
                 />
               </AnimatedEntry>
             ))}

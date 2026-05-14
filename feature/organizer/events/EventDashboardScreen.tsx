@@ -10,22 +10,95 @@ import {
   TicketTypeRow,
 } from "@/feature/organizer/events/components";
 import {
-  SALES_ROWS,
   SALES_TABS,
   SalesTabKey,
-  TICKET_TYPE_ROWS,
 } from "@/feature/organizer/events/constants/dashboard";
+import {
+  useEvent,
+  useEventSalesRecords,
+  useEventSummary,
+  useTicketsForEvent,
+} from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import { Upload } from "lucide-react-native";
 import React, { useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+function fmtMoney(value: number): string {
+  if (value >= 1_000_000) return `N${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `N${(value / 1_000).toFixed(1)}k`;
+  return `N${value.toLocaleString()}`;
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const h = d.getHours();
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const period = h >= 12 ? "pm" : "am";
+  const hr = String(h % 12 || 12).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hr}:${min}${period}`;
+}
 
 const EventDashboardScreen = () => {
-  useLocalSearchParams<{ eventId?: string }>();
+  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const [salesTab, setSalesTab] = useState<SalesTabKey>("recent");
+
+  const { data: summary, isLoading: summaryLoading } = useEventSummary(
+    eventId ?? "",
+  );
+  const { data: event } = useEvent(eventId ?? "");
+  const { data: tickets, isLoading: ticketsLoading } = useTicketsForEvent(
+    eventId ?? "",
+  );
+  const { data: salesRecords, isLoading: salesLoading } = useEventSalesRecords(
+    eventId ?? "",
+  );
+
+  // Ticket definitions as fallback when no sales yet
+  type TicketDef = {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    sold: number;
+  };
+  const ticketDefs: TicketDef[] = [];
+  if (event?.entryTicket) {
+    const et = event.entryTicket;
+    ticketDefs.push({
+      id: et._id,
+      name: et.ticketName,
+      price: et.ticketPrice ?? 0,
+      quantity: et.ticketQuantity ?? 0,
+      sold: et.ticketsSold ?? 0,
+    });
+  }
+  (event?.groupedTicket ?? []).forEach((gt) => {
+    ticketDefs.push({
+      id: gt._id,
+      name: gt.ticketName,
+      price: gt.ticketPrice ?? 0,
+      quantity: gt.ticketQuantity ?? 0,
+      sold: gt.ticketsSold ?? 0,
+    });
+  });
+
+  const isLoading =
+    salesTab === "recent"
+      ? summaryLoading || ticketsLoading
+      : summaryLoading || salesLoading;
 
   return (
     <AppSafeArea>
@@ -68,12 +141,12 @@ const EventDashboardScreen = () => {
 
           <AnimatedEntry index={0}>
             <DashboardMetrics
-              className="mt-4"
-              ticketsSold="5,500"
-              ticketsTotal="25,000"
-              netSale="N24.4k"
-              saleProfits="N24.4k"
-              attendees="4.4k"
+              className="mt-4 mb-4"
+              ticketsSold={String(summary?.ticketsSold ?? 0)}
+              ticketsTotal={String(summary?.totalTickets ?? 0)}
+              netSale={fmtMoney(summary?.netSales ?? 0)}
+              saleProfits={fmtMoney(summary?.salesProfit ?? 0)}
+              attendees={String(summary?.checkedInUsers ?? 0)}
             />
           </AnimatedEntry>
 
@@ -90,29 +163,50 @@ const EventDashboardScreen = () => {
             />
           </AnimatedEntry>
 
-          <View className="mt-3 gap-3">
-            {salesTab === "recent"
-              ? SALES_ROWS.map((sale, i) => (
-                  <AnimatedEntry key={sale.id} index={i + 3}>
-                    <SalesRecordCard
-                      reference={sale.ref}
-                      packageName={sale.packageName}
-                      date={sale.date}
-                      amount={sale.amount}
-                    />
-                  </AnimatedEntry>
-                ))
-              : TICKET_TYPE_ROWS.map((row, i) => (
-                  <AnimatedEntry key={row.id} index={i + 3}>
-                    <TicketTypeRow
-                      reference={row.ref}
-                      packageName={row.packageName}
-                      sold={row.sold}
-                      price={row.price}
-                    />
-                  </AnimatedEntry>
-                ))}
-          </View>
+          {isLoading ? (
+            <View className="py-10 items-center">
+              <ActivityIndicator size="large" color="#F15827" />
+            </View>
+          ) : (
+            <View className="mt-3 gap-3">
+              {salesTab === "recent"
+                ? (tickets ?? []).length > 0
+                  ? (tickets ?? []).map((ticket, i) => (
+                      <AnimatedEntry key={ticket.id} index={i + 3}>
+                        <SalesRecordCard
+                          reference={`#${ticket.ticketNumber}`}
+                          packageName={ticket.ticketData.name}
+                          date={fmtDate(ticket.purchaseDate)}
+                          amount={`N ${ticket.ticketData.price.toLocaleString()}`}
+                        />
+                      </AnimatedEntry>
+                    ))
+                  : ticketDefs.map((def, i) => (
+                      <AnimatedEntry key={def.id} index={i + 3}>
+                        <TicketTypeRow
+                          reference={`#${def.id.slice(0, 7).toUpperCase()}`}
+                          packageName={def.name}
+                          sold={`${def.sold}/${def.quantity} sold`}
+                          price={
+                            def.price > 0
+                              ? `₦${def.price.toLocaleString()}`
+                              : "Free"
+                          }
+                        />
+                      </AnimatedEntry>
+                    ))
+                : (salesRecords ?? []).map((record, i) => (
+                    <AnimatedEntry key={`${record.name}-${i}`} index={i + 3}>
+                      <TicketTypeRow
+                        reference={`#${String(i + 1).padStart(7, "0")}`}
+                        packageName={record.name}
+                        sold={`${record.sold}/${record.total}`}
+                        price={`${record.scanned} scanned`}
+                      />
+                    </AnimatedEntry>
+                  ))}
+            </View>
+          )}
         </ScrollView>
       </View>
     </AppSafeArea>

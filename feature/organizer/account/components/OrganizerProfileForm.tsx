@@ -1,40 +1,92 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import {
+  useCreateOrganizer,
+  useGetSignedUrl,
+  useUpdateOrganizer,
+} from "@/hooks/api";
+import { useTheme } from "@/providers/ThemeProvider";
+import type { Organizer } from "@/utils/api/types";
+import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
-import { X } from "lucide-react-native";
-import React, { forwardRef, useCallback, useMemo, useState } from "react";
-import { Image, TextInput, TouchableOpacity, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { Camera, ImageIcon, Pencil, Trash2, X } from "lucide-react-native";
+import React, {
+  forwardRef,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ActivityIndicator,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface OrganizerProfileFormProps {
+  userId: string;
+  existingOrganizer?: Organizer;
   onClose: () => void;
-  onSave: (profile: any) => void;
-  initialValues?: any;
-  buttonLabel?: string;
+  onSuccess?: () => void;
 }
+
+const isLocalUri = (uri: string | null): uri is string => {
+  console.log("[OrganizerProfileForm] checking if URI is local:", uri);
+  return !!uri && !uri.startsWith("http");
+};
 
 const OrganizerProfileForm = forwardRef<
   BottomSheetModal,
   OrganizerProfileFormProps
->(({ onClose, onSave, initialValues, buttonLabel = "Add Profile" }, ref) => {
+>(({ userId, existingOrganizer, onClose, onSuccess }, ref) => {
+  const isEditing = !!existingOrganizer;
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  // console.log("[OrganizerProfileForm] rendering form for organizer:", existingOrganizer?.userId, {userId});
+
   const [profileThumbnail, setProfileThumbnail] = useState<string | null>(
-    initialValues?.profileThumbnail ?? null,
+    existingOrganizer?.banner ?? null,
   );
+  const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [thumbNail, setThumbNail] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(
-    initialValues?.profileImage ?? null,
+    existingOrganizer?.thumbnail ?? null,
   );
+
   const [organizerName, setOrganizerName] = useState(
-    initialValues?.organizerName ?? "",
+    existingOrganizer?.name ?? "",
   );
   const [organizerBio, setOrganizerBio] = useState(
-    initialValues?.organizerBio ?? "",
+    existingOrganizer?.bio ?? "",
   );
-  const [tagline, setTagline] = useState(initialValues?.tagline ?? "");
-  const [facebook, setFacebook] = useState(initialValues?.facebook ?? "");
-  const [instagram, setInstagram] = useState(initialValues?.instagram ?? "");
+  const [tagline, setTagline] = useState(existingOrganizer?.tagline ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const { mutateAsync: createOrganizer } = useCreateOrganizer(userId);
+  const { mutateAsync: updateOrganizer } = useUpdateOrganizer(
+    existingOrganizer?.userId ?? "",
+  );
+  const { mutateAsync: getSignedUrl } = useGetSignedUrl();
+
+  const [instagram, setInstagram] = useState(
+    existingOrganizer?.socials?.instagram ?? "",
+  );
+  const [facebook, setFacebook] = useState(
+    existingOrganizer?.socials?.facebook ?? "",
+  );
+
+  // Stores base64 + mimeType keyed by local URI so we don't re-read the file at upload time
+  type ImageData = { base64: string; mimeType: string; fileName: string };
+  const imageDataRef = useRef<Record<string, ImageData>>({});
 
   const snapPoints = useMemo(() => ["92%"], []);
   const renderBackdrop = useCallback(
@@ -49,12 +101,191 @@ const OrganizerProfileForm = forwardRef<
     [],
   );
 
-  // Helper for image actions (mocked for now)
-  const pickImage = async (setter: (uri: string) => void) => {
-    // TODO: integrate with expo-image-picker
-    setter("https://dummyimage.com/600x300/000/fff&text=Image");
+  const pickImage = async (
+    setter: (uri: string) => void,
+    setImage: (image: ImagePicker.ImagePickerAsset | null) => void,
+  ) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+      base64: true, // get binary data at pick time — avoids file:// reading at upload time
+    });
+    if (!result.canceled && result.assets[0]) {
+      const { uri, base64, mimeType, fileName } = result.assets[0];
+      if (base64) {
+        imageDataRef.current[uri] = {
+          base64,
+          mimeType: mimeType ?? "image/jpeg",
+          fileName: fileName as string,
+        };
+      }
+      // console.log("[OrganizerProfileForm] picked image:", { uri, mimeType, fileName });
+      setImage(result.assets[0]);
+      setter(uri);
+    }
   };
   const removeImage = (setter: (uri: string | null) => void) => setter(null);
+
+  // const uploadLocalImage = async (uri: string): Promise<string> => {
+  //   const stored = imageDataRef.current[uri];
+  //   if (!stored) throw new Error("Image data not available");
+
+  //   const mimeType = (stored.mimeType ?? "image/jpeg")
+  //     .trim()
+  //     .replace(/^image\/jpg$/i, "image/jpeg");
+
+  //   // FIX 1: Don't send the full 'file://...' URI as the filename.
+  //   // Send just the end part of the path.
+  //   const cleanFileName = stored.fileName ?? uri.split("/").pop()?.split("?")[0] ?? `img-${Date.now()}.jpg`;
+
+  //   const { signedUrl, publicUrl } = await getSignedUrl({
+  //     fileName: cleanFileName, // Use the clean name
+  //     contentType: mimeType,
+  //   });
+
+  //   const dataUri = `data:${mimeType};base64,${stored.base64}`;
+  //   const dataResponse = await fetch(dataUri);
+  //   const blob = await dataResponse.blob();
+
+  //   const typedBlob = blob.type === mimeType ? blob : blob.slice(0, blob.size, mimeType);
+
+  //   // FIX 2: Pass the 'typedBlob' to axios, NOT the 'image' or 'thumbNail' asset object
+  //   await axios
+  //     .put(signedUrl, typedBlob, {
+  //       headers: {
+  //         "Content-Type": mimeType,
+  //         // Ensure no extra headers like 'Accept' or 'X-Requested-With' are being added
+  //         // by global axios interceptors if you have them.
+  //       },
+  //     })
+  //     .catch((err) => {
+  //       const debugPath = signedUrl.split("?")[0];
+  //       const status = err?.response?.status ?? "network error";
+  //       const body = typeof err?.response?.data === 'string' ? err.response.data : JSON.stringify(err?.response?.data);
+  //       throw new Error(`GCS upload failed: ${status} (${debugPath})\n${body}`);
+  //     });
+
+  //   return publicUrl;
+  // };
+
+  const uploadLocalImage = async (uri: string): Promise<string> => {
+    const stored = imageDataRef.current[uri];
+    if (!stored) throw new Error("Image data not available");
+    console.log(
+      "[OrganizerProfileForm] preparing to upload image with MIME type:",
+      stored.fileName,
+      "and size:",
+      stored.base64.length,
+      "base64 characters",
+    );
+
+    const mimeType = (stored.mimeType ?? "image/jpeg")
+      .trim()
+      .replace(/^image\/jpg$/i, "image/jpeg");
+
+    const cleanFileName =
+      stored.fileName ||
+      uri.split("/").pop()?.split("?")[0] ||
+      `img-${Date.now()}.jpg`;
+
+    const { signedUrl, publicUrl } = await getSignedUrl({
+      fileName: cleanFileName,
+      contentType: mimeType,
+    });
+
+    // Convert base64 to Blob
+    const dataUri = `data:${mimeType};base64,${stored.base64}`;
+    const dataResponse = await fetch(dataUri);
+    const blob = await dataResponse.blob();
+
+    // console.log("[OrganizerProfileForm] uploading image with MIME type:",dataResponse, "and size:", {blob}, "bytes");
+
+    // Use native fetch instead of axios to avoid automatic header injection
+    const response = await fetch(signedUrl, {
+      method: "PUT",
+      body: blob,
+      headers: {
+        "Content-Type": "application/octet-stream", // Use a generic content type to avoid issues with GCS
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      const debugPath = signedUrl.split("?")[0];
+      throw new Error(
+        `GCS upload failed: ${response.status} (${debugPath})\n${errorText}`,
+      );
+    }
+
+    console.log("[OrganizerProfileForm] uploaded image:", publicUrl);
+    return publicUrl;
+  };
+
+  const handleSave = async () => {
+    if (!organizerName.trim()) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      // Upload banner (profileThumbnail) if local
+      let bannerUrl: string | undefined = isLocalUri(profileThumbnail)
+        ? undefined
+        : (profileThumbnail ?? undefined);
+      if (isLocalUri(profileThumbnail)) {
+        try {
+          bannerUrl = await uploadLocalImage(profileThumbnail);
+        } catch (e) {
+          console.warn("[OrganizerProfileForm] banner upload failed:", e);
+        }
+      }
+
+      // Upload thumbnail (profileImage) if local
+      let thumbnailUrl: string | undefined = isLocalUri(profileImage)
+        ? undefined
+        : (profileImage ?? undefined);
+      if (isLocalUri(profileImage)) {
+        try {
+          thumbnailUrl = await uploadLocalImage(profileImage);
+        } catch (e) {
+          console.warn("[OrganizerProfileForm] thumbnail upload failed:", e);
+        }
+      }
+
+      // Only include socials if at least one field is non-empty
+      const fb = facebook.trim();
+      const ig = instagram.trim();
+      const socials =
+        fb || ig
+          ? { ...(fb && { facebook: fb }), ...(ig && { instagram: ig }) }
+          : undefined;
+
+      // Strip empty optional strings so the server Zod schema doesn't reject them
+      const payload = {
+        name: organizerName.trim(),
+        ...(organizerBio.trim() && { bio: organizerBio.trim() }),
+        ...(tagline.trim() && { tagline: tagline.trim() }),
+        ...(bannerUrl && { banner: bannerUrl }),
+        ...(thumbnailUrl && { thumbnail: thumbnailUrl }),
+        ...(socials && { socials }),
+      };
+
+      if (isEditing) {
+        await updateOrganizer(payload);
+      } else {
+        if (!userId) throw new Error("User ID is missing — please try again.");
+        await createOrganizer({ userId, ...payload });
+      }
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      console.error("[OrganizerProfileForm] save failed:", err);
+      setSaveError("Failed to save profile. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <BottomSheetModal
@@ -64,8 +295,13 @@ const OrganizerProfileForm = forwardRef<
       backdropComponent={renderBackdrop}
       enablePanDownToClose
       keyboardBlurBehavior="restore"
-      backgroundStyle={{ borderRadius: 24, backgroundColor: "#fff" }}
-      handleIndicatorStyle={{ backgroundColor: "#E4E7EC" }}
+      backgroundStyle={{
+        borderRadius: 24,
+        backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+      }}
+      handleIndicatorStyle={{
+        backgroundColor: isDark ? "#4B5563" : "#E4E7EC",
+      }}
     >
       <BottomSheetScrollView
         contentContainerStyle={{ padding: 0, paddingBottom: 120 }}
@@ -82,18 +318,35 @@ const OrganizerProfileForm = forwardRef<
           }}
         >
           <ThemedText weight="700" className="text-[18px]">
-            Add Organizer Profile
+            {isEditing ? "Edit Organizer Profile" : "Add Organizer Profile"}
           </ThemedText>
-          <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-            <X size={22} color="#667085" />
+          <TouchableOpacity
+            onPress={onClose}
+            style={{
+              padding: 6,
+              borderRadius: 20,
+              backgroundColor: isDark ? "#374151" : "#F2F4F7",
+            }}
+          >
+            <X size={18} color={isDark ? "#9CA3AF" : "#667085"} />
           </TouchableOpacity>
         </View>
         {/* Divider */}
         <View
-          style={{ height: 1, backgroundColor: "#F2F4F7", marginBottom: 18 }}
+          style={{
+            height: 1,
+            backgroundColor: isDark ? "#374151" : "#F2F4F7",
+            marginBottom: 18,
+          }}
         />
         {/* Profile Thumbnail */}
-        <View style={{ alignItems: "center", marginBottom: 18 }}>
+        <View
+          style={{
+            alignItems: "center",
+            marginBottom: 18,
+            paddingHorizontal: 16,
+          }}
+        >
           {profileThumbnail ? (
             <View
               style={{ position: "relative", width: 320, alignItems: "center" }}
@@ -107,52 +360,59 @@ const OrganizerProfileForm = forwardRef<
                   position: "absolute",
                   top: 8,
                   right: 48,
-                  backgroundColor: "#fff",
+                  backgroundColor: isDark ? "#374151" : "#fff",
                   borderRadius: 16,
-                  padding: 4,
+                  padding: 6,
                   borderWidth: 1,
-                  borderColor: "#EAECF0",
+                  borderColor: isDark ? "#4B5563" : "#EAECF0",
                 }}
-                onPress={() => pickImage(setProfileThumbnail)}
+                onPress={() => pickImage(setProfileThumbnail, setThumbNail)}
               >
-                <ThemedText style={{ fontSize: 13 }}>✏️</ThemedText>
+                <Pencil size={13} color={isDark ? "#E4E7EC" : "#344054"} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
                   position: "absolute",
                   top: 8,
                   right: 12,
-                  backgroundColor: "#fff",
+                  backgroundColor: isDark ? "#374151" : "#fff",
                   borderRadius: 16,
-                  padding: 4,
+                  padding: 6,
                   borderWidth: 1,
-                  borderColor: "#EAECF0",
+                  borderColor: isDark ? "#4B5563" : "#EAECF0",
                 }}
                 onPress={() => removeImage(setProfileThumbnail)}
               >
-                <ThemedText style={{ fontSize: 13 }}>🗑️</ThemedText>
+                <Trash2 size={13} color="#F04438" />
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
               style={{ alignItems: "center" }}
-              onPress={() => pickImage(setProfileThumbnail)}
+              onPress={() => pickImage(setProfileThumbnail, setImage)}
             >
               <View
                 style={{
-                  width: 120,
-                  height: 90,
+                  width: 320,
+                  height: 100,
                   borderRadius: 12,
-                  backgroundColor: "#F2F4F7",
+                  backgroundColor: isDark ? "#1F2937" : "#F2F4F7",
                   alignItems: "center",
                   justifyContent: "center",
+                  borderWidth: 1,
+                  borderStyle: "dashed",
+                  borderColor: isDark ? "#374151" : "#D0D5DD",
+                  gap: 8,
                 }}
               >
-                <ThemedText className="text-[#F04438] text-[13px]">
-                  Add Profile Thumbnail
-                </ThemedText>
-                <ThemedText className="text-[#667085] text-[11px]">
-                  Jpeg and Png, no larger than 10mb
+                <ImageIcon size={28} color={isDark ? "#6B7280" : "#98A2B3"} />
+                <ThemedText
+                  style={{
+                    fontSize: 13,
+                    color: isDark ? "#9CA3AF" : "#667085",
+                  }}
+                >
+                  Add banner image
                 </ThemedText>
               </View>
             </TouchableOpacity>
@@ -160,13 +420,27 @@ const OrganizerProfileForm = forwardRef<
         </View>
         {/* Divider */}
         <View
-          style={{ height: 1, backgroundColor: "#F2F4F7", marginBottom: 18 }}
+          style={{
+            height: 1,
+            backgroundColor: isDark ? "#374151" : "#F2F4F7",
+            marginBottom: 18,
+          }}
         />
         {/* Organizer profile image */}
-        <ThemedText weight="700" className="mb-2 text-[16px]">
+        <ThemedText
+          weight="700"
+          className="mb-2 text-[16px]"
+          style={{ paddingHorizontal: 16 }}
+        >
           Organizer profile Image
         </ThemedText>
-        <View style={{ alignItems: "flex-start", marginBottom: 18 }}>
+        <View
+          style={{
+            alignItems: "flex-start",
+            marginBottom: 18,
+            paddingHorizontal: 16,
+          }}
+        >
           {profileImage ? (
             <View style={{ position: "relative" }}>
               <Image
@@ -178,54 +452,59 @@ const OrganizerProfileForm = forwardRef<
                   position: "absolute",
                   top: 8,
                   right: 36,
-                  backgroundColor: "#fff",
+                  backgroundColor: isDark ? "#374151" : "#fff",
                   borderRadius: 16,
-                  padding: 4,
+                  padding: 6,
                   borderWidth: 1,
-                  borderColor: "#EAECF0",
+                  borderColor: isDark ? "#4B5563" : "#EAECF0",
                 }}
-                onPress={() => pickImage(setProfileImage)}
+                onPress={() => pickImage(setProfileImage, setImage)}
               >
-                <ThemedText style={{ fontSize: 13 }}>✏️</ThemedText>
+                <Pencil size={13} color={isDark ? "#E4E7EC" : "#344054"} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
                   position: "absolute",
                   top: 8,
                   right: 4,
-                  backgroundColor: "#fff",
+                  backgroundColor: isDark ? "#374151" : "#fff",
                   borderRadius: 16,
-                  padding: 4,
+                  padding: 6,
                   borderWidth: 1,
-                  borderColor: "#EAECF0",
+                  borderColor: isDark ? "#4B5563" : "#EAECF0",
                 }}
                 onPress={() => removeImage(setProfileImage)}
               >
-                <ThemedText style={{ fontSize: 13 }}>🗑️</ThemedText>
+                <Trash2 size={13} color="#F04438" />
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
               style={{ alignItems: "center" }}
-              onPress={() => pickImage(setProfileImage)}
+              onPress={() => pickImage(setProfileImage, setImage)}
             >
               <View
                 style={{
-                  width: 140,
-                  height: 90,
-                  borderRadius: 12,
-                  backgroundColor: "#F2F4F7",
+                  width: 100,
+                  height: 100,
+                  borderRadius: 50,
+                  backgroundColor: isDark ? "#1F2937" : "#F2F4F7",
                   alignItems: "center",
                   justifyContent: "center",
                   borderWidth: 1,
-                  borderColor: "#EAECF0",
+                  borderStyle: "dashed",
+                  borderColor: isDark ? "#374151" : "#D0D5DD",
+                  gap: 6,
                 }}
               >
-                <ThemedText className="text-[#F04438] text-[13px]">
-                  Add Photo
-                </ThemedText>
-                <ThemedText className="text-[#667085] text-[11px]">
-                  Jpeg and Png, no larger than 10mb
+                <Camera size={24} color={isDark ? "#6B7280" : "#98A2B3"} />
+                <ThemedText
+                  style={{
+                    fontSize: 11,
+                    color: isDark ? "#9CA3AF" : "#667085",
+                  }}
+                >
+                  Add photo
                 </ThemedText>
               </View>
             </TouchableOpacity>
@@ -233,131 +512,177 @@ const OrganizerProfileForm = forwardRef<
         </View>
         {/* Divider */}
         <View
-          style={{ height: 1, backgroundColor: "#F2F4F7", marginBottom: 18 }}
-        />
-        {/* About organizer section */}
-        <ThemedText weight="700" className="mb-1 text-[16px]">
-          About organizer
-        </ThemedText>
-        <ThemedText className="mb-2 text-[13px] text-[#667085]">
-          Let attendees know who is hosting events.
-        </ThemedText>
-        <ThemedText className="mb-1 text-[15px]">Organizer Name</ThemedText>
-        <TextInput
-          value={organizerName}
-          onChangeText={setOrganizerName}
-          placeholder="Enter Organizer Name"
           style={{
-            borderWidth: 1,
-            borderColor: "#EAECF0",
-            borderRadius: 8,
-            padding: 10,
-            marginBottom: 12,
-          }}
-        />
-        <ThemedText className="mb-1 text-[15px]">
-          Organizer Bio
-          <ThemedText className="text-[13px] text-[#98A2B3]">
-            {" "}
-            ( Max word count is 300 )
-          </ThemedText>
-        </ThemedText>
-        <TextInput
-          value={organizerBio}
-          onChangeText={setOrganizerBio}
-          placeholder="Let attendees know more about you"
-          multiline
-          numberOfLines={4}
-          style={{
-            borderWidth: 1,
-            borderColor: "#EAECF0",
-            borderRadius: 8,
-            padding: 10,
-            marginBottom: 12,
-            minHeight: 80,
-            textAlignVertical: "top",
-          }}
-        />
-        <ThemedText className="mb-1 text-[15px]">
-          Tagline for event pages ( Optional )
-        </ThemedText>
-        <TextInput
-          value={tagline}
-          onChangeText={setTagline}
-          placeholder="e.g Welcome to the Party Palace"
-          style={{
-            borderWidth: 1,
-            borderColor: "#EAECF0",
-            borderRadius: 8,
-            padding: 10,
-            marginBottom: 12,
-          }}
-        />
-        {/* Divider */}
-        <View
-          style={{ height: 1, backgroundColor: "#F2F4F7", marginBottom: 18 }}
-        />
-        {/* Social Media Links */}
-        <ThemedText weight="700" className="mb-1 text-[16px]">
-          Social media links
-        </ThemedText>
-        <ThemedText className="mb-2 text-[13px] text-[#667085]">
-          Let attendees know how to connect with you
-        </ThemedText>
-        <TextInput
-          value={facebook}
-          onChangeText={setFacebook}
-          placeholder="Facebook profile link"
-          style={{
-            borderWidth: 1,
-            borderColor: "#EAECF0",
-            borderRadius: 8,
-            padding: 10,
-            marginBottom: 8,
-          }}
-        />
-        <TextInput
-          value={instagram}
-          onChangeText={setInstagram}
-          placeholder="Instagram profile link"
-          style={{
-            borderWidth: 1,
-            borderColor: "#EAECF0",
-            borderRadius: 8,
-            padding: 10,
+            height: 1,
+            backgroundColor: isDark ? "#374151" : "#F2F4F7",
             marginBottom: 18,
           }}
         />
+        {/* About organizer section */}
+        <View style={{ paddingHorizontal: 16 }}>
+          <ThemedText weight="700" className="mb-1 text-[16px]">
+            About organizer
+          </ThemedText>
+          <ThemedText
+            className="mb-2 text-[13px]"
+            style={{ color: isDark ? "#9CA3AF" : "#667085" }}
+          >
+            Let attendees know who is hosting events.
+          </ThemedText>
+          <ThemedText className="mb-1 text-[15px]">Organizer Name</ThemedText>
+          <TextInput
+            value={organizerName}
+            onChangeText={setOrganizerName}
+            placeholder="Enter Organizer Name"
+            placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+            style={{
+              borderWidth: 1,
+              borderColor: isDark ? "#374151" : "#EAECF0",
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 12,
+              backgroundColor: isDark ? "#111827" : "#FFFFFF",
+              color: isDark ? "#E4E7EC" : "#101928",
+            }}
+          />
+          <ThemedText className="mb-1 text-[15px]">
+            Organizer Bio
+            <ThemedText
+              className="text-[13px]"
+              style={{ color: isDark ? "#6B7280" : "#98A2B3" }}
+            >
+              {" "}
+              ( Max word count is 300 )
+            </ThemedText>
+          </ThemedText>
+          <TextInput
+            value={organizerBio}
+            onChangeText={setOrganizerBio}
+            placeholder="Let attendees know more about you"
+            placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+            multiline
+            numberOfLines={4}
+            style={{
+              borderWidth: 1,
+              borderColor: isDark ? "#374151" : "#EAECF0",
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 12,
+              minHeight: 80,
+              textAlignVertical: "top",
+              backgroundColor: isDark ? "#111827" : "#FFFFFF",
+              color: isDark ? "#E4E7EC" : "#101928",
+            }}
+          />
+          <ThemedText className="mb-1 text-[15px]">
+            Tagline for event pages ( Optional )
+          </ThemedText>
+          <TextInput
+            value={tagline}
+            onChangeText={setTagline}
+            placeholder="e.g Welcome to the Party Palace"
+            placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+            style={{
+              borderWidth: 1,
+              borderColor: isDark ? "#374151" : "#EAECF0",
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 12,
+              backgroundColor: isDark ? "#111827" : "#FFFFFF",
+              color: isDark ? "#E4E7EC" : "#101928",
+            }}
+          />
+        </View>
+        {/* Divider */}
+        <View
+          style={{
+            height: 1,
+            backgroundColor: isDark ? "#374151" : "#F2F4F7",
+            marginBottom: 18,
+          }}
+        />
+        {/* Social Media Links */}
+        <View style={{ paddingHorizontal: 16 }}>
+          <ThemedText weight="700" className="mb-1 text-[16px]">
+            Social media links
+          </ThemedText>
+          <ThemedText
+            className="mb-2 text-[13px]"
+            style={{ color: isDark ? "#9CA3AF" : "#667085" }}
+          >
+            Let attendees know how to connect with you
+          </ThemedText>
+          <TextInput
+            value={facebook}
+            onChangeText={setFacebook}
+            placeholder="Facebook profile link"
+            placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+            autoCapitalize="none"
+            keyboardType="url"
+            style={{
+              borderWidth: 1,
+              borderColor: isDark ? "#374151" : "#EAECF0",
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 8,
+              backgroundColor: isDark ? "#111827" : "#FFFFFF",
+              color: isDark ? "#E4E7EC" : "#101928",
+            }}
+          />
+          <TextInput
+            value={instagram}
+            onChangeText={setInstagram}
+            placeholder="Instagram profile link"
+            placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+            autoCapitalize="none"
+            keyboardType="url"
+            style={{
+              borderWidth: 1,
+              borderColor: isDark ? "#374151" : "#EAECF0",
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 18,
+              backgroundColor: isDark ? "#111827" : "#FFFFFF",
+              color: isDark ? "#E4E7EC" : "#101928",
+            }}
+          />
+        </View>
       </BottomSheetScrollView>
       {/* Gradient Add Profile button fixed at bottom */}
       <View
         style={{
           padding: 18,
-          backgroundColor: "#fff",
+          backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
           borderBottomLeftRadius: 24,
           borderBottomRightRadius: 24,
           borderTopWidth: 1,
-          borderTopColor: "#F2F4F7",
+          borderTopColor: isDark ? "#374151" : "#F2F4F7",
         }}
       >
-        <GradientButton
-          label={buttonLabel}
-          onPress={() => {
-            onSave({
-              organizerName,
-              organizerBio,
-              tagline,
-              facebook,
-              instagram,
-              profileImage,
-              profileThumbnail,
-            });
-            onClose();
-          }}
-          height={48}
-          style={{ marginTop: 0 }}
-          disabled={!organizerName || !organizerBio}
-        />
+        {saveError ? (
+          <ThemedText className="text-[#F04438] text-[13px] mb-2 text-center">
+            {saveError}
+          </ThemedText>
+        ) : null}
+        {isSaving ? (
+          <View
+            style={{
+              height: 48,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ActivityIndicator color="#F04438" />
+          </View>
+        ) : (
+          <GradientButton
+            label={isEditing ? "Update Profile" : "Add Profile"}
+            onPress={handleSave}
+            height={48}
+            style={{ marginTop: 0 }}
+            disabled={!organizerName.trim()}
+          />
+        )}
       </View>
     </BottomSheetModal>
   );

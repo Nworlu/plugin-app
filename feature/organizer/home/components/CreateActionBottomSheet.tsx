@@ -42,10 +42,10 @@ const CreateActionBottomSheet = forwardRef<
   };
 
   const handlePublishPress = () => {
-    if (!hasBookings) {
-      setShowNoVenueModal(true);
-      return;
-    }
+    // if (!hasBookings) {
+    //   setShowNoVenueModal(true);
+    //   return;
+    // }
     onPublishPress?.();
     handleClose();
   };

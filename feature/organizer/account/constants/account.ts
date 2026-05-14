@@ -23,14 +23,17 @@ export type AccountMenuItem = {
   route?:
     | "/(organizer)/profile-information"
     | "/(organizer)/login-security"
-    | "/(organizer)/notifications"
+    | "/(organizer)/notification-settings"
     | "/(organizer)/start-campaign"
     | "/(organizer)/help-center"
     | "/(organizer)/terms-of-service"
     | "/(organizer)/privacy-policy"
     | "/(organizer)/appearance"
     | "/(organizer)/organizer-settings"
-    | "/(organizer)/booked-venues";
+    | "/(organizer)/booked-venues"
+    | "/(organizer)/collaborators"
+    | "/(organizer)/translation"
+    | "/(organizer)/(tabs)/earnings";
 };
 
 export type AccountMenuSection = {
@@ -61,7 +64,12 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
         icon: "sparkles",
         route: "/(organizer)/start-campaign",
       },
-      { key: "manage-payout", label: "Manage Payouts", icon: "wallet" },
+      {
+        key: "manage-payout",
+        label: "Manage Payouts",
+        icon: "wallet",
+        route: "/(organizer)/(tabs)/earnings",
+      },
     ],
   },
   {
@@ -79,7 +87,12 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
         icon: "settings",
         route: "/(organizer)/organizer-settings",
       },
-      { key: "collaborators", label: "Collaborators", icon: "users" },
+      {
+        key: "collaborators",
+        label: "Collaborators",
+        icon: "users",
+        route: "/(organizer)/collaborators",
+      },
     ],
   },
   {
@@ -89,7 +102,7 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
         key: "notifications",
         label: "Notifications",
         icon: "bell",
-        route: "/(organizer)/notifications",
+        route: "/(organizer)/notification-settings",
       },
       {
         key: "login-security",
@@ -108,7 +121,12 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
         label: "Privacy and Sharing",
         icon: "shield-check",
       },
-      { key: "translation", label: "Translation", icon: "languages" },
+      {
+        key: "translation",
+        label: "Translation",
+        icon: "languages",
+        route: "/(organizer)/translation",
+      },
     ],
   },
   {

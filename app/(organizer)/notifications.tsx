@@ -1,4 +1,4 @@
-import NotificationsScreen from "@/feature/organizer/account/NotificationsScreen";
+import NotificationsScreen from "@/feature/organizer/notifications/NotificationsScreen";
 
 export default function NotificationsRoute() {
   return <NotificationsScreen />;

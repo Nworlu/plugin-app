@@ -6,6 +6,7 @@ import { TouchableOpacity, View } from "react-native";
 
 type BalanceCardProps = {
   hideBalance: boolean;
+  balance: number;
   onToggleBalance: () => void;
   onWithdraw: () => void;
 };
@@ -26,6 +27,7 @@ const BalancePattern = () => (
 
 const BalanceCard = ({
   hideBalance,
+  balance,
   onToggleBalance,
   onWithdraw,
 }: BalanceCardProps) => (
@@ -33,7 +35,13 @@ const BalanceCard = ({
     colors={["#C5162A", "#F26C24"]}
     start={{ x: 0, y: 0 }}
     end={{ x: 1, y: 1 }}
-    style={{ borderRadius: 10, paddingHorizontal:16 , paddingVertical:20, marginTop:20, overflow:"hidden" }}
+    style={{
+      borderRadius: 10,
+      paddingHorizontal: 16,
+      paddingVertical: 20,
+      marginTop: 20,
+      overflow: "hidden",
+    }}
   >
     <BalancePattern />
 
@@ -61,7 +69,7 @@ const BalanceCard = ({
           weight="700"
           className="text-white text-[26px] leading-8 mt-2"
         >
-          {hideBalance ? "N •••••••" : "N 4,000,000"}
+          {hideBalance ? "₦ •••••••" : `₦ ${balance.toLocaleString()}`}
         </ThemedText>
       </View>
 

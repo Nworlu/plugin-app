@@ -25,6 +25,7 @@ const MetricCard = ({ title, subtitle, icon, className }: MetricCardProps) => {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
+        flex:1
       }}
     >
       {icon ? (

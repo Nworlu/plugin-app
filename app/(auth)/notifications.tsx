@@ -1,23 +1,46 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useUpdateSettings } from "@/hooks/api";
 import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
+import { Bell } from "lucide-react-native";
 import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, saveProfile } = useAuthStore();
+  const { profile, saveProfile, user } = useAuthStore();
+  const { mutate: updateSettings, isPending } = useUpdateSettings(
+    user?._id ?? "",
+  );
 
-  const [notifyUpdates, setNotifyUpdates] = useState(false);
-  const [notifyAttending, setNotifyAttending] = useState(false);
+  const [notifyUpdates, setNotifyUpdates] = useState(
+    profile?.notifyUpdates ?? false,
+  );
+  const [notifyAttending, setNotifyAttending] = useState(
+    profile?.notifyAttending ?? false,
+  );
 
   const handleContinue = async () => {
-    if (profile) {
-      await saveProfile({ ...profile, notifyUpdates, notifyAttending });
-    }
-    router.replace("/(auth)/set-location");
+    // Persist to API
+    updateSettings(
+      {
+        email: notifyUpdates,
+        push: notifyUpdates,
+        sms: notifyAttending,
+        eventReminder: notifyUpdates,
+        eventUpdateReminder: notifyUpdates,
+      },
+      {
+        onSettled: async () => {
+          if (profile) {
+            await saveProfile({ ...profile, notifyUpdates, notifyAttending });
+          }
+          router.replace("/(auth)/set-location");
+        },
+      },
+    );
   };
 
   const handleSkip = () => {
@@ -45,15 +68,15 @@ export default function NotificationsScreen() {
 
       {/* Notifications badge */}
       <View className="self-center flex-row items-center gap-2 bg-black/30 rounded-full px-4 py-2 mb-8">
-        <ThemedText style={{ fontSize: 14 }}>🔔</ThemedText>
+        <Bell size={14} color="white" />
         <ThemedText weight="500" className="text-white text-[13px]">
           Notifications
         </ThemedText>
       </View>
 
-      {/* Bell illustration (emoji placeholder — swap for a real SVG/image) */}
+      {/* Bell illustration */}
       <View className="items-center mb-8">
-        <ThemedText style={{ fontSize: 80 }}>🔔</ThemedText>
+        <Bell size={80} color="white" strokeWidth={1.5} />
       </View>
 
       <ThemedText
@@ -83,8 +106,9 @@ export default function NotificationsScreen() {
       {/* CTA */}
       <View className="px-6" style={{ paddingBottom: insets.bottom + 24 }}>
         <GradientButton
-          label="Continue"
+          label={isPending ? "Saving..." : "Continue"}
           onPress={handleContinue}
+          disabled={isPending}
           height={52}
           borderRadius={14}
           style={{ backgroundColor: "white" }}

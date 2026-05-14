@@ -1,6 +1,18 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import NativeDateTimePicker from "@/feature/organizer/events/components/NativeDateTimePicker";
+import {
+  useAddAgenda,
+  useAddGuest,
+  useAddVendor,
+  useAgendas,
+  useDeleteGuest,
+  useEvent,
+  useGetSignedUrl,
+  useGuests,
+  usePatchEvent,
+  useVendors,
+} from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -21,8 +33,9 @@ import {
   Type,
   X,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Modal,
   ScrollView,
@@ -64,11 +77,153 @@ const CARD_COLORS = [
 
 /* ─── Component ──────────────────────────────────────────────── */
 
-export default function AgendaStep() {
+export default function AgendaStep({ eventId }: { eventId?: string }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   const placeholderColor = isDark ? "#555" : "#98A2B3";
+
+  /* ── API hooks ── */
+  const { mutateAsync: addAgenda, isPending: isAddingAgenda } = useAddAgenda(
+    eventId ?? "",
+  );
+  const { mutateAsync: addGuest, isPending: isAddingGuest } = useAddGuest(
+    eventId ?? "",
+  );
+  const { mutateAsync: deleteGuestApi } = useDeleteGuest(eventId ?? "");
+  const { mutateAsync: addVendor, isPending: isAddingVendor } = useAddVendor(
+    eventId ?? "",
+  );
+  const { mutateAsync: patchEvent } = usePatchEvent();
+  const { mutateAsync: getSignedUrl } = useGetSignedUrl();
+
+  /* fetch existing agendas & guests */
+  const { data: apiAgendas, isLoading: isLoadingAgendas } = useAgendas(
+    eventId ?? "",
+  );
+  const { data: apiGuests, isLoading: isLoadingGuests } = useGuests(
+    eventId ?? "",
+  );
+  const { data: eventDetails, isLoading: isLoadingEvent } = useEvent(
+    eventId ?? "",
+  );
+  const { data: apiVendors, isLoading: isLoadingVendors } = useVendors(
+    eventId ?? "",
+  );
+
+  const isLoadingPrefill =
+    !!eventId &&
+    (isLoadingAgendas || isLoadingGuests || isLoadingEvent || isLoadingVendors);
+
+  console.log("Fetched agendas", { apiVendors });
+
+  /* base64 buffer for picked images */
+  type ImgData = { base64: string; mimeType: string };
+  const imageDataRef = useRef<Record<string, ImgData>>({});
+  const prefilled = useRef(false);
+
+  /* seed sessions & guests from API on first load */
+  useEffect(() => {
+    if (prefilled.current) return;
+    const hasAgendas = apiAgendas && apiAgendas.length > 0;
+    const hasGuests = apiGuests && apiGuests.length > 0;
+    const hasVendors = apiVendors && apiVendors.length > 0;
+    const hasEvent = !!eventDetails;
+    if (!hasAgendas && !hasGuests && !hasVendors && !hasEvent) return;
+    prefilled.current = true;
+
+    if (hasEvent) {
+      if (eventDetails.eventPhotos?.length) {
+        const slots: (string | null)[] = Array(6).fill(null);
+        eventDetails.eventPhotos.slice(0, 6).forEach((url, i) => {
+          slots[i] = url;
+        });
+        setEventPhotos(slots);
+        setPhotosEnabled(true);
+      }
+      if (eventDetails.refundPolicyAgreed) {
+        setPolicyAgreed(true);
+        setRefundExpanded(true);
+      }
+    }
+
+    if (hasAgendas) {
+      const parseTime = (t: string): Date => {
+        const [h, m] = t.split(":").map(Number);
+        const d = new Date();
+        d.setHours(h ?? 0, m ?? 0, 0, 0);
+        return d;
+      };
+      const sessions = apiAgendas.map((a) => ({
+        id: a._id,
+        title: a.title,
+        description: a.description ?? "",
+        startTime: parseTime(a.startTime),
+        endTime: parseTime(a.endTime),
+        hasHost: !!a.host?.name,
+        hostName: a.host?.name,
+        hostPhoto: a.host?.photo,
+      }));
+      setTabs([
+        { id: "1", label: "Agenda 1", sessions, templateType: "sessions" },
+      ]);
+    }
+
+    if (hasGuests) {
+      setGuests(
+        apiGuests.map((g) => ({
+          id: g._id,
+          apiId: g._id,
+          name: g.name,
+          role: g.role ?? "",
+          photo: g.photo ?? null,
+        })),
+      );
+      setFeaturedExpanded(true);
+    }
+
+    if (hasVendors) {
+      setVendorPasses(
+        apiVendors.map((v) => ({
+          id: v._id,
+          isShared: v.isPass === "yes",
+          thumbnail: v.thumbnail ?? null,
+          tag: v.vendorTag ?? "",
+          categories: v.passCategory ?? [],
+          price: v.price != null ? String(v.price) : "",
+          slots: v.slots,
+        })),
+      );
+      setVendorsExpanded(true);
+    }
+  }, [apiAgendas, apiGuests, apiVendors, eventDetails]);
+
+  const uploadImage = async (uri: string): Promise<string> => {
+    const stored = imageDataRef.current[uri];
+    if (!stored) return uri; // fallback: return local uri if no base64
+    const mimeType = stored.mimeType ?? "image/jpeg";
+    const filename =
+      uri.split("/").pop()?.split("?")[0] ?? `img-${Date.now()}.jpg`;
+    const { signedUrl, publicUrl } = await getSignedUrl({
+      fileName: filename,
+      contentType: mimeType,
+    });
+    const dataUri = `data:${mimeType};base64,${stored.base64}`;
+    const blob = await (await fetch(dataUri)).blob();
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", signedUrl, true);
+      xhr.setRequestHeader("Content-Type", "application/octet-stream");
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== 4) return;
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed: ${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(blob);
+    });
+    return publicUrl;
+  };
 
   /* Accordion */
   const [agendaEnabled, setAgendaEnabled] = useState(true);
@@ -81,6 +236,9 @@ export default function AgendaStep() {
   /* Photo grid */
   const [eventPhotos, setEventPhotos] = useState<(string | null)[]>(
     Array(6).fill(null),
+  );
+  const [uploadingPhotoIdx, setUploadingPhotoIdx] = useState<number | null>(
+    null,
   );
 
   /* Policy */
@@ -113,7 +271,13 @@ export default function AgendaStep() {
   const [vSlots, setVSlots] = useState(0);
 
   /* Guests */
-  type Guest = { id: string; name: string; role: string; photo: string | null };
+  type Guest = {
+    id: string;
+    apiId?: string;
+    name: string;
+    role: string;
+    photo: string | null;
+  };
   const [guests, setGuests] = useState<Guest[]>([]);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
@@ -227,9 +391,15 @@ export default function AgendaStep() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      setFormHostPhoto(result.assets[0].uri);
+      const { uri, base64 } = result.assets[0];
+      imageDataRef.current[uri] = {
+        base64: base64 ?? "",
+        mimeType: "image/jpeg",
+      };
+      setFormHostPhoto(uri);
     }
   };
 
@@ -243,10 +413,33 @@ export default function AgendaStep() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setEventPhotos((prev) => prev.map((p, i) => (i === idx ? uri : p)));
+      const { uri, base64 } = result.assets[0];
+      imageDataRef.current[uri] = {
+        base64: base64 ?? "",
+        mimeType: "image/jpeg",
+      };
+      let finalUrl = uri;
+      if (eventId && base64) {
+        try {
+          setUploadingPhotoIdx(idx);
+          finalUrl = await uploadImage(uri);
+        } catch {
+          /* keep local */
+        } finally {
+          setUploadingPhotoIdx(null);
+        }
+      }
+      const updated = eventPhotos.map((p, i) => (i === idx ? finalUrl : p));
+      setEventPhotos(updated);
+      if (eventId) {
+        const allPhotos = updated.filter(Boolean) as string[];
+        patchEvent({ eventId, payload: { eventPhotos: allPhotos } }).catch(
+          () => {},
+        );
+      }
     }
   };
 
@@ -280,7 +473,7 @@ export default function AgendaStep() {
     setFormOpen(true);
   };
 
-  const handleSaveSession = () => {
+  const handleSaveSession = async () => {
     if (!formTitle.trim()) return;
     const session: Session = {
       id: Date.now().toString(),
@@ -299,6 +492,30 @@ export default function AgendaStep() {
           : tab,
       ),
     );
+    if (eventId) {
+      const pad = (d: Date) =>
+        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      let hostPhotoUrl: string | undefined;
+      if (formHasHost && formHostPhoto) {
+        hostPhotoUrl = formHostPhoto.startsWith("http")
+          ? formHostPhoto
+          : await uploadImage(formHostPhoto).catch(() => undefined);
+      }
+      addAgenda({
+        title: formTitle,
+        description: formDescription || undefined,
+        startTime: pad(formStartTime),
+        endTime: pad(formEndTime),
+        ...(formHasHost && formHostName
+          ? {
+              host: {
+                name: formHostName,
+                ...(hostPhotoUrl ? { photo: hostPhotoUrl } : {}),
+              },
+            }
+          : {}),
+      }).catch(() => {});
+    }
     setFormOpen(false);
     resetForm();
   };
@@ -416,9 +633,16 @@ export default function AgendaStep() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
-    if (!result.canceled && result.assets[0])
-      setGuestPhoto(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) {
+      const { uri, base64 } = result.assets[0];
+      imageDataRef.current[uri] = {
+        base64: base64 ?? "",
+        mimeType: "image/jpeg",
+      };
+      setGuestPhoto(uri);
+    }
   };
 
   const openAddGuestModal = () => {
@@ -437,8 +661,14 @@ export default function AgendaStep() {
     setShowGuestModal(true);
   };
 
-  const saveGuest = () => {
+  const saveGuest = async () => {
     if (!guestName.trim()) return;
+    let photoUrl: string | undefined;
+    if (guestPhoto) {
+      photoUrl = guestPhoto.startsWith("http")
+        ? guestPhoto
+        : await uploadImage(guestPhoto).catch(() => undefined);
+    }
     if (editingGuestId) {
       setGuests((prev) =>
         prev.map((g) =>
@@ -448,15 +678,31 @@ export default function AgendaStep() {
         ),
       );
     } else {
+      const localId = Date.now().toString();
       setGuests((prev) => [
         ...prev,
         {
-          id: Date.now().toString(),
+          id: localId,
           name: guestName,
           role: guestRole,
           photo: guestPhoto,
         },
       ]);
+      if (eventId) {
+        addGuest({
+          name: guestName,
+          ...(guestRole ? { role: guestRole } : {}),
+          ...(photoUrl ? { photo: photoUrl } : {}),
+        })
+          .then((res) => {
+            setGuests((prev) =>
+              prev.map((g) =>
+                g.id === localId ? { ...g, apiId: res._id } : g,
+              ),
+            );
+          })
+          .catch(() => {});
+      }
     }
     setShowGuestModal(false);
   };
@@ -476,9 +722,16 @@ export default function AgendaStep() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
+      base64: true,
     });
-    if (!result.canceled && result.assets[0])
-      setVThumbnail(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) {
+      const { uri, base64 } = result.assets[0];
+      imageDataRef.current[uri] = {
+        base64: base64 ?? "",
+        mimeType: "image/jpeg",
+      };
+      setVThumbnail(uri);
+    }
   };
 
   const openCreatePass = () => {
@@ -498,8 +751,14 @@ export default function AgendaStep() {
     setVendorFormOpen(true);
   };
 
-  const handleCreatePass = () => {
+  const handleCreatePass = async () => {
     if (!vTag.trim()) return;
+    let thumbUrl: string | undefined;
+    if (vThumbnail) {
+      thumbUrl = vThumbnail.startsWith("http")
+        ? vThumbnail
+        : await uploadImage(vThumbnail).catch(() => undefined);
+    }
     if (editingPassId) {
       setVendorPasses((prev) =>
         prev.map((p) =>
@@ -529,6 +788,16 @@ export default function AgendaStep() {
           slots: vSlots,
         },
       ]);
+      if (eventId) {
+        addVendor({
+          slots: vSlots,
+          vendorTag: vTag,
+          ...(thumbUrl ? { thumbnail: thumbUrl } : {}),
+          ...(vIsShared ? { isPass: "yes" } : {}),
+          ...(vCategories.length ? { passCategory: vCategories } : {}),
+          ...(vPrice ? { price: parseFloat(vPrice) || 0 } : {}),
+        }).catch(() => {});
+      }
     }
     setVendorFormOpen(false);
     resetVendorForm();
@@ -548,9 +817,18 @@ export default function AgendaStep() {
 
   const renderPhotoSlot = (idx: number) => {
     const uri = eventPhotos[idx];
+    const isUploading = uploadingPhotoIdx === idx;
     return (
       <View key={idx} className="flex-1" style={{ aspectRatio: 1 }}>
-        {uri ? (
+        {isUploading ? (
+          <View
+            className={`flex-1 rounded-[8px] items-center justify-center ${
+              isDark ? "bg-[#2C2C2E]" : "bg-[#F9FAFB]"
+            }`}
+          >
+            <ActivityIndicator size="small" color="#F15827" />
+          </View>
+        ) : uri ? (
           <View className="flex-1 rounded-[8px] overflow-hidden">
             <Image
               source={{ uri }}
@@ -585,6 +863,20 @@ export default function AgendaStep() {
       </View>
     );
   };
+
+  if (isLoadingPrefill) {
+    return (
+      <View className="flex-1 items-center justify-center py-16">
+        <ActivityIndicator size="large" color="#F04438" />
+        <ThemedText
+          weight="500"
+          className={`text-[14px] mt-3 ${isDark ? "text-[#98A2B3]" : "text-[#667085]"}`}
+        >
+          Loading event data…
+        </ThemedText>
+      </View>
+    );
+  }
 
   return (
     <View>
@@ -1354,7 +1646,10 @@ export default function AgendaStep() {
                       onPress={
                         editingSessionId ? handleSaveEdit : handleSaveSession
                       }
-                      disabled={!formTitle.trim()}
+                      disabled={!formTitle.trim() || isAddingAgenda}
+                      loading={
+                        (isAddingAgenda && !editingSessionId) || isAddingAgenda
+                      }
                       height={44}
                       borderRadius={10}
                     />
@@ -1524,7 +1819,16 @@ export default function AgendaStep() {
             ))}
             {/* Agree checkbox */}
             <TouchableOpacity
-              onPress={() => setPolicyAgreed((v) => !v)}
+              onPress={() => {
+                const next = !policyAgreed;
+                setPolicyAgreed(next);
+                if (next && eventId) {
+                  patchEvent({
+                    eventId,
+                    payload: { refundPolicyAgreed: true },
+                  }).catch(() => {});
+                }
+              }}
               className="flex-row items-start gap-[10px] mt-1"
               activeOpacity={0.8}
             >
@@ -1647,6 +1951,20 @@ export default function AgendaStep() {
                       >
                         Edit Details
                       </ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (guest.apiId && eventId) {
+                          deleteGuestApi(guest.apiId).catch(() => {});
+                        }
+                        setGuests((prev) =>
+                          prev.filter((g) => g.id !== guest.id),
+                        );
+                      }}
+                      activeOpacity={0.8}
+                      className="ml-2"
+                    >
+                      <Trash2 size={16} color="#F04438" />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -2048,7 +2366,8 @@ export default function AgendaStep() {
                     <GradientButton
                       label={editingPassId ? "Update Pass" : "Create Pass"}
                       onPress={handleCreatePass}
-                      disabled={!vTag.trim()}
+                      disabled={!vTag.trim() || isAddingVendor}
+                      loading={isAddingVendor && !editingPassId}
                       height={44}
                       borderRadius={10}
                     />
@@ -2191,9 +2510,10 @@ export default function AgendaStep() {
 
               {/* Save button */}
               <GradientButton
-                label="Save Guest"
+                label={isAddingGuest ? "Saving..." : "Save Guest"}
                 onPress={saveGuest}
-                disabled={!guestName.trim()}
+                disabled={!guestName.trim() || isAddingGuest}
+                loading={isAddingGuest}
                 height={52}
                 borderRadius={12}
               />

@@ -11,15 +11,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-function navigate(
-  hasSeenOnboarding: boolean,
-  isAuthenticated: boolean,
-  hasProfile: boolean,
-) {
-  if (isAuthenticated && hasProfile) {
+function navigate(hasSeenOnboarding: boolean, isAuthenticated: boolean) {
+  if (isAuthenticated) {
+    // token + accountComplete are both required for isAuthenticated — go straight to app
     router.replace("/(organizer)/(tabs)/" as any);
-  } else if (isAuthenticated && !hasProfile) {
-    router.replace("/(auth)/complete-profile");
   } else if (hasSeenOnboarding) {
     router.replace("/(auth)/signup");
   } else {
@@ -28,8 +23,7 @@ function navigate(
 }
 
 export default function SplashScreen() {
-  const { isLoading, hasSeenOnboarding, isAuthenticated, profile } =
-    useAuthStore();
+  const { isLoading, hasSeenOnboarding, isAuthenticated } = useAuthStore();
 
   const logoScale = useSharedValue(0.6);
   const logoOpacity = useSharedValue(0);
@@ -55,7 +49,7 @@ export default function SplashScreen() {
       1600,
       withTiming(0, { duration: 400 }, (finished) => {
         if (finished) {
-          runOnJS(navigate)(hasSeenOnboarding, isAuthenticated, !!profile);
+          runOnJS(navigate)(hasSeenOnboarding, isAuthenticated);
         }
       }),
     );

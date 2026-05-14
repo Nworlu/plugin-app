@@ -25,8 +25,8 @@ const DashboardMetrics = ({
   const isDark = resolvedTheme === "dark";
 
   return (
-    <View className={`gap-3 ${className ?? ""}`}>
-      <View className="flex-row gap-3">
+    <View className={`gap-3 ${className ?? ""} w-full`}>
+      <View className="flex-row gap-3 flex-1 w-full">
         <MetricCard
           className="flex-1"
           title={

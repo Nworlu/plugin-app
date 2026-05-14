@@ -96,7 +96,11 @@ export default function OrganisersTabs() {
           }}
         />
       </Tabs>
-      <CreateActionBottomSheet onPublishPress={()=>router.push("/(organizer)/create-event")} ref={bottomSheetRef} />
+      <CreateActionBottomSheet
+        onPublishPress={() => router.push("/(organizer)/create-event")}
+        onScanPress={() => router.push("/(organizer)/select-event-to-scan")}
+        ref={bottomSheetRef}
+      />
     </>
   );
 }

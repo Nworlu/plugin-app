@@ -1,17 +1,20 @@
 import { AnimatedListItem } from "@/components/animated-list-item";
 import { ThemedText } from "@/components/themed-text";
-import {
-  EventStatus,
-  managedEvents,
-} from "@/feature/organizer/constants/events";
+import { EventStatus } from "@/feature/organizer/constants/events";
 import DeleteEventConfirmModal from "@/feature/organizer/events/components/DeleteEventConfirmModal";
 import DeleteEventSuccessModal from "@/feature/organizer/events/components/DeleteEventSuccessModal";
 import EventActionMenu, {
   EventActionMenuItem,
 } from "@/feature/organizer/events/components/EventActionMenu";
 import ManagedEventCard from "@/feature/organizer/events/components/ManagedEventCard";
+import {
+  useDeleteEvent,
+  useOrganizerEvents,
+  useOrganizerStats,
+} from "@/hooks/api";
 import { useViewableList } from "@/hooks/use-viewable-list";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useAuthStore } from "@/store/auth-store";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import {
@@ -24,6 +27,7 @@ import {
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   FlatList,
   Platform,
@@ -48,8 +52,14 @@ const ManageEventsScreen = () => {
   const menuHeight = menuItemHeight * 5 + menuPaddingTop;
   const window = Dimensions.get("window");
 
+  const user = useAuthStore((s) => s.user);
+  const organizerId = user?._id ?? "";
+
+  // Fetch organizer profile to get its own _id for the stats endpoint
+  // const { data: organizer } = useOrganizer(organizerId);
+  const { data: stats } = useOrganizerStats(organizerId ?? "");
+
   const [searchText, setSearchText] = useState("");
-  const [events, setEvents] = useState(managedEvents);
   const [activeStatus, setActiveStatus] = useState<EventStatus>("upcoming");
   const [openMenuEventId, setOpenMenuEventId] = useState<string | null>(null);
   const { visibleIds, onViewableItemsChanged, viewabilityConfig } =
@@ -62,13 +72,93 @@ const ManageEventsScreen = () => {
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
   const [isDeleteSuccessVisible, setIsDeleteSuccessVisible] = useState(false);
 
-  const menuActions: readonly EventActionMenuItem[] = [
-    { id: "edit", label: "Edit", Icon: Pencil },
-    { id: "promote", label: "Promote event", Icon: Megaphone },
-    { id: "preview", label: "Preview", Icon: Eye },
-    { id: "copy", label: "Copy link", Icon: Link2 },
-    { id: "delete", label: "Delete event", Icon: Trash2 },
-  ] as const;
+  // API: fetch organizer events
+  const { data: eventsData, isLoading } = useOrganizerEvents(
+    organizerId,
+    activeStatus === "past"
+      ? "past"
+      : activeStatus === "upcoming"
+        ? "upcoming"
+        : undefined,
+  );
+
+  console.log("Events data:", stats);
+
+  // Format helpers
+  const formatDate = (iso?: string) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+  const formatTime = (t?: string) => {
+    if (!t) return "";
+    const [h, m] = t.split(":").map(Number);
+    const suffix = h >= 12 ? "PM" : "AM";
+    const hour = ((h + 11) % 12) + 1;
+    return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+  };
+
+  // Map API RawEvent → ManagedEvent shape for card component
+  const events = useMemo(() => {
+    if (!eventsData) return [];
+    return eventsData.map((e) => ({
+      id: e._id,
+      title: e.eventName,
+      date: e.startDate
+        ? `${formatDate(e.startDate)} at ${formatTime(e.startTime)}`
+        : e.oneTimeEvent?.startDate
+          ? `${formatDate(e.oneTimeEvent.startDate)} at ${formatTime(e.oneTimeEvent.startTime)}`
+          : "",
+      location:
+        e.address ??
+        e.physicalLocation?.city ??
+        e.physicalLocation?.address ??
+        e.onlineLocation?.onlineVenue ??
+        "",
+      sold: 0,
+      total: 0,
+      image: { uri: e.eventBanner ?? e.thumbnail ?? "" },
+      status: (!e.isPublished
+        ? "draft"
+        : (e.eventStatus ?? e.activeStatus)
+          ? "upcoming"
+          : "past") as EventStatus,
+    }));
+  }, [eventsData]);
+
+  const { mutate: deleteEventApi } = useDeleteEvent(
+    organizerId,
+    activeStatus === "past"
+      ? "past"
+      : activeStatus === "upcoming"
+        ? "upcoming"
+        : undefined,
+  );
+
+  const selectedEventStatus = useMemo(
+    () => events.find((e) => e.id === openMenuEventId)?.status ?? null,
+    [events, openMenuEventId],
+  );
+
+  const menuActions = useMemo<readonly EventActionMenuItem[]>(() => {
+    if (selectedEventStatus === "draft") {
+      return [
+        { id: "edit", label: "Edit", Icon: Pencil },
+        { id: "delete", label: "Delete event", Icon: Trash2 },
+      ];
+    }
+    return [
+      { id: "edit", label: "Edit", Icon: Pencil },
+      { id: "promote", label: "Promote event", Icon: Megaphone },
+      { id: "preview", label: "Preview", Icon: Eye },
+      { id: "copy", label: "Copy link", Icon: Link2 },
+      { id: "delete", label: "Delete event", Icon: Trash2 },
+    ];
+  }, [selectedEventStatus]);
 
   const closeMenu = () => {
     setOpenMenuEventId(null);
@@ -103,10 +193,19 @@ const ManageEventsScreen = () => {
     closeMenu();
 
     if (actionId === "edit" && selectedEventId) {
-      router.push({
-        pathname: "/(organizer)/edit-event",
-        params: { eventId: selectedEventId },
-      });
+      const isDraft =
+        events.find((e) => e.id === selectedEventId)?.status === "draft";
+      if (isDraft) {
+        router.push({
+          pathname: "/(organizer)/create-event",
+          params: { eventId: selectedEventId },
+        });
+      } else {
+        router.push({
+          pathname: "/(organizer)/edit-event",
+          params: { eventId: selectedEventId },
+        });
+      }
       return;
     }
 
@@ -128,11 +227,12 @@ const ManageEventsScreen = () => {
       return;
     }
 
-    setEvents((currentEvents) =>
-      currentEvents.filter((event) => event.id !== selectedEventId),
-    );
-    setIsDeleteConfirmVisible(false);
-    setIsDeleteSuccessVisible(true);
+    deleteEventApi(selectedEventId, {
+      onSuccess: () => {
+        setIsDeleteConfirmVisible(false);
+        setIsDeleteSuccessVisible(true);
+      },
+    });
   };
 
   const selectedEvent = useMemo(
@@ -142,11 +242,15 @@ const ManageEventsScreen = () => {
 
   const counts = useMemo(() => {
     return {
-      upcoming: events.filter((event) => event.status === "upcoming").length,
-      draft: events.filter((event) => event.status === "draft").length,
-      past: events.filter((event) => event.status === "past").length,
+      upcoming:
+        stats?.upcomingEvents ??
+        events.filter((e) => e.status === "upcoming").length,
+      draft: events.filter((e) => e.status === "draft").length,
+      past: stats
+        ? stats.totalEvents - stats.upcomingEvents
+        : events.filter((e) => e.status === "past").length,
     };
-  }, [events]);
+  }, [stats, events]);
 
   const filteredEvents = useMemo(() => {
     const byStatus = events.filter((event) => event.status === activeStatus);
@@ -161,7 +265,7 @@ const ManageEventsScreen = () => {
 
   return (
     <SafeAreaView
-      edges={["top"]}
+      edges={[]}
       style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F4F5F7" }}
     >
       <LinearGradient
@@ -177,6 +281,7 @@ const ManageEventsScreen = () => {
           elevation: 3,
           paddingHorizontal: 16,
           paddingVertical: 12,
+          paddingTop: 70,
         }}
       >
         <ThemedText weight="700" className="text-white text-[28px] leading-8">
@@ -257,10 +362,24 @@ const ManageEventsScreen = () => {
         style={{ backgroundColor: isDark ? "#0A0A0A" : "#F4F5F7" }}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        ListEmptyComponent={
+          isLoading ? (
+            <View className="flex-1 items-center justify-center py-20">
+              <ActivityIndicator size="large" color="#F15827" />
+            </View>
+          ) : (
+            <View className="flex-1 items-center justify-center py-20">
+              <ThemedText weight="400" className="text-[#98A2B3] text-sm">
+                No events found
+              </ThemedText>
+            </View>
+          )
+        }
         renderItem={({ item }) => (
           <AnimatedListItem isVisible={visibleIds.has(item.id)}>
             <ManagedEventCard
               event={item}
+              eventId={item.id}
               onMorePress={handleOpenMoreMenu}
               onPress={() => {
                 router.push({

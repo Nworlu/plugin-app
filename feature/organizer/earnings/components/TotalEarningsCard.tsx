@@ -4,7 +4,11 @@ import { Info } from "lucide-react-native";
 import React from "react";
 import { View } from "react-native";
 
-const TotalEarningsCard = () => {
+type TotalEarningsCardProps = {
+  totalEarnings: number;
+};
+
+const TotalEarningsCard = ({ totalEarnings }: TotalEarningsCardProps) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -26,7 +30,7 @@ const TotalEarningsCard = () => {
             Total Earnings
           </ThemedText>
           <ThemedText weight="700" className="text-3xl leading-8 mt-2">
-            N5,000,000
+            ₦{totalEarnings.toLocaleString()}
           </ThemedText>
         </View>
 

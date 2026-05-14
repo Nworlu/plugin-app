@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { ManagedEvent } from "@/feature/organizer/constants/events";
+import { useTicketsForEvent } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Ellipsis, Globe, MapPin } from "lucide-react-native";
 import React from "react";
@@ -7,19 +8,26 @@ import { Image, TouchableOpacity, View } from "react-native";
 
 type ManagedEventCardProps = {
   event: ManagedEvent;
+  eventId: string;
   onMorePress: (x: number, y: number, eventId: string) => void;
   onPress?: () => void;
 };
 
 const ManagedEventCard = ({
   event,
+  eventId,
   onMorePress,
   onPress,
 }: ManagedEventCardProps) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+
+  const { data: tickets } = useTicketsForEvent(eventId);
+  const sold = tickets?.length ?? event.sold;
+  const total = tickets?.[0]?.ticketData?.quantity ?? event.total;
+
   const progressWidth =
-    `${Math.max(8, (event.sold / event.total) * 100)}%` as `${number}%`;
+    `${Math.max(8, total > 0 ? (sold / total) * 100 : 0)}%` as `${number}%`;
   const isDraft = event.status === "draft";
 
   return (
@@ -110,7 +118,7 @@ const ManagedEventCard = ({
                 weight="500"
                 className={`text-sm leading-5 text-right ${isDark ? "text-[#E5E7EB]" : "text-[#344054]"}`}
               >
-                {event.sold}/{event.total}
+                {sold}{total > 0 ? `/${total}` : ""}
               </ThemedText>
             </View>
           )}

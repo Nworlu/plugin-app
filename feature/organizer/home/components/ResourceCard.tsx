@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/providers/ThemeProvider";
+import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
 import { Image, TouchableOpacity, View } from "react-native";
@@ -10,7 +11,7 @@ type ResourceCardProps = {
   imageUrl?: string;
   route?: string;
   bgColor: string;
-  image?: any
+  image?: any;
 };
 
 const ResourceCard = ({
@@ -19,37 +20,66 @@ const ResourceCard = ({
   route,
   title,
   bgColor,
-  image
+  image,
 }: ResourceCardProps) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   return (
-    <View
+    <LinearGradient
+      colors={
+        isDark
+          ? ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"]
+          : ["rgba(255,255,255,0.85)", "rgba(255,255,255,0.55)"]
+      }
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={{
-        shadowColor: isDark ? "#000000" : "#000",
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: isDark
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(255,255,255,0.90)",
+        overflow: "hidden",
+        height: 120,
+        shadowColor: isDark ? "#000" : "#7090C8",
+        shadowOpacity: isDark ? 0.35 : 0.1,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: isDark ? 0.22 : 0.08,
-        shadowRadius: 8,
+        shadowRadius: 14,
         elevation: 4,
       }}
-      className={`w-full h-32 rounded-lg ${isDark ? "bg-[#111827]" : "bg-white"}`}
     >
       <View
-        className={`flex-row gap-3.5 items-center overflow-hidden rounded-lg h-full pr-3 border ${
-          isDark ? "border-[#374151]" : "border-[#E9F3FE]"
-        }`}
+        style={{ flexDirection: "row", alignItems: "center", height: "100%" }}
       >
+        {/* Coloured image panel */}
         <View
           style={{
             backgroundColor: bgColor,
+            width: 112,
+            height: "100%",
+            alignItems: "center",
+            justifyContent: "center",
           }}
-          className="h-full w-32 items-center justify-center"
         >
-          <Image source={image} className="w-24 h-24" />
+          <Image
+            source={image}
+            style={{ width: 84, height: 84 }}
+            resizeMode="contain"
+          />
         </View>
-        <View className="py-5 flex-1">
-          <View className="gap-2 flex-1">
+
+        {/* Text + link */}
+        <View
+          style={{
+            flex: 1,
+            paddingHorizontal: 14,
+            paddingVertical: 16,
+            gap: 6,
+            justifyContent: "space-between",
+          }}
+        >
+          <View style={{ gap: 5 }}>
             <ThemedText
               weight="500"
               className={`text-sm ${isDark ? "text-[#E5E7EB]" : "text-[#2E394C]"}`}
@@ -64,16 +94,17 @@ const ResourceCard = ({
               {content}
             </ThemedText>
           </View>
-
-          <TouchableOpacity className="flex-row items-center gap-2 ">
+          <TouchableOpacity
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
             <ThemedText weight="500" className="text-[#D9302A] text-sm">
               Learn more
             </ThemedText>
-            <ChevronRight size={16} color={"#D9302A"} />
+            <ChevronRight size={14} color="#D9302A" />
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 

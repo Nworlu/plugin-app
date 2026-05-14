@@ -1,3 +1,5 @@
+import { paymentApi } from "@/utils/api/payment";
+import type { InitPaymentPayload } from "@/utils/api/types";
 import React, {
   createContext,
   useCallback,
@@ -23,6 +25,11 @@ type BookingsContextType = {
   bookings: BookedVenue[];
   hasBookings: boolean;
   addBooking: (booking: Omit<BookedVenue, "id" | "bookedAt">) => void;
+  /**
+   * Initialize a Paystack payment for a booking.
+   * Returns the authorizationUrl to open in a browser/WebView.
+   */
+  initiatePayment: (payload: InitPaymentPayload) => Promise<string>;
 };
 
 const BookingsContext = createContext<BookingsContextType | undefined>(
@@ -44,9 +51,22 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const initiatePayment = useCallback(
+    async (payload: InitPaymentPayload): Promise<string> => {
+      const data = await paymentApi.initialize(payload);
+      return data.authorizationUrl;
+    },
+    [],
+  );
+
   const value = useMemo(
-    () => ({ bookings, hasBookings: bookings.length > 0, addBooking }),
-    [bookings, addBooking],
+    () => ({
+      bookings,
+      hasBookings: bookings.length > 0,
+      addBooking,
+      initiatePayment,
+    }),
+    [bookings, addBooking, initiatePayment],
   );
 
   return (

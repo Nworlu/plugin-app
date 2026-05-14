@@ -1,6 +1,9 @@
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import GlassCard from "@/feature/organizer/events/components/GlassCard";
+import { useOrganizer } from "@/hooks/api";
+import { useTheme } from "@/providers/ThemeProvider";
+import { useAuthStore } from "@/store/auth-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import {
@@ -25,35 +28,26 @@ import OrganizerProfileForm from "./components/OrganizerProfileForm";
 const OrganizerSettingsScreen = () => {
   const [activeTab, setActiveTab] = useState<"profile" | "plans">("profile");
   const profileSheetRef = React.useRef<BottomSheetModal>(null);
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [editingProfileIdx, setEditingProfileIdx] = useState<number | null>(
-    null,
-  );
-  const [menuVisibleIdx, setMenuVisibleIdx] = useState<number | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
 
-  const handleAddProfile = (profile: any) => {
-    setProfiles((prev) => [...prev, profile]);
-    profileSheetRef.current?.dismiss();
-  };
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
-  const handleEditProfile = (profile: any) => {
-    if (editingProfileIdx !== null) {
-      setProfiles((prev) =>
-        prev.map((p, i) => (i === editingProfileIdx ? profile : p)),
-      );
-      setEditingProfileIdx(null);
-      profileSheetRef.current?.dismiss();
-    }
-  };
+  const user = useAuthStore((s) => s.user);
+  const userId = user?._id ?? "";
+  const { data: organizer } = useOrganizer(userId);
 
-  const handleDeleteProfile = (idx: number) => {
-    setProfiles((prev) => prev.filter((_, i) => i !== idx));
-    setMenuVisibleIdx(null);
-  };
+  console.log("Organizer data:", organizer);
+
+  const bg = isDark ? "#060A12" : "#FFFFFF";
+  const card = isDark ? "#111827" : "#FFFFFF";
+  const border = isDark ? "#1F2937" : "#EAECF0";
+  const textMain = isDark ? "#F9FAFB" : "#101828";
+  const textMuted = isDark ? "#9CA3AF" : "#667085";
 
   return (
     <AppSafeArea>
-      <View className="flex-1 px-0 pt-0 bg-white">
+      <View style={{ flex: 1, backgroundColor: bg }}>
         {/* Header */}
         <View
           style={{
@@ -71,14 +65,14 @@ const OrganizerSettingsScreen = () => {
               height: 44,
               borderRadius: 22,
               borderWidth: 1,
-              borderColor: "#E4E7EC",
+              borderColor: border,
               alignItems: "center",
               justifyContent: "center",
               marginRight: 8,
             }}
             activeOpacity={0.85}
           >
-            <ChevronLeft size={24} color="#222" />
+            <ChevronLeft size={24} color={textMain} />
           </TouchableOpacity>
           <ThemedText weight="700" className="text-[24px] ml-2">
             Organizer Settings
@@ -96,13 +90,18 @@ const OrganizerSettingsScreen = () => {
         >
           <TouchableOpacity
             style={{
-              backgroundColor: activeTab === "profile" ? "#FDECEC" : "#fff",
+              backgroundColor:
+                activeTab === "profile"
+                  ? "#FDECEC"
+                  : isDark
+                    ? "#1F2937"
+                    : "#fff",
               borderRadius: 8,
               paddingVertical: 6,
               paddingHorizontal: 16,
               marginRight: 8,
               borderWidth: activeTab === "profile" ? 0 : 1,
-              borderColor: "#EAECF0",
+              borderColor: border,
             }}
             onPress={() => setActiveTab("profile")}
           >
@@ -115,12 +114,13 @@ const OrganizerSettingsScreen = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={{
-              backgroundColor: activeTab === "plans" ? "#FDECEC" : "#fff",
+              backgroundColor:
+                activeTab === "plans" ? "#FDECEC" : isDark ? "#1F2937" : "#fff",
               borderRadius: 8,
               paddingVertical: 6,
               paddingHorizontal: 16,
               borderWidth: activeTab === "plans" ? 0 : 1,
-              borderColor: "#EAECF0",
+              borderColor: border,
             }}
             onPress={() => setActiveTab("plans")}
           >
@@ -146,7 +146,9 @@ const OrganizerSettingsScreen = () => {
               <ThemedText weight="700" className="text-[20px] mb-1">
                 Organizer profiles
               </ThemedText>
-              <ThemedText className="mb-5 text-[15px] text-[#667085]">
+              <ThemedText
+                className={`mb-5 text-[15px] ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
+              >
                 Each profile describes a unique organizer and shows all of their
                 events on one page. Having a complete profile can encourage
                 attendees to follow you.
@@ -164,179 +166,158 @@ const OrganizerSettingsScreen = () => {
                 onPress={() => profileSheetRef.current?.present()}
               >
                 <ThemedText weight="700" className="text-[16px] text-[#F04438]">
-                  Add Organizer Profile
+                  {organizer
+                    ? "Edit Organizer Profile"
+                    : "Add Organizer Profile"}
                 </ThemedText>
               </TouchableOpacity>
             </View>
-            {/* Organizer profiles list */}
-            {profiles.length === 0
-              ? null
-              : profiles.map((profile, idx) => (
-                  <View
-                    key={idx}
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "#EAECF0",
-                      borderRadius: 12,
-                      padding: 14,
-                      marginBottom: 16,
-                      backgroundColor: "#fff",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      {profile.profileImage && (
-                        <Image
-                          source={{ uri: profile.profileImage }}
-                          style={{
-                            width: 80,
-                            height: 80,
-                            borderRadius: 10,
-                            marginBottom: 8,
-                          }}
-                        />
-                      )}
-                      <ThemedText weight="700" className="text-[16px] mb-1">
-                        {profile.organizerName}
-                      </ThemedText>
-                      <ThemedText className="text-[14px] mb-1 text-[#667085]">
-                        {profile.organizerBio}
-                      </ThemedText>
-                      {profile.tagline ? (
-                        <ThemedText className="text-[13px] mb-1 text-[#98A2B3]">
-                          {profile.tagline}
-                        </ThemedText>
-                      ) : null}
-                      {(profile.facebook || profile.instagram) && (
-                        <View style={{ marginTop: 4 }}>
-                          {profile.facebook && (
-                            <ThemedText className="text-[13px] text-[#344054]">
-                              Facebook: {profile.facebook}
-                            </ThemedText>
-                          )}
-                          {profile.instagram && (
-                            <ThemedText className="text-[13px] text-[#344054]">
-                              Instagram: {profile.instagram}
-                            </ThemedText>
-                          )}
-                        </View>
-                      )}
-                    </View>
-                    {/* Three-dot menu */}
-                    <TouchableOpacity
-                      onPress={() => setMenuVisibleIdx(idx)}
-                      style={{ padding: 8 }}
+            {/* Organizer profile card */}
+            {organizer && (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: border,
+                  borderRadius: 12,
+                  padding: 14,
+                  marginBottom: 16,
+                  backgroundColor: card,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  {organizer.thumbnail && (
+                    <Image
+                      source={{ uri: organizer.thumbnail }}
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 10,
+                        marginBottom: 8,
+                      }}
+                    />
+                  )}
+                  <ThemedText weight="700" className="text-[16px] mb-1">
+                    {organizer.name}
+                  </ThemedText>
+                  {organizer.bio ? (
+                    <ThemedText
+                      style={{
+                        fontSize: 14,
+                        marginBottom: 4,
+                        color: isDark ? "#9CA3AF" : "#667085",
+                      }}
                     >
-                      <MoreVertical size={22} color="#667085" />
-                    </TouchableOpacity>
-                    {/* Menu Modal */}
-                    <Modal
-                      visible={menuVisibleIdx === idx}
-                      transparent
-                      animationType="fade"
-                      onRequestClose={() => setMenuVisibleIdx(null)}
+                      {organizer.bio}
+                    </ThemedText>
+                  ) : null}
+                  {organizer.tagline ? (
+                    <ThemedText
+                      style={{
+                        fontSize: 13,
+                        marginBottom: 4,
+                        color: isDark ? "#6B7280" : "#98A2B3",
+                      }}
                     >
-                      <TouchableWithoutFeedback
-                        onPress={() => setMenuVisibleIdx(null)}
-                      >
-                        <View
+                      {organizer.tagline}
+                    </ThemedText>
+                  ) : null}
+                  {(organizer.socials?.facebook ||
+                    organizer.socials?.instagram) && (
+                    <View style={{ marginTop: 4 }}>
+                      {organizer.socials?.facebook ? (
+                        <ThemedText
                           style={{
-                            flex: 1,
-                            backgroundColor: "rgba(0,0,0,0.15)",
-                            justifyContent: "center",
-                            alignItems: "center",
+                            fontSize: 13,
+                            color: isDark ? "#D0D5DD" : "#344054",
                           }}
                         >
-                          <View
-                            style={{
-                              backgroundColor: "#fff",
-                              borderRadius: 12,
-                              paddingVertical: 8,
-                              paddingHorizontal: 0,
-                              minWidth: 160,
-                              elevation: 4,
-                            }}
-                          >
-                            <Pressable
-                              style={({ pressed }) => ({
-                                paddingVertical: 12,
-                                paddingHorizontal: 18,
-                                flexDirection: "row",
-                                alignItems: "center",
-                                backgroundColor: pressed ? "#F2F4F7" : "#fff",
-                              })}
-                              onPress={() => {
-                                setEditingProfileIdx(idx);
-                                setMenuVisibleIdx(null);
-                                setTimeout(
-                                  () => profileSheetRef.current?.present(),
-                                  100,
-                                );
-                              }}
-                            >
-                              <ThemedText className="text-[15px] mr-2">
-                                Edit
-                              </ThemedText>
-                            </Pressable>
-                            <Pressable
-                              style={({ pressed }) => ({
-                                paddingVertical: 12,
-                                paddingHorizontal: 18,
-                                flexDirection: "row",
-                                alignItems: "center",
-                                backgroundColor: pressed ? "#F2F4F7" : "#fff",
-                              })}
-                              onPress={() => setMenuVisibleIdx(null)}
-                            >
-                              <ThemedText className="text-[15px] mr-2">
-                                View
-                              </ThemedText>
-                            </Pressable>
-                            <Pressable
-                              style={({ pressed }) => ({
-                                paddingVertical: 12,
-                                paddingHorizontal: 18,
-                                flexDirection: "row",
-                                alignItems: "center",
-                                backgroundColor: pressed ? "#F2F4F7" : "#fff",
-                              })}
-                              onPress={() => handleDeleteProfile(idx)}
-                            >
-                              <ThemedText
-                                className="text-[15px] mr-2"
-                                style={{ color: "#F04438" }}
-                              >
-                                Delete
-                              </ThemedText>
-                            </Pressable>
-                          </View>
-                        </View>
-                      </TouchableWithoutFeedback>
-                    </Modal>
-                  </View>
-                ))}
+                          Facebook: {organizer.socials.facebook}
+                        </ThemedText>
+                      ) : null}
+                      {organizer.socials?.instagram ? (
+                        <ThemedText
+                          style={{
+                            fontSize: 13,
+                            color: isDark ? "#D0D5DD" : "#344054",
+                          }}
+                        >
+                          Instagram: {organizer.socials.instagram}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                  )}
+                </View>
+                {/* Three-dot menu */}
+                <TouchableOpacity
+                  onPress={() => setMenuVisible(true)}
+                  style={{ padding: 8 }}
+                >
+                  <MoreVertical size={22} color={textMuted} />
+                </TouchableOpacity>
+                <Modal
+                  visible={menuVisible}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setMenuVisible(false)}
+                >
+                  <TouchableWithoutFeedback
+                    onPress={() => setMenuVisible(false)}
+                  >
+                    <View
+                      style={{
+                        flex: 1,
+                        backgroundColor: "rgba(0,0,0,0.15)",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <View
+                        style={{
+                          backgroundColor: card,
+                          borderRadius: 12,
+                          paddingVertical: 8,
+                          minWidth: 160,
+                          elevation: 4,
+                          borderWidth: isDark ? 1 : 0,
+                          borderColor: border,
+                        }}
+                      >
+                        <Pressable
+                          style={({ pressed }) => ({
+                            paddingVertical: 12,
+                            paddingHorizontal: 18,
+                            backgroundColor: pressed
+                              ? isDark
+                                ? "#1F2937"
+                                : "#F2F4F7"
+                              : card,
+                          })}
+                          onPress={() => {
+                            setMenuVisible(false);
+                            setTimeout(
+                              () => profileSheetRef.current?.present(),
+                              100,
+                            );
+                          }}
+                        >
+                          <ThemedText className="text-[15px]">Edit</ThemedText>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </Modal>
+              </View>
+            )}
             {/* Add/Edit OrganizerProfileForm */}
             <OrganizerProfileForm
               ref={profileSheetRef}
-              onClose={() => {
-                setEditingProfileIdx(null);
-                profileSheetRef.current?.dismiss();
-              }}
-              onSave={
-                editingProfileIdx === null
-                  ? handleAddProfile
-                  : handleEditProfile
-              }
-              initialValues={
-                editingProfileIdx !== null
-                  ? profiles[editingProfileIdx]
-                  : undefined
-              }
-              buttonLabel={
-                editingProfileIdx !== null ? "Save changes" : "Add Profile"
-              }
+              userId={userId}
+              existingOrganizer={organizer}
+              onClose={() => profileSheetRef.current?.dismiss()}
+              onSuccess={() => profileSheetRef.current?.dismiss()}
             />
           </ScrollView>
         )}
@@ -373,7 +354,7 @@ const OrganizerSettingsScreen = () => {
             ].map((campaign) => (
               <GlassCard
                 key={campaign.key}
-                isDark={false}
+                isDark={isDark}
                 style={{ padding: 12, borderRadius: 16, marginBottom: 18 }}
               >
                 <View

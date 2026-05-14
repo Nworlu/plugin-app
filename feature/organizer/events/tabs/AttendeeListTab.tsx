@@ -1,35 +1,46 @@
 import { ThemedText } from "@/components/themed-text";
 import AttendeeRecordCard from "@/feature/organizer/events/components/AttendeeRecordCard";
+import { useTicketsForEvent } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useLocalSearchParams } from "expo-router";
 import { Search } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
-
-const attendeeRows = Array.from({ length: 7 }).map((_, index) => ({
-  id: `attendee-${index + 1}`,
-  email: "Joneshighman@gmail.com",
-  packageName: "Individual package",
-  date: "01/09/2022 04:00pm",
-  progress: "4/4",
-  status: index < 2 ? "Pending" : "Checked-in",
-}));
+import {
+  ActivityIndicator,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const AttendeeListTab = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const [query, setQuery] = useState("");
 
-  const filteredRows = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    if (!term) return attendeeRows;
+  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  const { data: tickets, isLoading } = useTicketsForEvent(eventId ?? "");
 
-    return attendeeRows.filter(
+  const filteredRows = useMemo(() => {
+    const rows = (tickets ?? []).map((t) => ({
+      id: t.id,
+      email: t.holderInfo?.email ?? "—",
+      packageName: t.ticketData?.name ?? "General Admission",
+      date: t.purchaseDate ? new Date(t.purchaseDate).toLocaleString() : "—",
+      progress: "—",
+      status: t.checkedIn ? "Checked-in" : "Pending",
+    }));
+
+    const term = query.trim().toLowerCase();
+    if (!term) return rows;
+
+    return rows.filter(
       (row) =>
         row.email.toLowerCase().includes(term) ||
         row.packageName.toLowerCase().includes(term) ||
         row.status.toLowerCase().includes(term),
     );
-  }, [query]);
+  }, [tickets, query]);
 
   return (
     <>
@@ -152,26 +163,32 @@ const AttendeeListTab = () => {
         className="flex-1 mt-4"
         contentContainerStyle={{ paddingBottom: 20 }}
       >
-        <View className="gap-3">
-          {filteredRows.map((row) => (
-            <AttendeeRecordCard
-              key={row.id}
-              email={row.email}
-              packageName={row.packageName}
-              date={row.date}
-              progress={row.progress}
-              status={row.status as "Pending" | "Checked-in"}
-            />
-          ))}
+        {isLoading ? (
+          <View className="items-center py-10">
+            <ActivityIndicator size="large" color="#F15827" />
+          </View>
+        ) : (
+          <View className="gap-3">
+            {filteredRows.map((row) => (
+              <AttendeeRecordCard
+                key={row.id}
+                email={row.email}
+                packageName={row.packageName}
+                date={row.date}
+                progress={row.progress}
+                status={row.status as "Pending" | "Checked-in"}
+              />
+            ))}
 
-          {filteredRows.length === 0 ? (
-            <ThemedText
-              className={`text-center mt-6 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
-            >
-              No attendees match your search.
-            </ThemedText>
-          ) : null}
-        </View>
+            {filteredRows.length === 0 ? (
+              <ThemedText
+                className={`text-center mt-6 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
+              >
+                No attendees match your search.
+              </ThemedText>
+            ) : null}
+          </View>
+        )}
       </ScrollView>
     </>
   );

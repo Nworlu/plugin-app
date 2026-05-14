@@ -1,4 +1,5 @@
 import { BookingsProvider } from "@/providers/BookingsProvider";
+import { QueryProvider } from "@/providers/QueryProvider";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -55,14 +56,16 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <BookingsProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BottomSheetModalProvider>
-            <RootLayoutContent />
-          </BottomSheetModalProvider>
-        </GestureHandlerRootView>
-      </BookingsProvider>
-    </ThemeProvider>
+    <QueryProvider>
+      <ThemeProvider>
+        <BookingsProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <BottomSheetModalProvider>
+              <RootLayoutContent />
+            </BottomSheetModalProvider>
+          </GestureHandlerRootView>
+        </BookingsProvider>
+      </ThemeProvider>
+    </QueryProvider>
   );
 }

@@ -1,9 +1,10 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useUpdateUser } from "@/hooks/api";
 import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -32,13 +33,39 @@ type Errors = {
 export default function CompleteProfileScreen() {
   const insets = useSafeAreaInsets();
   const saveProfile = useAuthStore((s) => s.saveProfile);
+  const refreshUser = useAuthStore((s) => s.refreshUser);
+  const user = useAuthStore((s) => s.user);
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
+  const [firstName, setFirstName] = useState(user?.name?.firstname || "");
+  const [lastName, setLastName] = useState(user?.name?.lastname || "");
+  const [phone, setPhone] = useState(user?.contact?.phone || "");
+  const [selectedCountry, setSelectedCountry] = useState(
+    COUNTRY_CODES.find((c) => c.code === user?.contact?.country) ??
+      COUNTRY_CODES[0],
+  );
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
+
+  // Sync user data into form fields when user first becomes available in the store
+  useEffect(() => {
+    if (!user) return;
+    if (user.name?.firstname) setFirstName(user.name.firstname);
+    if (user.name?.lastname) setLastName(user.name.lastname);
+    if (user.contact?.phone) {
+      const match = COUNTRY_CODES.find((c) =>
+        user.contact!.phone!.startsWith(c.code),
+      );
+      if (match) {
+        setSelectedCountry(match);
+        setPhone(user.contact.phone.slice(match.code.length));
+      } else {
+        setPhone(user.contact.phone);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id]);
+
+  const { mutate: updateUser, isPending } = useUpdateUser(user?._id ?? "");
 
   const handleContinue = async () => {
     const newErrors: Errors = {};
@@ -50,16 +77,41 @@ export default function CompleteProfileScreen() {
       return;
     }
     setErrors({});
-    await saveProfile({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      phone: phone.trim(),
-      countryCode: selectedCountry.code,
-      location: "",
-      notifyUpdates: false,
-      notifyAttending: false,
-    });
-    router.replace("/(auth)/notifications");
+
+    const fullPhone = `${selectedCountry.code}${phone.trim()}`;
+
+    updateUser(
+      {
+        name: {
+          firstname: firstName.trim(),
+          lastname: lastName.trim(),
+        },
+        contact: {
+          phone: fullPhone,
+          country: selectedCountry.code,
+        },
+        email: user?.email, // --- NOTE: email is required by backend for update, but we don't want to allow changing it here, so we just resend the existing email ---
+        // email: user?.email, --- IGNORE ---
+        // firstName: firstName.trim(),
+        // lastName: lastName.trim(),
+        // phone: fullPhone,
+      },
+      {
+        onSuccess: async () => {
+          await refreshUser();
+          await saveProfile({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            phone: fullPhone,
+            countryCode: selectedCountry.code,
+            location: "",
+            notifyUpdates: false,
+            notifyAttending: false,
+          });
+          router.replace("/(auth)/notifications");
+        },
+      },
+    );
   };
 
   return (
@@ -252,6 +304,8 @@ export default function CompleteProfileScreen() {
               </View>
             )}
           </View>
+
+          {/* Password */}
         </View>
       </ScrollView>
 
@@ -261,8 +315,9 @@ export default function CompleteProfileScreen() {
         style={{ paddingBottom: insets.bottom + 16, paddingTop: 14 }}
       >
         <GradientButton
-          label="Continue"
+          label={isPending ? "Saving..." : "Continue"}
           onPress={handleContinue}
+          disabled={isPending}
           height={52}
           borderRadius={14}
         />

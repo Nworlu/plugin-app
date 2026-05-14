@@ -1,34 +1,62 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useLoginStep2, useRegisterStep2 } from "@/hooks/api/use-auth";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetTextInput,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { router, useLocalSearchParams } from "expo-router";
 import { CheckCircle } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Image,
+  Keyboard,
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 5;
 const RESEND_SECONDS = 299; // 4:59
 
 export default function VerifyScreen() {
   const insets = useSafeAreaInsets();
-  const { email } = useLocalSearchParams<{ email: string }>();
-  const { login } = useAuthStore();
+  const { email, mode } = useLocalSearchParams<{
+    email: string;
+    mode?: "register" | "login";
+  }>();
+
+  const isLoginMode = mode === "login";
+
+  const { mutate: loginStep2 } = useLoginStep2();
+  const { mutate: registerStep2 } = useRegisterStep2();
+  const refreshUser = useAuthStore((s) => s.refreshUser);
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(RESEND_SECONDS);
   const [canResend, setCanResend] = useState(false);
 
   const inputRefs = useRef<(TextInput | null)[]>(Array(CODE_LENGTH).fill(null));
+  const sheetRef = useRef<BottomSheetModal>(null);
+
+  // Auto-present on mount
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    const t = setTimeout(() => sheet?.present(), 100);
+    return () => {
+      clearTimeout(t);
+    };
+  }, []);
 
   // Countdown timer
   useEffect(() => {
@@ -56,13 +84,11 @@ export default function VerifyScreen() {
   };
 
   const handleChange = (text: string, index: number) => {
-    // Take only the last character typed
     const char = text.slice(-1);
     const updated = [...code];
     updated[index] = char;
     setCode(updated);
     if (error) setError("");
-
     if (char && index < CODE_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
       setFocusedIndex(index + 1);
@@ -84,26 +110,59 @@ export default function VerifyScreen() {
     }
   };
 
-  const [verified, setVerified] = useState(false);
-
-  const handleVerify = async () => {
+  const handleVerify = () => {
     const fullCode = code.join("");
     if (fullCode.length < CODE_LENGTH) {
-      setError("Enter the 6-digit verification code");
+      setError("Enter the 5-digit verification code");
       return;
     }
     setVerifying(true);
-    try {
-      // Simulated verify — replace with real API call in production
-      await login(email ?? "");
-      setVerified(true);
-      // Brief green "Account Verified" moment before navigating
-      setTimeout(() => {
-        router.replace("/(auth)/complete-profile");
-      }, 900);
-    } catch {
-      setError("Invalid code. Please try again.");
-      setVerifying(false);
+
+    if (isLoginMode) {
+      loginStep2(
+        { email: email ?? "", code: fullCode },
+        {
+          onSuccess: () => {
+            setVerified(true);
+            setTimeout(() => {
+              router.replace("/(organizer)/(tabs)/" as any);
+            }, 900);
+          },
+          onError: (err: unknown) => {
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Invalid code. Please try again.",
+            );
+            setVerifying(false);
+          },
+        },
+      );
+    } else {
+      registerStep2(
+        { code: fullCode, email: email ?? "" },
+        {
+          onSuccess: async () => {
+            setVerified(true);
+            try {
+              await refreshUser();
+            } catch {
+              // non-critical — complete-profile will still work, just won't pre-fill
+            }
+            setTimeout(() => {
+              router.replace("/(auth)/complete-profile" as any);
+            }, 900);
+          },
+          onError: (err: unknown) => {
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Invalid code. Please try again.",
+            );
+            setVerifying(false);
+          },
+        },
+      );
     }
   };
 
@@ -112,10 +171,10 @@ export default function VerifyScreen() {
     const focused = focusedIndex === index;
     const hasError = !!error;
     return (
-      <TextInput
+      <BottomSheetTextInput
         key={index}
         ref={(r) => {
-          inputRefs.current[index] = r;
+          inputRefs.current[index] = r ?? null;
         }}
         value={code[index]}
         onChangeText={(t) => handleChange(t, index)}
@@ -134,8 +193,21 @@ export default function VerifyScreen() {
     );
   };
 
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.01}
+        pressBehavior="none"
+      />
+    ),
+    [],
+  );
+
   return (
-    <View className="flex-1 bg-black">
+    <View style={{ flex: 1 }}>
       {/* Full-bleed background */}
       <Image
         source={require("@/assets/images/event/event-3.jpg")}
@@ -144,87 +216,118 @@ export default function VerifyScreen() {
       />
       <View style={StyleSheet.absoluteFill} className="bg-black/45" />
 
-      {/* Anchor to bottom */}
-      <View className="flex-1 justify-end">
-        <View
-          className="bg-white rounded-t-[28px] px-6 pt-8"
-          style={{ paddingBottom: insets.bottom + 28 }}
-        >
-          {/* Handle */}
-          <View className="w-10 h-1 bg-[#E4E7EC] rounded-full self-center mb-6" />
-
-          <ThemedText weight="700" className="text-[#101928] text-2xl mb-1.5">
-            Verify Account
-          </ThemedText>
-          <ThemedText
-            weight="400"
-            className="text-[#667085] text-[13px] leading-5 mb-7"
+      <BottomSheetModal
+        ref={sheetRef}
+        enableDynamicSizing
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
+        backdropComponent={renderBackdrop}
+        enablePanDownToClose={false}
+        backgroundStyle={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
+        handleIndicatorStyle={{ backgroundColor: "#E4E7EC" }}
+      >
+        <BottomSheetView>
+          <TouchableWithoutFeedback
+            onPress={Keyboard.dismiss}
+            accessible={false}
           >
-            Enter the verification code sent to{" "}
-            <ThemedText weight="700" className="text-[#D9302A]">
-              {email}
-            </ThemedText>{" "}
-            to verify your account
-          </ThemedText>
-
-          {/* OTP row  O O O - O O O */}
-          <View className="flex-row items-center justify-center gap-2 mb-2">
-            {[0, 1, 2].map(renderCell)}
-            <ThemedText weight="700" className="text-[#344054] text-2xl mx-1">
-              -
-            </ThemedText>
-            {[3, 4, 5].map(renderCell)}
-          </View>
-
-          {error ? (
-            <ThemedText
-              weight="400"
-              className="text-[#D9302A] text-[11px] mt-1 text-center"
+            <View
+              style={{
+                paddingHorizontal: 24,
+                paddingTop: 8,
+                paddingBottom: insets.bottom + 28,
+              }}
             >
-              {error}
-            </ThemedText>
-          ) : null}
+              {/* Handle */}
+              <View className="w-10 h-1 bg-[#E4E7EC] rounded-full self-center mb-6" />
 
-          {/* Resend */}
-          <View className="flex-row items-center justify-center mt-4">
-            <ThemedText weight="400" className="text-[#667085] text-[13px]">
-              Didn&apos;t get the code?{" "}
-            </ThemedText>
-            {canResend ? (
-              <TouchableOpacity activeOpacity={0.7} onPress={handleResend}>
-                <ThemedText weight="700" className="text-[#D9302A] text-[13px]">
-                  Resend
+              <ThemedText
+                weight="700"
+                className="text-[#101928] text-2xl mb-1.5"
+              >
+                Verify Account
+              </ThemedText>
+              <ThemedText
+                weight="400"
+                className="text-[#667085] text-[13px] leading-5 mb-7"
+              >
+                Enter the verification code sent to{" "}
+                <ThemedText weight="700" className="text-[#D9302A]">
+                  {email}
+                </ThemedText>{" "}
+                to verify your account
+              </ThemedText>
+
+              {/* OTP row  O O O - O O */}
+              <View className="flex-row items-center justify-center gap-2 mb-2">
+                {[0, 1, 2].map(renderCell)}
+                {/* <ThemedText
+                  weight="700"
+                  className="text-[#344054] text-2xl mx-1"
+                >
+                  -
+                </ThemedText> */}
+                {[3, 4].map(renderCell)}
+              </View>
+
+              {error ? (
+                <ThemedText
+                  weight="400"
+                  className="text-[#D9302A] text-[11px] mt-1 text-center"
+                >
+                  {error}
                 </ThemedText>
-              </TouchableOpacity>
-            ) : (
-              <ThemedText weight="500" className="text-[#667085] text-[13px]">
-                Resend in {formattedCountdown()}
-              </ThemedText>
-            )}
-          </View>
+              ) : null}
 
-          {verified ? (
-            <TouchableOpacity
-              activeOpacity={1}
-              className="h-[52px] rounded-[14px] mt-5 items-center justify-center flex-row gap-2 bg-[#2E7D32]"
-            >
-              <ThemedText weight="700" className="text-white text-[15px]">
-                Account Verified
-              </ThemedText>
-              <CheckCircle size={18} color="#fff" />
-            </TouchableOpacity>
-          ) : (
-            <GradientButton
-              label={verifying ? "Verifying Account" : "Verify"}
-              onPress={handleVerify}
-              height={52}
-              borderRadius={14}
-              loading={verifying}
-              style={{ marginTop: 20 }}
-            />
-          )}
-        </View>
-      </View>
+              {/* Resend */}
+              <View className="flex-row items-center justify-center mt-4">
+                <ThemedText weight="400" className="text-[#667085] text-[13px]">
+                  Didn&apos;t get the code?{" "}
+                </ThemedText>
+                {canResend ? (
+                  <TouchableOpacity activeOpacity={0.7} onPress={handleResend}>
+                    <ThemedText
+                      weight="700"
+                      className="text-[#D9302A] text-[13px]"
+                    >
+                      Resend
+                    </ThemedText>
+                  </TouchableOpacity>
+                ) : (
+                  <ThemedText
+                    weight="500"
+                    className="text-[#667085] text-[13px]"
+                  >
+                    Resend in {formattedCountdown()}
+                  </ThemedText>
+                )}
+              </View>
+
+              {verified ? (
+                <TouchableOpacity
+                  activeOpacity={1}
+                  className="h-[52px] rounded-[14px] mt-5 items-center justify-center flex-row gap-2 bg-[#2E7D32]"
+                >
+                  <ThemedText weight="700" className="text-white text-[15px]">
+                    Account Verified
+                  </ThemedText>
+                  <CheckCircle size={18} color="#fff" />
+                </TouchableOpacity>
+              ) : (
+                <GradientButton
+                  label={verifying ? "Verifying Account" : "Verify"}
+                  onPress={handleVerify}
+                  height={52}
+                  borderRadius={14}
+                  loading={verifying}
+                  style={{ marginTop: 20 }}
+                />
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   );
 }

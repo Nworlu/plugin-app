@@ -11,29 +11,70 @@ import {
   WithdrawalHistoryCard,
   WithdrawalSummaryCard,
 } from "@/feature/organizer/earnings/components";
-import { LinkedBankAccount } from "@/feature/organizer/earnings/constants/earnings";
+import {
+  useAddBankAccount,
+  useBankDetails,
+  useBanks,
+  useOrganizer,
+  useOrganizerStats,
+  useValidateBankAccount,
+  useWithdrawalHistory,
+  useWithdrawalStats,
+} from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useAuthStore } from "@/store/auth-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import React, { useEffect, useRef, useState } from "react";
-import { ScrollView } from "react-native";
+import { ScrollView, View } from "react-native";
 
 const EarningsScreen = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const user = useAuthStore((s) => s.user);
+  const userId = user?._id ?? "";
+  // const { data: organizer } = useOrganizer(userId);
+  const { data: orgStats } = useOrganizerStats(userId ?? "");
   const payoutSheetRef = useRef<BottomSheetModal>(null);
   const withdrawalSheetRef = useRef<BottomSheetModal>(null);
   const [showBanner, setShowBanner] = useState(true);
   const [hideBalance, setHideBalance] = useState(false);
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
-  const [showBankPicker, setShowBankPicker] = useState(false);
   const [selectedBank, setSelectedBank] = useState("");
+
+  const [selectedBankCode, setSelectedBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [isResolvingAccount, setIsResolvingAccount] = useState(false);
   const [resolvedAccountName, setResolvedAccountName] = useState("");
-  const [linkedAccount, setLinkedAccount] = useState<LinkedBankAccount | null>(
-    null,
-  );
+
+  console.log("orgStats", orgStats);
+
+  const {
+    data: banksData,
+    isLoading: isBanksLoading,
+    isError: isBanksError,
+  } = useBanks();
+  const bankNames = banksData?.map((b) => b.name) ?? [];
+
+  const { data: bankDetails } = useBankDetails();
+  const linkedAccount = bankDetails
+    ? {
+        bankName: bankDetails.bankName ?? "",
+        accountNumber: bankDetails.accountNumber,
+        accountName: bankDetails.accountHolderName,
+      }
+    : null;
+
+  const { mutate: validateAccount, isPending: isResolvingAccount } =
+    useValidateBankAccount();
+
+  const { mutate: addBankAccountApi } = useAddBankAccount();
+
+  const { data: withdrawalHistory } = useWithdrawalHistory();
+  const { data: withdrawalStats } = useWithdrawalStats();
+
+  const balance = user?.wallet ?? 0;
+  const totalEarnings =
+    withdrawalStats?.totalWithdrawn ?? orgStats?.totalRevenue ?? 0;
 
   const canSubmitBankAccount =
     selectedBank.length > 0 &&
@@ -64,50 +105,49 @@ const EarningsScreen = () => {
     setAccountNumber(digits);
     setResolvedAccountName("");
 
-    if (digits.length === 10 && selectedBank) {
-      setIsResolvingAccount(true);
-      setTimeout(() => {
-        setResolvedAccountName("OLIVIA MAGARET");
-        setIsResolvingAccount(false);
-      }, 900);
-      return;
+    if (digits.length === 10 && selectedBankCode) {
+      validateAccount(
+        { accountNumber: digits, bankCode: selectedBankCode },
+        {
+          onSuccess: (data) => {
+            setResolvedAccountName(data.accountName ?? "");
+          },
+        },
+      );
     }
-
-    setIsResolvingAccount(false);
   };
 
   const handleSelectBank = (bank: string) => {
     setSelectedBank(bank);
-    setShowBankPicker(false);
+    const found = banksData?.find((b) => b.name === bank);
+    setSelectedBankCode(found?.code ?? "");
+    setAccountNumber("");
     setResolvedAccountName("");
-
-    if (accountNumber.length === 10) {
-      setIsResolvingAccount(true);
-      setTimeout(() => {
-        setResolvedAccountName("OLIVIA MAGARET");
-        setIsResolvingAccount(false);
-      }, 900);
-    }
   };
 
   const handleAddBankAccount = () => {
     if (!canSubmitBankAccount) return;
 
-    setLinkedAccount({
-      bankName: selectedBank,
-      accountNumber,
-      accountName: resolvedAccountName,
-    });
-    setShowPayoutModal(false);
-    setShowBankPicker(false);
+    addBankAccountApi(
+      {
+        bankCode: selectedBankCode,
+        bankName: selectedBank,
+        accountNumber,
+        accountHolderName: resolvedAccountName,
+      },
+      {
+        onSuccess: () => {
+          setShowPayoutModal(false);
+        },
+      },
+    );
   };
 
   const handleRemoveLinkedAccount = () => {
-    setLinkedAccount(null);
     setSelectedBank("");
+    setSelectedBankCode("");
     setAccountNumber("");
     setResolvedAccountName("");
-    setIsResolvingAccount(false);
   };
 
   const handleEditLinkedAccount = () => {
@@ -147,16 +187,76 @@ const EarningsScreen = () => {
         <AnimatedEntry index={2}>
           <BalanceCard
             hideBalance={hideBalance}
+            balance={balance}
             onToggleBalance={() => setHideBalance((value) => !value)}
             onWithdraw={() => setShowWithdrawalModal(true)}
           />
         </AnimatedEntry>
 
         <AnimatedEntry index={3}>
-          <TotalEarningsCard />
+          <TotalEarningsCard totalEarnings={totalEarnings} />
         </AnimatedEntry>
 
-        <AnimatedEntry index={4}>
+        {orgStats ? (
+          <AnimatedEntry index={4}>
+            <View
+              className="mt-5 rounded-3xl px-4 py-4 flex-row justify-between"
+              style={{
+                borderWidth: 1,
+                borderColor: isDark ? "#374151" : "#E4E7EC",
+                backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+              }}
+            >
+              <View className="items-center flex-1">
+                <ThemedText weight="700" className="text-xl">
+                  {orgStats.totalTicketsSold}
+                </ThemedText>
+                <ThemedText
+                  weight="500"
+                  className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
+                >
+                  Tickets Sold
+                </ThemedText>
+              </View>
+              <View
+                style={{
+                  width: 1,
+                  backgroundColor: isDark ? "#374151" : "#E4E7EC",
+                }}
+              />
+              <View className="items-center flex-1">
+                <ThemedText weight="700" className="text-xl">
+                  {orgStats.totalEvents}
+                </ThemedText>
+                <ThemedText
+                  weight="500"
+                  className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
+                >
+                  Total Events
+                </ThemedText>
+              </View>
+              <View
+                style={{
+                  width: 1,
+                  backgroundColor: isDark ? "#374151" : "#E4E7EC",
+                }}
+              />
+              <View className="items-center flex-1">
+                <ThemedText weight="700" className="text-xl">
+                  {orgStats.totalFollowers}
+                </ThemedText>
+                <ThemedText
+                  weight="500"
+                  className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
+                >
+                  Followers
+                </ThemedText>
+              </View>
+            </View>
+          </AnimatedEntry>
+        ) : null}
+
+        <AnimatedEntry index={5}>
           <PayoutInformationCard
             linkedAccount={linkedAccount}
             onAddBankAccount={() => setShowPayoutModal(true)}
@@ -165,12 +265,15 @@ const EarningsScreen = () => {
           />
         </AnimatedEntry>
 
-        <AnimatedEntry index={5}>
-          <WithdrawalSummaryCard />
+        <AnimatedEntry index={6}>
+          <WithdrawalSummaryCard
+            stats={withdrawalStats}
+            history={withdrawalHistory ?? []}
+          />
         </AnimatedEntry>
 
-        <AnimatedEntry index={6}>
-          <WithdrawalHistoryCard />
+        <AnimatedEntry index={7}>
+          <WithdrawalHistoryCard history={withdrawalHistory ?? []} />
         </AnimatedEntry>
       </ScrollView>
 
@@ -180,16 +283,23 @@ const EarningsScreen = () => {
         accountNumber={accountNumber}
         resolvedAccountName={resolvedAccountName}
         isResolvingAccount={isResolvingAccount}
-        showBankPicker={showBankPicker}
+        banks={bankNames}
+        banksLoading={isBanksLoading}
+        banksError={isBanksError}
         onClose={() => {
           setShowPayoutModal(false);
-          setShowBankPicker(false);
+          setSelectedBank("");
+          setSelectedBankCode("");
+          setAccountNumber("");
+          setResolvedAccountName("");
         }}
         onDismiss={() => {
           setShowPayoutModal(false);
-          setShowBankPicker(false);
+          setSelectedBank("");
+          setSelectedBankCode("");
+          setAccountNumber("");
+          setResolvedAccountName("");
         }}
-        onOpenBankPicker={() => setShowBankPicker((value) => !value)}
         onSelectBank={handleSelectBank}
         onChangeAccountNumber={handleAccountNumberChange}
         onSubmit={handleAddBankAccount}
@@ -198,6 +308,7 @@ const EarningsScreen = () => {
 
       <WithdrawalFlowModal
         ref={withdrawalSheetRef}
+        balance={balance}
         onClose={() => setShowWithdrawalModal(false)}
       />
     </AppSafeArea>

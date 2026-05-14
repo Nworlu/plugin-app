@@ -149,15 +149,21 @@ const EmailCampaignReviewModal = React.forwardRef<
             style={{
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: "#E4E7EC",
-              backgroundColor: "#F9FAFB",
+              borderColor: isDark ? "#374151" : "#E4E7EC",
+              backgroundColor: isDark ? "#1A1A1A" : "#F9FAFB",
               padding: 12,
               flexDirection: "row",
               alignItems: "center",
               marginBottom: 18,
             }}
           >
-            <ThemedText style={{ color: "#344054", fontSize: 14, flex: 1 }}>
+            <ThemedText
+              style={{
+                color: isDark ? "#E4E7EC" : "#344054",
+                fontSize: 14,
+                flex: 1,
+              }}
+            >
               Payment for selected plan is required to continue{" "}
               <ThemedText
                 style={{ color: "#F04438", textDecorationLine: "underline" }}
@@ -365,7 +371,11 @@ const EmailCampaignReviewModal = React.forwardRef<
                       borderColor:
                         selectedType === type.value ? "#2E90FA" : "#D0D5DD",
                       backgroundColor:
-                        selectedType === type.value ? "#2E90FA" : "#fff",
+                        selectedType === type.value
+                          ? "#2E90FA"
+                          : isDark
+                            ? "#2C2C2E"
+                            : "#fff",
                       alignItems: "center",
                       justifyContent: "center",
                       marginLeft: 8,

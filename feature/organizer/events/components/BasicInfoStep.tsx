@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/providers/ThemeProvider";
+import * as ImagePicker from "expo-image-picker";
 import { ImageIcon, Pencil, Trash2 } from "lucide-react-native";
 import React from "react";
 import { Image, TextInput, TouchableOpacity, View } from "react-native";
@@ -13,6 +14,12 @@ type Props = {
   setEventName: (v: string) => void;
   description: string;
   setDescription: (v: string) => void;
+  onImagePicked?: (
+    field: "banner" | "thumbnail",
+    uri: string,
+    base64: string,
+    mimeType: string,
+  ) => void;
 };
 
 export default function BasicInfoStep({
@@ -24,14 +31,35 @@ export default function BasicInfoStep({
   setEventName,
   description,
   setDescription,
+  onImagePicked,
 }: Props) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   const placeholderColor = isDark ? "#555" : "#98A2B3";
 
-  const mockPickImage = (setter: (uri: string) => void) => {
-    setter("https://dummyimage.com/640x360/111/fff&text=Event+Image");
+  const pickImage = async (
+    field: "banner" | "thumbnail",
+    setter: (uri: string | null) => void,
+  ) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const { uri, base64 } = result.assets[0];
+      // Always normalise to JPEG — GCS signed URLs require exact Content-Type match.
+      // Expo on iOS can return image/heic even when quality compression is applied.
+      const normalizedMime = "image/jpeg";
+      setter(uri);
+      if (base64 && onImagePicked) {
+        onImagePicked(field, uri, base64, normalizedMime);
+      }
+    }
   };
 
   return (
@@ -66,7 +94,7 @@ export default function BasicInfoStep({
             <TouchableOpacity
               className="w-8 h-8 rounded-lg items-center justify-center border border-[#E4E7EC]"
               style={{ backgroundColor: "rgba(255,255,255,0.92)" }}
-              onPress={() => mockPickImage(setEventBanner)}
+              onPress={() => pickImage("banner", setEventBanner)}
             >
               <Pencil size={14} color="#344054" />
             </TouchableOpacity>
@@ -81,7 +109,7 @@ export default function BasicInfoStep({
         </View>
       ) : (
         <TouchableOpacity
-          onPress={() => mockPickImage(setEventBanner)}
+          onPress={() => pickImage("banner", setEventBanner)}
           className={`border border-dashed rounded-xl items-center justify-center py-7 mb-4 ${
             isDark
               ? "border-[#3A3A3C] bg-[#1C1C1E]"
@@ -125,7 +153,7 @@ export default function BasicInfoStep({
             <TouchableOpacity
               className="w-7 h-7 rounded-[7px] items-center justify-center border border-[#E4E7EC]"
               style={{ backgroundColor: "rgba(255,255,255,0.92)" }}
-              onPress={() => mockPickImage(setThumbnail)}
+              onPress={() => pickImage("thumbnail", setThumbnail)}
             >
               <Pencil size={12} color="#344054" />
             </TouchableOpacity>
@@ -140,7 +168,7 @@ export default function BasicInfoStep({
         </View>
       ) : (
         <TouchableOpacity
-          onPress={() => mockPickImage(setThumbnail)}
+          onPress={() => pickImage("thumbnail", setThumbnail)}
           className={`border border-dashed rounded-xl items-center justify-center mb-4 ${
             isDark
               ? "border-[#3A3A3C] bg-[#1C1C1E]"

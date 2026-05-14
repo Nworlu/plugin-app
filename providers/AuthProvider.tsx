@@ -1,91 +1,63 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
-const ONBOARDING_KEY = "hasSeenOnboarding";
-const AUTH_EMAIL_KEY = "authEmail";
+import { useAuthStore } from "@/store/auth-store";
+import { useOrganizerStore } from "@/store/organizer-store";
+import type { AuthUser } from "@/utils/api/types";
+import React, { createContext, useContext, useEffect } from "react";
 
 type AuthContextType = {
   isLoading: boolean;
   hasSeenOnboarding: boolean;
   isAuthenticated: boolean;
   userEmail: string;
+  user: AuthUser | null;
   completeOnboarding: () => Promise<void>;
   login: (email: string) => Promise<void>;
+  loginStep1: (email: string, password: string) => Promise<void>;
+  loginStep2: (code: string) => Promise<void>;
+  registerStep1: (email: string, phone: string) => Promise<void>;
+  registerStep2: (payload: {
+    code: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }) => Promise<void>;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
+  const store = useAuthStore();
+  const hydrateOrganizer = useOrganizerStore((s) => s.hydrateOrganizer);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [onboarded, email] = await Promise.all([
-          AsyncStorage.getItem(ONBOARDING_KEY),
-          AsyncStorage.getItem(AUTH_EMAIL_KEY),
-        ]);
-        setHasSeenOnboarding(onboarded === "true");
-        if (email) {
-          setUserEmail(email);
-          setIsAuthenticated(true);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    })();
+    store.hydrate();
+    hydrateOrganizer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const completeOnboarding = useCallback(async () => {
-    await AsyncStorage.setItem(ONBOARDING_KEY, "true");
-    setHasSeenOnboarding(true);
-  }, []);
-
-  const login = useCallback(async (email: string) => {
-    await AsyncStorage.setItem(AUTH_EMAIL_KEY, email);
-    setUserEmail(email);
-    setIsAuthenticated(true);
-  }, []);
-
-  const logout = useCallback(async () => {
-    await AsyncStorage.removeItem(AUTH_EMAIL_KEY);
-    setUserEmail("");
-    setIsAuthenticated(false);
-  }, []);
-
-  const value = useMemo(
-    () => ({
-      isLoading,
-      hasSeenOnboarding,
-      isAuthenticated,
-      userEmail,
-      completeOnboarding,
-      login,
-      logout,
-    }),
-    [
-      isLoading,
-      hasSeenOnboarding,
-      isAuthenticated,
-      userEmail,
-      completeOnboarding,
-      login,
-      logout,
-    ],
+  return (
+    <AuthContext.Provider
+      value={{
+        isLoading: store.isLoading,
+        hasSeenOnboarding: store.hasSeenOnboarding,
+        isAuthenticated: store.isAuthenticated,
+        userEmail: store.userEmail,
+        user: store.user,
+        completeOnboarding: store.completeOnboarding,
+        login: store.login,
+        loginStep1: store.loginStep1,
+        loginStep2: store.loginStep2,
+        registerStep1: store.registerStep1,
+        registerStep2: store.registerStep2,
+        refreshUser: store.refreshUser,
+        logout: store.logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

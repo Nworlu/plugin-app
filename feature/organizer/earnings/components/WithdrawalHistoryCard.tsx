@@ -1,9 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
-import {
-  WITHDRAWAL_HISTORY,
-  WithdrawalRecord,
-} from "@/feature/organizer/earnings/constants/earnings";
 import { useTheme } from "@/providers/ThemeProvider";
+import type { Withdrawal } from "@/utils/api/types";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -30,10 +27,10 @@ const FilterSelectButton = ({
     className="flex-1 rounded-xl border border-[#D0D5DD] h-[56px] px-4 flex-row items-center gap-2"
   >
     {icon}
-    <ThemedText className="flex-1 text-[#475467] text-[15px] leading-5">
+    <ThemedText className="flex-1 text-[#475467] text-xs leading-5">
       {label}
     </ThemedText>
-    <ChevronDown size={22} color="#98A2B3" />
+    <ChevronDown size={14} color="#98A2B3" />
   </TouchableOpacity>
 );
 
@@ -143,12 +140,21 @@ const FilterOptionsSheet = React.forwardRef<
 FilterOptionsSheet.displayName = "FilterOptionsSheet";
 
 type TransactionFilter = "all" | "pending" | "completed";
+type DateRangeKey = "all-time" | "last-30" | "last-90" | "last-180";
 
 const DATE_RANGE_OPTIONS: FilterOption[] = [
-  { key: "jan-aug-2024", label: "Jan, 2024 - Aug, 2024" },
-  { key: "sep-dec-2024", label: "Sep, 2024 - Dec, 2024" },
-  { key: "jan-mar-2025", label: "Jan, 2025 - Mar, 2025" },
+  { key: "all-time", label: "All time" },
+  { key: "last-30", label: "Last 30 days" },
+  { key: "last-90", label: "Last 3 months" },
+  { key: "last-180", label: "Last 6 months" },
 ];
+
+const DATE_RANGE_DAYS: Record<DateRangeKey, number | null> = {
+  "all-time": null,
+  "last-30": 30,
+  "last-90": 90,
+  "last-180": 180,
+};
 
 const TRANSACTION_FILTER_OPTIONS: FilterOption[] = [
   { key: "all", label: "All transactions" },
@@ -157,13 +163,13 @@ const TRANSACTION_FILTER_OPTIONS: FilterOption[] = [
 ];
 
 type WithdrawalHistoryRowProps = {
-  item: WithdrawalRecord;
+  item: Withdrawal;
 };
 
 const WithdrawalHistoryRow = ({ item }: WithdrawalHistoryRowProps) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-  const isPending = item.status === "Pending";
+  const isPending = item.status.toLowerCase() === "pending";
 
   return (
     <View
@@ -174,17 +180,19 @@ const WithdrawalHistoryRow = ({ item }: WithdrawalHistoryRowProps) => {
         backgroundColor: isDark ? "#2D2D2D" : "#FFFFFF",
       }}
     >
-      <ThemedText className="text-[#8D8484] text-sm">
-        {item.reference}
-      </ThemedText>
+      <ThemedText className="text-[#8D8484] text-sm">{item.id}</ThemedText>
 
       <View className="mt-2 flex-row items-end justify-between gap-3">
         <View>
           <ThemedText weight="500" className="text-base">
-            {item.amount}
+            ₦{item.amount.toLocaleString()}
           </ThemedText>
           <ThemedText className="text-[#8D8484] text-sm mt-2">
-            {item.date}
+            {new Date(item.createdAt).toLocaleDateString("en-NG", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
           </ThemedText>
         </View>
 
@@ -209,35 +217,48 @@ const WithdrawalHistoryRow = ({ item }: WithdrawalHistoryRowProps) => {
   );
 };
 
-const WithdrawalHistoryCard = () => {
+const WithdrawalHistoryCard = ({
+  history = [],
+}: {
+  history?: Withdrawal[];
+}) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const dateSheetRef = useRef<BottomSheetModal>(null);
   const transactionSheetRef = useRef<BottomSheetModal>(null);
 
-  const [dateRangeKey, setDateRangeKey] = useState(DATE_RANGE_OPTIONS[0].key);
+  const [dateRangeKey, setDateRangeKey] = useState<DateRangeKey>("all-time");
   const [transactionFilter, setTransactionFilter] =
     useState<TransactionFilter>("all");
 
   const selectedDateRangeLabel =
     DATE_RANGE_OPTIONS.find((item) => item.key === dateRangeKey)?.label ??
-    DATE_RANGE_OPTIONS[0].label;
+    "All time";
 
   const selectedTransactionLabel =
     TRANSACTION_FILTER_OPTIONS.find((item) => item.key === transactionFilter)
       ?.label ?? "All transactions";
 
   const filteredHistory = useMemo(() => {
-    if (transactionFilter === "all") {
-      return WITHDRAWAL_HISTORY;
+    let result = history;
+
+    const days = DATE_RANGE_DAYS[dateRangeKey];
+    if (days !== null) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      result = result.filter((item) => new Date(item.createdAt) >= cutoff);
     }
 
-    return WITHDRAWAL_HISTORY.filter((item) =>
-      transactionFilter === "pending"
-        ? item.status === "Pending"
-        : item.status === "Completed",
-    );
-  }, [transactionFilter]);
+    if (transactionFilter !== "all") {
+      result = result.filter((item) =>
+        transactionFilter === "pending"
+          ? item.status.toLowerCase() === "pending"
+          : item.status.toLowerCase() !== "pending",
+      );
+    }
+
+    return result;
+  }, [dateRangeKey, transactionFilter, history]);
 
   return (
     <>
@@ -255,21 +276,31 @@ const WithdrawalHistoryCard = () => {
 
         <View className="mt-5 flex-row gap-3">
           <FilterSelectButton
-            icon={<CalendarDays size={28} color="#344054" strokeWidth={1.8} />}
+            icon={<CalendarDays size={16} color="#344054" strokeWidth={1.8} />}
             label={selectedDateRangeLabel}
             onPress={() => dateSheetRef.current?.present()}
           />
           <FilterSelectButton
-            icon={<Filter size={28} color="#344054" strokeWidth={1.8} />}
+            icon={<Filter size={16} color="#344054" strokeWidth={1.8} />}
             label={selectedTransactionLabel}
             onPress={() => transactionSheetRef.current?.present()}
           />
         </View>
 
         <View className="mt-5 gap-3">
-          {filteredHistory.map((item) => (
-            <WithdrawalHistoryRow key={item.id} item={item} />
-          ))}
+          {filteredHistory.length === 0 ? (
+            <View className="items-center py-10">
+              <ThemedText
+                className={`text-sm ${isDark ? "text-[#6B7280]" : "text-[#98A2B3]"}`}
+              >
+                No withdrawals match the selected filters.
+              </ThemedText>
+            </View>
+          ) : (
+            filteredHistory.map((item) => (
+              <WithdrawalHistoryRow key={item.id} item={item} />
+            ))
+          )}
         </View>
       </View>
 
@@ -279,7 +310,7 @@ const WithdrawalHistoryCard = () => {
         options={DATE_RANGE_OPTIONS}
         selectedKey={dateRangeKey}
         onSelect={(key) => {
-          setDateRangeKey(key);
+          setDateRangeKey(key as DateRangeKey);
           dateSheetRef.current?.dismiss();
         }}
       />

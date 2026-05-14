@@ -24,7 +24,7 @@ const ProfileHeaderCard = ({
       <View className="flex-row items-center gap-4 mt-2">
         <View className="w-14 h-14 rounded-full bg-[#2B211B] border border-[#F2F4F7] items-center justify-center">
           <ThemedText weight="500" className="text-[#F9FAFB] text-lg">
-            OM
+            {fullName.split(" ").map((n) => n[0]).join("").toUpperCase()}
           </ThemedText>
         </View>
         <View>

@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useUpdateUser } from "@/hooks/api";
 import { useAuthStore } from "@/store/auth-store";
 import * as Location from "expo-location";
 import { router } from "expo-router";
@@ -9,7 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SetLocationScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, saveProfile } = useAuthStore();
+  const { profile, saveProfile, user } = useAuthStore();
+  const { mutate: updateUser } = useUpdateUser(user?._id ?? "");
   const [searching, setSearching] = useState(false);
 
   const handleUseLocation = async () => {
@@ -25,10 +27,25 @@ export default function SetLocationScreen() {
       const [geo] = await Location.reverseGeocodeAsync(loc.coords);
       const locationName =
         geo?.city ?? geo?.region ?? geo?.country ?? "Unknown";
-      if (profile) {
-        await saveProfile({ ...profile, location: locationName });
-      }
-      router.replace("/(organizer)/(tabs)/" as any);
+      const country = geo?.country ?? "";
+      updateUser(
+        {
+          name: {
+            firstname: user?.name?.firstname,
+            lastname: user?.name?.lastname,
+          },
+          contact: { phone: user?.contact?.phone, country },
+          email: user?.email,
+        },
+        {
+          onSettled: async () => {
+            if (profile) {
+              await saveProfile({ ...profile, location: locationName }, true);
+            }
+            router.replace("/(organizer)/(tabs)/" as any);
+          },
+        },
+      );
     } catch {
       router.push("/(auth)/choose-location");
     } finally {

@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useUpdateUser } from "@/hooks/api";
 import { useAuthStore } from "@/store/auth-store";
 import * as Location from "expo-location";
 import { router } from "expo-router";
@@ -56,7 +57,8 @@ type RowItem =
 
 export default function ChooseLocationScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, saveProfile } = useAuthStore();
+  const { profile, saveProfile, user } = useAuthStore();
+  const { mutate: updateUser } = useUpdateUser(user?._id ?? "");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState("");
   const [locating, setLocating] = useState(false);
@@ -106,14 +108,28 @@ export default function ChooseLocationScreen() {
     return all;
   }, [query]);
 
-  const handleSelect = async (name: string) => {
+  const handleSelect = (name: string, country?: string) => {
     setSelected(name);
-    if (profile) {
-      await saveProfile({ ...profile, location: name });
-    }
-    setTimeout(() => {
-      router.replace("/(organizer)/(tabs)/" as any);
-    }, 300);
+    updateUser(
+      {
+        name: {
+          firstname: user?.name?.firstname,
+          lastname: user?.name?.lastname,
+        },
+        contact: { phone: user?.contact?.phone, country: country ?? name },
+        email: user?.email,
+      },
+      {
+        onSettled: async () => {
+          if (profile) {
+            await saveProfile({ ...profile, location: name }, true);
+          }
+          setTimeout(() => {
+            router.replace("/(organizer)/(tabs)/" as any);
+          }, 300);
+        },
+      },
+    );
   };
 
   const handleCurrentLocation = async () => {
@@ -124,7 +140,7 @@ export default function ChooseLocationScreen() {
       const loc = await Location.getCurrentPositionAsync({});
       const [geo] = await Location.reverseGeocodeAsync(loc.coords);
       const name = geo?.city ?? geo?.region ?? geo?.country ?? "Unknown";
-      await handleSelect(name);
+      handleSelect(name, geo?.country ?? name);
     } finally {
       setLocating(false);
     }

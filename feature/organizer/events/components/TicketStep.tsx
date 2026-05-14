@@ -6,7 +6,12 @@ import {
   TicketCategory,
   TicketType,
 } from "@/feature/organizer/events/types";
+import { usePatchEvent } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
+import type {
+  EntryTicketApiPayload,
+  GroupedTicketApiPayload,
+} from "@/utils/api/types";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -25,7 +30,13 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Image, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 /* ─── Types ───────────────────────────────────────────────────── */
 
@@ -52,13 +63,23 @@ const LABEL_COLORS = [
 type TicketStepProps = {
   tickets: Ticket[];
   setTickets: React.Dispatch<React.SetStateAction<Ticket[]>>;
+  eventId?: string;
+  isLoading?: boolean;
 };
 
-export default function TicketStep({ tickets, setTickets }: TicketStepProps) {
+export default function TicketStep({
+  tickets,
+  setTickets,
+  eventId,
+  isLoading,
+}: TicketStepProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   const placeholderColor = isDark ? "#4A4A4E" : "#98A2B3";
+
+  const { mutateAsync: patchEvent, isPending: isSaving } = usePatchEvent();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   /* ── Ticket list ── */
   const categorySheetRef = useRef<BottomSheetModal>(null);
@@ -121,6 +142,20 @@ export default function TicketStep({ tickets, setTickets }: TicketStepProps) {
   );
 
   /* ── Computed ── */
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center py-16">
+        <ActivityIndicator size="large" color="#F04438" />
+        <ThemedText
+          weight="500"
+          className={`text-[14px] mt-3 ${isDark ? "text-[#98A2B3]" : "text-[#667085]"}`}
+        >
+          Loading ticket data…
+        </ThemedText>
+      </View>
+    );
+  }
+
   const computedDiscount = (() => {
     const p = parseFloat(price) || 0;
     const d = parseFloat(discountPct) || 0;
@@ -869,7 +904,7 @@ export default function TicketStep({ tickets, setTickets }: TicketStepProps) {
         >
           <SectionHeader
             title="PRICING AND DISCOUNTS"
-            done={!!price}
+            done={ticketType === "free" ? true : !!price}
             expanded={pricingExpanded}
             onToggle={() => setPricingExpanded((v) => !v)}
           />
@@ -881,7 +916,7 @@ export default function TicketStep({ tickets, setTickets }: TicketStepProps) {
                 attendees choose what fits their budget.
               </ThemedText>
 
-              {ticketType === "paid" ? (
+              {ticketType !== "free" ? (
                 <>
                   {/* Color + ticket name indicator */}
                   <View className="flex-row items-center gap-2 mb-4">
@@ -986,9 +1021,7 @@ export default function TicketStep({ tickets, setTickets }: TicketStepProps) {
                 </>
               ) : (
                 <ThemedText className="text-[13px] text-[#667085] py-2">
-                  {ticketType === "free"
-                    ? "This ticket is free \u2014 no pricing required."
-                    : "Attendees choose how much to pay (donation ticket)."}
+                  This ticket is free — no pricing required.
                 </ThemedText>
               )}
             </View>
@@ -1143,17 +1176,105 @@ export default function TicketStep({ tickets, setTickets }: TicketStepProps) {
           )}
         </View>
 
+        {saveError ? (
+          <ThemedText className="text-[13px] text-[#F04438] text-center mb-2">
+            {saveError}
+          </ThemedText>
+        ) : null}
+
         {/* ── Bottom CTA ── */}
         <GradientButton
           label={
             selectedCategory === "entry" ? "Add Ticket" : "Add to Group Ticket"
           }
-          onPress={() => {
+          loading={isSaving}
+          onPress={async () => {
             persistExtras();
+            setSaveError(null);
+            if (eventId) {
+              const pad = (d: Date) =>
+                `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+              try {
+                if (selectedCategory === "entry") {
+                  const entryPayload: EntryTicketApiPayload = {
+                    entryTicketType: ticketType,
+                    ticketName: ticketName.trim(),
+                    ticketQuantity: quantity,
+                    ...(ticketType !== "free" && price
+                      ? { ticketPrice: parseFloat(price) || 0 }
+                      : {}),
+                    startDate: salesStartDate.toISOString(),
+                    endDate: salesEndDate.toISOString(),
+                    startTime: pad(salesStartTime),
+                    endTime: pad(salesEndTime),
+                    ...(perks.trim() ? { ticketPeaks: perks.trim() } : {}),
+                  };
+                  await patchEvent({
+                    eventId,
+                    payload: {
+                      ticketCategory: "entry",
+                      entryTicket: entryPayload,
+                    },
+                  });
+                } else {
+                  const newGrouped: GroupedTicketApiPayload = {
+                    groupedTicketType: ticketType,
+                    ticketCategory: ticketName.trim(),
+                    ticketName: ticketName.trim(),
+                    ticketQuantity: quantity,
+                    ...(ticketType !== "free" && price
+                      ? { ticketPrice: parseFloat(price) || 0 }
+                      : {}),
+                    startDate: salesStartDate.toISOString(),
+                    endDate: salesEndDate.toISOString(),
+                    startTime: pad(salesStartTime),
+                    endTime: pad(salesEndTime),
+                    ...(perks.trim() ? { ticketPeaks: perks.trim() } : {}),
+                  };
+
+                  // Keep all existing grouped tickets so the backend doesn't
+                  // overwrite the whole array with just the new one.
+                  const existingGrouped: GroupedTicketApiPayload[] = tickets
+                    .filter(
+                      (t) =>
+                        t.category === "grouped" && t.id !== editingTicketId,
+                    )
+                    .map((t) => ({
+                      groupedTicketType: t.type as "paid" | "free" | "donation",
+                      ticketCategory: t.name,
+                      ticketName: t.name,
+                      ticketQuantity: t.quantity,
+                      ...(t.type !== "free" && t.price
+                        ? { ticketPrice: parseFloat(t.price) || 0 }
+                        : {}),
+                      startDate: t.salesStartDate.toISOString(),
+                      endDate: t.salesEndDate.toISOString(),
+                      startTime: pad(t.salesStartTime),
+                      endTime: pad(t.salesEndTime),
+                      ...(t.perks.trim()
+                        ? { ticketPeaks: t.perks.trim() }
+                        : {}),
+                    }));
+
+                  await patchEvent({
+                    eventId,
+                    payload: {
+                      ticketCategory: "grouped",
+                      groupedTicket: [...existingGrouped, newGrouped],
+                    },
+                  });
+                }
+              } catch (err: unknown) {
+                const msg =
+                  err instanceof Error ? err.message : "Failed to save ticket";
+                setSaveError(msg);
+                return;
+              }
+            }
             setTicketFormOpen(false);
             resetForm();
           }}
-          disabled={!detailsSaved}
+          disabled={!detailsSaved || isSaving}
           height={52}
           borderRadius={12}
         />

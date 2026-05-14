@@ -1,50 +1,45 @@
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
+import { useSettings, useUpdateSettings } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useAuthStore } from "@/store/auth-store";
+import type { UserSettings } from "@/utils/api/types";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
-import React, { useState } from "react";
-import { Switch, TouchableOpacity, View } from "react-native";
+import React from "react";
+import {
+  ActivityIndicator,
+  Switch,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+type SettingsKey = keyof UserSettings;
 
 type NotificationItem = {
-  id: string;
+  id: SettingsKey;
   title: string;
   description: string;
 };
 
-const BOOKING_NOTIFICATIONS: NotificationItem[] = [
+const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
-    id: "email-confirmation",
-    title: "Email Confirmation",
+    id: "emailNotifications",
+    title: "Email Notifications",
     description:
-      "Receive an email immediately after booking, including event details, tickets, and a calendar invite.",
+      "Receive emails for booking confirmations, event updates, and important announcements.",
   },
   {
-    id: "sms-confirmation",
-    title: "SMS Confirmation",
+    id: "pushNotifications",
+    title: "Push Notifications",
     description:
-      "Option to get a text message confirming your booking and providing essential details.",
-  },
-];
-
-const EVENT_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "event-reminders",
-    title: "Event Reminders",
-    description:
-      "Get reminders for your booked events one week, one day, and one hour before they start, so you never miss out.",
+      "Get real-time push alerts for event reminders, booking updates, and activity on your account.",
   },
   {
-    id: "event-update-primary",
-    title: "Event Update Notifications",
+    id: "smsNotifications",
+    title: "SMS Notifications",
     description:
-      "Stay informed of any changes to the event schedule, location, or important announcements via email or phone number.",
-  },
-  {
-    id: "event-update-secondary",
-    title: "Event Update Notifications",
-    description:
-      "Stay informed of any changes to the event schedule, location, or important announcements via email or phone number.",
+      "Receive text messages for booking confirmations and essential event information.",
   },
 ];
 
@@ -52,71 +47,15 @@ const NotificationsScreen = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
-  const [toggles, setToggles] = useState<Record<string, boolean>>({
-    "email-confirmation": true,
-    "sms-confirmation": false,
-    "event-reminders": false,
-    "event-update-primary": false,
-    "event-update-secondary": false,
-  });
+  const user = useAuthStore((s) => s.user);
+  const userId = user?._id ?? "";
 
-  const renderNotificationSection = (
-    title: string,
-    items: NotificationItem[],
-  ) => (
-    <View className="mt-6">
-      <ThemedText
-        weight="700"
-        className={`text-[16px] ${isDark ? "text-[#9CA3AF]" : "text-[#344054]"}`}
-      >
-        {title}
-      </ThemedText>
+  const { data: settings, isLoading } = useSettings(userId);
+  const { mutate: updateSettings } = useUpdateSettings(userId);
 
-      <View className="mt-2">
-        {items.map((item, index) => {
-          const enabled = toggles[item.id];
-
-          return (
-            <View key={item.id} className="pt-4 pb-5">
-              <View className="flex-row items-center justify-between gap-3">
-                <ThemedText
-                  weight="700"
-                  className={`text-[16px] flex-1 ${isDark ? "text-[#E5E7EB]" : "text-[#101828]"}`}
-                >
-                  {item.title}
-                </ThemedText>
-
-                <Switch
-                  value={enabled}
-                  onValueChange={(value) =>
-                    setToggles((prev) => ({ ...prev, [item.id]: value }))
-                  }
-                  trackColor={{
-                    false: isDark ? "#374151" : "#E4E7EC",
-                    true: "#EA4335",
-                  }}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor={isDark ? "#374151" : "#E4E7EC"}
-                />
-              </View>
-
-              <ThemedText
-                className={`text-[14px] leading-8 mt-2 pr-2 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
-              >
-                {item.description}
-              </ThemedText>
-
-              {index < items.length - 1 ? (
-                <View
-                  className={`h-[1px] mt-4 ${isDark ? "bg-[#222]" : "bg-[#EAECF0]"}`}
-                />
-              ) : null}
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
+  const handleToggle = (key: SettingsKey, value: boolean) => {
+    updateSettings({ [key]: value });
+  };
 
   return (
     <AppSafeArea>
@@ -144,13 +83,49 @@ const NotificationsScreen = () => {
         className={`h-[1px] mt-3 ${isDark ? "bg-[#222]" : "bg-[#EAECF0]"}`}
       />
 
-      <View className="px-4">
-        {renderNotificationSection(
-          "Booking Notifications",
-          BOOKING_NOTIFICATIONS,
-        )}
-        {renderNotificationSection("Event Notifications", EVENT_NOTIFICATIONS)}
-      </View>
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#EA4335" />
+        </View>
+      ) : (
+        <View className="px-4 mt-6">
+          {NOTIFICATION_ITEMS.map((item, index) => {
+            const enabled = settings?.[item.id] ?? false;
+            return (
+              <View key={item.id} className="pt-4 pb-5">
+                <View className="flex-row items-center justify-between gap-3">
+                  <ThemedText
+                    weight="700"
+                    className={`text-[16px] flex-1 ${isDark ? "text-[#E5E7EB]" : "text-[#101828]"}`}
+                  >
+                    {item.title}
+                  </ThemedText>
+                  <Switch
+                    value={enabled}
+                    onValueChange={(value) => handleToggle(item.id, value)}
+                    trackColor={{
+                      false: isDark ? "#374151" : "#E4E7EC",
+                      true: "#EA4335",
+                    }}
+                    thumbColor="#FFFFFF"
+                    ios_backgroundColor={isDark ? "#374151" : "#E4E7EC"}
+                  />
+                </View>
+                <ThemedText
+                  className={`text-[14px] leading-8 mt-2 pr-2 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
+                >
+                  {item.description}
+                </ThemedText>
+                {index < NOTIFICATION_ITEMS.length - 1 ? (
+                  <View
+                    className={`h-[1px] mt-4 ${isDark ? "bg-[#222]" : "bg-[#EAECF0]"}`}
+                  />
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      )}
     </AppSafeArea>
   );
 };

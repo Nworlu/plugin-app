@@ -1,3 +1,4 @@
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import AttendeeRecordCard from "@/feature/organizer/events/components/AttendeeRecordCard";
 import { useTicketsForEvent } from "@/hooks/api";
@@ -5,13 +6,53 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useLocalSearchParams } from "expo-router";
 import { Search } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
+
+function AttendeesSkeleton({ isDark }: { isDark: boolean }) {
+  const border = isDark ? "#374151" : "#E4E7EC";
+  const card = isDark ? "#1C1C1E" : "#FFFFFF";
+  return (
+    <View style={{ gap: 0 }}>
+      {/* Search skeleton */}
+      <SkeletonBox
+        width="100%"
+        height={44}
+        borderRadius={12}
+        style={{ marginTop: 16, marginBottom: 12 }}
+      />
+      {/* Filter buttons row */}
+      <SkeletonRow gap={8} style={{ marginBottom: 12 }}>
+        <SkeletonBox width={80} height={34} borderRadius={10} />
+        <SkeletonBox width={60} height={34} borderRadius={10} />
+        <SkeletonBox width={70} height={34} borderRadius={10} />
+      </SkeletonRow>
+      {/* Table header */}
+      <View
+        style={{
+          backgroundColor: card,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: border,
+          overflow: "hidden",
+        }}
+      >
+        {[0, 1, 2, 3, 4].map((i) => (
+          <View key={i}>
+            <SkeletonRow gap={10} style={{ alignItems: "center", padding: 14 }}>
+              <SkeletonBox width={32} height={32} borderRadius={16} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <SkeletonBox width="60%" height={13} borderRadius={4} />
+                <SkeletonBox width="40%" height={11} borderRadius={4} />
+              </View>
+              <SkeletonBox width={55} height={22} borderRadius={6} />
+            </SkeletonRow>
+            {i < 4 && <View style={{ height: 1, backgroundColor: border }} />}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 const AttendeeListTab = () => {
   const { resolvedTheme } = useTheme();
@@ -164,9 +205,7 @@ const AttendeeListTab = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
       >
         {isLoading ? (
-          <View className="items-center py-10">
-            <ActivityIndicator size="large" color="#F15827" />
-          </View>
+          <AttendeesSkeleton isDark={isDark} />
         ) : (
           <View className="gap-3">
             {filteredRows.map((row) => (

@@ -1,5 +1,6 @@
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import { OrganizerEvent } from "@/feature/organizer/constants/home";
 import { useOrganizerEvents } from "@/hooks/api/use-events";
@@ -8,13 +9,36 @@ import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
 import { Calendar, MapPin } from "lucide-react-native";
 import React, { useMemo } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Image, TouchableOpacity, View } from "react-native";
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SelectEventSkeleton() {
+  return (
+    <View style={{ paddingTop: 4, gap: 12 }}>
+      {[0, 1, 2, 3].map((i) => (
+        <SkeletonRow
+          key={i}
+          gap={12}
+          style={{
+            alignItems: "center",
+            padding: 12,
+            borderRadius: 14,
+            overflow: "hidden",
+          }}
+        >
+          <SkeletonBox width={72} height={72} borderRadius={10} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <SkeletonBox width="55%" height={12} borderRadius={5} />
+            <SkeletonBox width="80%" height={14} borderRadius={5} />
+            <SkeletonBox width="60%" height={12} borderRadius={5} />
+          </View>
+          <SkeletonBox width={48} height={30} borderRadius={8} />
+        </SkeletonRow>
+      ))}
+    </View>
+  );
+}
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -208,11 +232,7 @@ const SelectEventToScanScreen = () => {
         </ThemedText>
 
         {isLoading ? (
-          <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-          >
-            <ActivityIndicator size="large" color="#C5162A" />
-          </View>
+          <SelectEventSkeleton />
         ) : (
           <FlatList
             data={events}

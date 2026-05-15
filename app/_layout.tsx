@@ -1,4 +1,6 @@
+import NoNetworkOverlay from "@/components/no-network-overlay";
 import { BookingsProvider } from "@/providers/BookingsProvider";
+import { NetworkProvider } from "@/providers/NetworkProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
@@ -49,6 +51,7 @@ function RootLayoutContent() {
           options={{ presentation: "modal", title: "Modal" }}
         />
       </Stack>
+      <NoNetworkOverlay />
       <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
     </>
   );
@@ -58,13 +61,15 @@ export default function RootLayout() {
   return (
     <QueryProvider>
       <ThemeProvider>
-        <BookingsProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheetModalProvider>
-              <RootLayoutContent />
-            </BottomSheetModalProvider>
-          </GestureHandlerRootView>
-        </BookingsProvider>
+        <NetworkProvider>
+          <BookingsProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <BottomSheetModalProvider>
+                <RootLayoutContent />
+              </BottomSheetModalProvider>
+            </GestureHandlerRootView>
+          </BookingsProvider>
+        </NetworkProvider>
       </ThemeProvider>
     </QueryProvider>
   );

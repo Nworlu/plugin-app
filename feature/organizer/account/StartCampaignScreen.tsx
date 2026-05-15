@@ -1,6 +1,7 @@
 import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import GradientButton from "@/components/gradient-button";
+import { SkeletonBox } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import AdCampaignReviewModal, {
   AdCampaignReviewPayload,
@@ -110,6 +111,28 @@ function getSaleProgress(event: RawEvent): number {
     );
   if (total === 0) return 0;
   return Math.round((sold / total) * 100);
+}
+
+function CampaignCardSkeleton({ isDark }: { isDark: boolean }) {
+  const border = isDark ? "#374151" : "#E4E7EC";
+  const card = isDark ? "#1C1C1E" : "#FFFFFF";
+  return (
+    <View
+      style={{
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: border,
+        backgroundColor: card,
+        padding: 12,
+        gap: 10,
+      }}
+    >
+      <SkeletonBox width="100%" height={110} borderRadius={10} />
+      <SkeletonBox width="55%" height={17} borderRadius={5} />
+      <SkeletonBox width="45%" height={13} borderRadius={4} />
+      <SkeletonBox width="35%" height={22} borderRadius={6} />
+    </View>
+  );
 }
 
 function mapEventToItem(event: RawEvent): CampaignEventItem {
@@ -259,52 +282,60 @@ const StartCampaignScreen = () => {
         contentContainerStyle={{ paddingTop: 10, paddingBottom: 28 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="gap-3">
-          {CAMPAIGN_TYPES.map((campaign, i) => {
-            const isActive = selectedCampaign === campaign.key;
+        {isLoadingEvents ? (
+          <View style={{ gap: 12 }}>
+            {[0, 1, 2].map((i) => (
+              <CampaignCardSkeleton key={i} isDark={isDark} />
+            ))}
+          </View>
+        ) : (
+          <View className="gap-3">
+            {CAMPAIGN_TYPES.map((campaign, i) => {
+              const isActive = selectedCampaign === campaign.key;
 
-            return (
-              <AnimatedEntry key={campaign.key} index={i}>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => setSelectedCampaign(campaign.key)}
-                >
-                  <GlassCard
-                    isDark={isDark}
-                    style={{
-                      padding: 12,
-                      borderRadius: 16,
-                      ...(isActive && {
-                        borderColor: isDark ? "#E4E7EC" : "#101828",
-                      }),
-                    }}
+              return (
+                <AnimatedEntry key={campaign.key} index={i}>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedCampaign(campaign.key)}
                   >
-                    <View
-                      className={`h-[110px] rounded-lg items-center justify-center ${campaign.bgClassName}`}
+                    <GlassCard
+                      isDark={isDark}
+                      style={{
+                        padding: 12,
+                        borderRadius: 16,
+                        ...(isActive && {
+                          borderColor: isDark ? "#E4E7EC" : "#101828",
+                        }),
+                      }}
                     >
-                      {campaign.icon}
-                    </View>
+                      <View
+                        className={`h-[110px] rounded-lg items-center justify-center ${campaign.bgClassName}`}
+                      >
+                        {campaign.icon}
+                      </View>
 
-                    <ThemedText weight="700" className="text-[17px] mt-3">
-                      {campaign.title}
-                    </ThemedText>
-                    <ThemedText
-                      className={`text-[13px] mt-0.5 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
-                    >
-                      {campaign.subtitle}
-                    </ThemedText>
-                    <ThemedText
-                      weight="700"
-                      className="text-[22px] mt-2 leading-8"
-                    >
-                      {campaign.amount}
-                    </ThemedText>
-                  </GlassCard>
-                </TouchableOpacity>
-              </AnimatedEntry>
-            );
-          })}
-        </View>
+                      <ThemedText weight="700" className="text-[17px] mt-3">
+                        {campaign.title}
+                      </ThemedText>
+                      <ThemedText
+                        className={`text-[13px] mt-0.5 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
+                      >
+                        {campaign.subtitle}
+                      </ThemedText>
+                      <ThemedText
+                        weight="700"
+                        className="text-[22px] mt-2 leading-8"
+                      >
+                        {campaign.amount}
+                      </ThemedText>
+                    </GlassCard>
+                  </TouchableOpacity>
+                </AnimatedEntry>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
 
       <View className="px-4 pb-6 pt-2">

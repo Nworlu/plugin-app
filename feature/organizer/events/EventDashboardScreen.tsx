@@ -1,6 +1,7 @@
 import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import {
   DashboardMetrics,
@@ -23,12 +24,84 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import { Upload } from "lucide-react-native";
 import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
+
+function DashboardSkeleton({ isDark }: { isDark: boolean }) {
+  const border = isDark ? "#374151" : "#E4E7EC";
+  const card = isDark ? "#1C1C1E" : "#FFFFFF";
+  return (
+    <View style={{ gap: 0 }}>
+      {/* Metrics grid */}
+      <View
+        style={{
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: border,
+          backgroundColor: card,
+          padding: 16,
+          marginTop: 16,
+        }}
+      >
+        <SkeletonRow gap={0} style={{ flexWrap: "wrap", gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              style={{
+                width: "47%",
+                backgroundColor: isDark ? "#111827" : "#F9FAFB",
+                borderRadius: 12,
+                padding: 12,
+                gap: 8,
+              }}
+            >
+              <SkeletonBox width={40} height={11} borderRadius={3} />
+              <SkeletonBox width="60%" height={22} borderRadius={6} />
+            </View>
+          ))}
+        </SkeletonRow>
+      </View>
+
+      {/* Promo banner */}
+      <SkeletonBox
+        width="100%"
+        height={72}
+        borderRadius={14}
+        style={{ marginTop: 16 }}
+      />
+
+      {/* Tab pills */}
+      <SkeletonRow gap={10} style={{ marginTop: 16 }}>
+        <SkeletonBox width={110} height={36} borderRadius={20} />
+        <SkeletonBox width={110} height={36} borderRadius={20} />
+      </SkeletonRow>
+
+      {/* Sale rows */}
+      <View style={{ marginTop: 12, gap: 10 }}>
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            style={{
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: border,
+              backgroundColor: card,
+              padding: 14,
+            }}
+          >
+            <SkeletonRow gap={10} style={{ alignItems: "center" }}>
+              <SkeletonBox width={55} height={14} borderRadius={5} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <SkeletonBox width="60%" height={13} borderRadius={4} />
+                <SkeletonBox width="40%" height={11} borderRadius={4} />
+              </View>
+              <SkeletonBox width={60} height={14} borderRadius={5} />
+            </SkeletonRow>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 function fmtMoney(value: number): string {
   if (value >= 1_000_000) return `N${(value / 1_000_000).toFixed(1)}M`;
@@ -164,9 +237,7 @@ const EventDashboardScreen = () => {
           </AnimatedEntry>
 
           {isLoading ? (
-            <View className="py-10 items-center">
-              <ActivityIndicator size="large" color="#F15827" />
-            </View>
+            <DashboardSkeleton isDark={isDark} />
           ) : (
             <View className="mt-3 gap-3">
               {salesTab === "recent"

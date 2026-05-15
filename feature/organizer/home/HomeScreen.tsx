@@ -1,8 +1,9 @@
 import { AnimatedEntry } from "@/components/animated-list-item";
 import EventList from "@/feature/organizer/home/components/EventList";
+import HomeSkeleton from "@/feature/organizer/home/components/HomeSkeleton";
 import SetupChecklist from "@/feature/organizer/home/components/SetupChecklist";
 import VenueList from "@/feature/organizer/home/components/VenueList";
-import { useUnreadNotificationCount } from "@/hooks/api";
+import { useOrganizerEvents, useUnreadNotificationCount } from "@/hooks/api";
 import useChangeTabs from "@/hooks/use-change-tabs";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
@@ -23,6 +24,12 @@ const HomeScreen = () => {
   const user = useAuthStore((s) => s.user);
   const firstName = user?.name?.firstname ?? "there";
 
+  const status = activeTab.tag === "currently" ? "live" : ("upcoming" as const);
+  const { isLoading: isLoadingEvents } = useOrganizerEvents(
+    user?._id ?? "",
+    status,
+  );
+
   return (
     <LinearGradient
       colors={
@@ -37,33 +44,39 @@ const HomeScreen = () => {
       <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
         >
-          <WelcomeHeader
-            title={`Welcome ${firstName}`}
-            data={homeTabsList}
-            activeTab={activeTab}
-            onTabChange={onTabChange}
-            onBellPress={() => router.push("/(organizer)/notifications")}
-            unreadCount={unreadData?.count ?? 0}
-          />
-          <View style={{ height: 16 }} />
-          <AnimatedEntry index={0}>
-            <EventList activeTag={activeTab.tag} />
-          </AnimatedEntry>
-          <View style={{ height: 32 }} />
-          <AnimatedEntry index={1}>
-            <SetupChecklist />
-          </AnimatedEntry>
-          <View style={{ height: 32 }} />
-          <AnimatedEntry index={2}>
-            <VenueList />
-          </AnimatedEntry>
-          <View style={{ height: 32 }} />
-          <AnimatedEntry index={3}>
-            <ResourceLists />
-          </AnimatedEntry>
+          {isLoadingEvents ? (
+            <HomeSkeleton />
+          ) : (
+            <View style={{ paddingHorizontal: 16 }}>
+              <WelcomeHeader
+                title={`Welcome ${firstName}`}
+                data={homeTabsList}
+                activeTab={activeTab}
+                onTabChange={onTabChange}
+                onBellPress={() => router.push("/(organizer)/notifications")}
+                unreadCount={unreadData?.count ?? 0}
+              />
+              <View style={{ height: 16 }} />
+              <AnimatedEntry index={0}>
+                <EventList activeTag={activeTab.tag} />
+              </AnimatedEntry>
+              <View style={{ height: 32 }} />
+              <AnimatedEntry index={1}>
+                <SetupChecklist />
+              </AnimatedEntry>
+              <View style={{ height: 32 }} />
+              <AnimatedEntry index={2}>
+                <VenueList />
+              </AnimatedEntry>
+              <View style={{ height: 32 }} />
+              <AnimatedEntry index={3}>
+                <ResourceLists />
+              </AnimatedEntry>
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>

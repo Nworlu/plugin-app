@@ -1,4 +1,5 @@
 import AppSafeArea from "@/components/app-safe-area";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import { useSettings, useUpdateSettings } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -7,12 +8,43 @@ import type { UserSettings } from "@/utils/api/types";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import React from "react";
-import {
-  ActivityIndicator,
-  Switch,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Switch, TouchableOpacity, View } from "react-native";
+
+function NotificationSettingsSkeleton({ isDark }: { isDark: boolean }) {
+  const divider = isDark ? "#222" : "#EAECF0";
+  return (
+    <View style={{ paddingHorizontal: 16, marginTop: 24, gap: 0 }}>
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={{ paddingTop: 16, paddingBottom: 20 }}>
+          <SkeletonRow
+            gap={12}
+            style={{ justifyContent: "space-between", alignItems: "center" }}
+          >
+            <SkeletonBox width="55%" height={16} borderRadius={5} />
+            <SkeletonBox width={48} height={28} borderRadius={14} />
+          </SkeletonRow>
+          <SkeletonBox
+            width="85%"
+            height={12}
+            borderRadius={4}
+            style={{ marginTop: 10 }}
+          />
+          <SkeletonBox
+            width="70%"
+            height={12}
+            borderRadius={4}
+            style={{ marginTop: 6 }}
+          />
+          {i < 2 && (
+            <View
+              style={{ height: 1, backgroundColor: divider, marginTop: 16 }}
+            />
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 type SettingsKey = keyof UserSettings;
 
@@ -84,9 +116,7 @@ const NotificationsScreen = () => {
       />
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#EA4335" />
-        </View>
+        <NotificationSettingsSkeleton isDark={isDark} />
       ) : (
         <View className="px-4 mt-6">
           {NOTIFICATION_ITEMS.map((item, index) => {

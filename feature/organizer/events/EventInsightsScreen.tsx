@@ -1,5 +1,6 @@
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import EventActionRow from "@/feature/organizer/events/components/EventActionRow";
 import { useEvent, useEventSummary, useTicketsForEvent } from "@/hooks/api";
@@ -15,7 +16,78 @@ import {
   Users,
 } from "lucide-react-native";
 import React from "react";
-import { ActivityIndicator, Image, TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
+
+function EventInsightsSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark ? "#1C1C1E" : "#FFFFFF";
+  const border = isDark ? "#374151" : "#E5E7EB";
+  return (
+    <View style={{ marginTop: 16 }}>
+      <View
+        style={{
+          backgroundColor: card,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: border,
+          overflow: "hidden",
+          padding: 16,
+          gap: 16,
+        }}
+      >
+        {/* Status badge + menu */}
+        <SkeletonRow style={{ justifyContent: "space-between" }}>
+          <SkeletonBox width={70} height={22} borderRadius={20} />
+          <SkeletonBox width={32} height={32} borderRadius={16} />
+        </SkeletonRow>
+
+        {/* Image + title */}
+        <SkeletonRow gap={12} style={{ alignItems: "center" }}>
+          <SkeletonBox width={48} height={48} borderRadius={10} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <SkeletonBox width="75%" height={16} borderRadius={5} />
+            <SkeletonBox width="55%" height={13} borderRadius={5} />
+          </View>
+        </SkeletonRow>
+
+        {/* Progress block */}
+        <View
+          style={{
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: border,
+            padding: 12,
+            gap: 10,
+          }}
+        >
+          <SkeletonBox width="50%" height={13} borderRadius={4} />
+          <SkeletonBox width="100%" height={8} borderRadius={4} />
+          <SkeletonBox width="30%" height={12} borderRadius={4} />
+        </View>
+
+        {/* 6 action rows */}
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <View key={i}>
+            <SkeletonRow gap={12} style={{ alignItems: "center" }}>
+              <SkeletonBox width={36} height={36} borderRadius={10} />
+              <SkeletonBox width="55%" height={14} borderRadius={5} />
+              <View style={{ flex: 1 }} />
+              <SkeletonBox width={20} height={20} borderRadius={10} />
+            </SkeletonRow>
+            {i < 5 && (
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: border,
+                  marginTop: 12,
+                }}
+              />
+            )}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 const EventInsightsScreen = () => {
   const { resolvedTheme } = useTheme();
@@ -102,9 +174,7 @@ const EventInsightsScreen = () => {
         />
 
         {isLoading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#F15827" />
-          </View>
+          <EventInsightsSkeleton isDark={isDark} />
         ) : (
           <View
             style={{

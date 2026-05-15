@@ -1,4 +1,5 @@
 import { AnimatedListItem } from "@/components/animated-list-item";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import { EventStatus } from "@/feature/organizer/constants/events";
 import DeleteEventConfirmModal from "@/feature/organizer/events/components/DeleteEventConfirmModal";
@@ -27,7 +28,6 @@ import {
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   FlatList,
   Platform,
@@ -36,6 +36,33 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+function ManageEventsSkeleton({ isDark }: { isDark: boolean }) {
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
+      {[0, 1, 2, 3].map((i) => (
+        <SkeletonRow
+          key={i}
+          gap={12}
+          style={{
+            alignItems: "center",
+            padding: 12,
+            borderRadius: 14,
+            backgroundColor: isDark ? "#111827" : "#FFFFFF",
+          }}
+        >
+          <SkeletonBox width={80} height={80} borderRadius={10} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <SkeletonBox width="75%" height={15} borderRadius={5} />
+            <SkeletonBox width="55%" height={12} borderRadius={5} />
+            <SkeletonBox width="45%" height={12} borderRadius={5} />
+          </View>
+          <SkeletonBox width={28} height={28} borderRadius={14} />
+        </SkeletonRow>
+      ))}
+    </View>
+  );
+}
 
 const eventTabs: { key: EventStatus; label: string }[] = [
   { key: "upcoming", label: "Upcoming events" },
@@ -364,9 +391,7 @@ const ManageEventsScreen = () => {
         viewabilityConfig={viewabilityConfig}
         ListEmptyComponent={
           isLoading ? (
-            <View className="flex-1 items-center justify-center py-20">
-              <ActivityIndicator size="large" color="#F15827" />
-            </View>
+            <ManageEventsSkeleton isDark={isDark} />
           ) : (
             <View className="flex-1 items-center justify-center py-20">
               <ThemedText weight="400" className="text-[#98A2B3] text-sm">

@@ -1,5 +1,6 @@
 import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import {
   AccountSectionCard,
@@ -20,6 +21,186 @@ import React, { useRef, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { ACCOUNT_SECTIONS, type AccountMenuItem } from "./constants/account";
 
+function AccountSkeleton({ isDark }: { isDark: boolean }) {
+  const border = isDark ? "#1E2D45" : "#D0DDFE";
+  const card = isDark ? "#0F172A" : "#EEF2FA";
+  const innerBorder = isDark ? "#1F2937" : "#E4E7EC";
+  const innerCard = isDark ? "#111827" : "#FFFFFF";
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 130 }}>
+      <SkeletonBox width={100} height={28} borderRadius={8} />
+
+      {/* Profile header card */}
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: innerBorder,
+          backgroundColor: innerCard,
+          padding: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 14,
+        }}
+      >
+        <SkeletonBox width={64} height={64} borderRadius={32} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <SkeletonBox width="55%" height={16} borderRadius={5} />
+          <SkeletonBox width="75%" height={13} borderRadius={4} />
+        </View>
+      </View>
+
+      {/* Org card */}
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: border,
+          backgroundColor: card,
+          padding: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <SkeletonBox width={40} height={40} borderRadius={20} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <SkeletonBox width={110} height={11} borderRadius={4} />
+          <SkeletonBox width="55%" height={15} borderRadius={5} />
+        </View>
+        <SkeletonBox width={55} height={16} borderRadius={5} />
+      </View>
+
+      {/* Section cards */}
+      {[3, 4, 2].map((rowCount, si) => (
+        <View
+          key={si}
+          style={{
+            marginTop: 20,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: innerBorder,
+            backgroundColor: innerCard,
+            padding: 16,
+            gap: 0,
+          }}
+        >
+          <SkeletonBox
+            width="40%"
+            height={13}
+            borderRadius={4}
+            style={{ marginBottom: 14 }}
+          />
+          {Array.from({ length: rowCount }).map((_, i) => (
+            <View key={i}>
+              <SkeletonRow
+                gap={12}
+                style={{ alignItems: "center", paddingVertical: 12 }}
+              >
+                <SkeletonBox width={36} height={36} borderRadius={10} />
+                <SkeletonBox width="55%" height={14} borderRadius={5} />
+                <View style={{ flex: 1 }} />
+                <SkeletonBox width={18} height={18} borderRadius={9} />
+              </SkeletonRow>
+              {i < rowCount - 1 && (
+                <View style={{ height: 1, backgroundColor: innerBorder }} />
+              )}
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// function AccountSkeleton({ isDark }: { isDark: boolean }) {
+//   const border = isDark ? "#1E2D45" : "#D0DDFE";
+//   const card = isDark ? "#0F172A" : "#EEF2FA";
+//   const innerBorder = isDark ? "#1F2937" : "#E4E7EC";
+//   const innerCard = isDark ? "#111827" : "#FFFFFF";
+//   return (
+//     <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 130 }}>
+//       <SkeletonBox width={100} height={28} borderRadius={8} />
+
+//       {/* Profile header card */}
+//       <View
+//         style={{
+//           marginTop: 16,
+//           borderRadius: 16,
+//           borderWidth: 1,
+//           borderColor: innerBorder,
+//           backgroundColor: innerCard,
+//           padding: 16,
+//           flexDirection: "row",
+//           alignItems: "center",
+//           gap: 14,
+//         }}
+//       >
+//         <SkeletonBox width={64} height={64} borderRadius={32} />
+//         <View style={{ flex: 1, gap: 8 }}>
+//           <SkeletonBox width="55%" height={16} borderRadius={5} />
+//           <SkeletonBox width="75%" height={13} borderRadius={4} />
+//         </View>
+//       </View>
+
+//       {/* Org card */}
+//       <View
+//         style={{
+//           marginTop: 16,
+//           borderRadius: 16,
+//           borderWidth: 1,
+//           borderColor: border,
+//           backgroundColor: card,
+//           padding: 16,
+//           flexDirection: "row",
+//           alignItems: "center",
+//           gap: 12,
+//         }}
+//       >
+//         <SkeletonBox width={40} height={40} borderRadius={20} />
+//         <View style={{ flex: 1, gap: 6 }}>
+//           <SkeletonBox width={110} height={11} borderRadius={4} />
+//           <SkeletonBox width="55%" height={15} borderRadius={5} />
+//         </View>
+//         <SkeletonBox width={55} height={16} borderRadius={5} />
+//       </View>
+
+//       {/* Section cards */}
+//       {[3, 4, 2].map((rowCount, si) => (
+//         <View
+//           key={si}
+//           style={{
+//             marginTop: 20,
+//             borderRadius: 16,
+//             borderWidth: 1,
+//             borderColor: innerBorder,
+//             backgroundColor: innerCard,
+//             padding: 16,
+//             gap: 0,
+//           }}
+//         >
+//           <SkeletonBox width="40%" height={13} borderRadius={4} style={{ marginBottom: 14 }} />
+//           {Array.from({ length: rowCount }).map((_, i) => (
+//             <View key={i}>
+//               <SkeletonRow gap={12} style={{ alignItems: "center", paddingVertical: 12 }}>
+//                 <SkeletonBox width={36} height={36} borderRadius={10} />
+//                 <SkeletonBox width="55%" height={14} borderRadius={5} />
+//                 <View style={{ flex: 1 }} />
+//                 <SkeletonBox width={18} height={18} borderRadius={9} />
+//               </SkeletonRow>
+//               {i < rowCount - 1 && (
+//                 <View style={{ height: 1, backgroundColor: innerBorder }} />
+//               )}
+//             </View>
+//           ))}
+//         </View>
+//       ))}
+//     </View>
+//   );
+// }
+
 const AccountScreen = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -36,7 +217,8 @@ const AccountScreen = () => {
   const email = user?.email ?? "";
 
   const activeOrganizerId = useOrganizerStore((s) => s.activeOrganizerId);
-  const { data: organizers } = useUserOrganizers(userId);
+  const { data: organizers, isLoading: isOrgLoading } =
+    useUserOrganizers(userId);
   const activeOrg =
     organizers?.find((o) => o.id === activeOrganizerId) ?? organizers?.[0];
 
@@ -75,148 +257,163 @@ const AccountScreen = () => {
       />
 
       <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 130 }}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
       >
-        <ThemedText
-          weight="700"
-          className={`text-2xl leading-9 ${isDark ? "text-white" : "text-[#101828]"}`}
-        >
-          Account
-        </ThemedText>
-
-        <AnimatedEntry index={0}>
-          <ProfileHeaderCard fullName={fullName} email={email} />
-        </AnimatedEntry>
-
-        {/* Organization switcher card */}
-        <AnimatedEntry index={1}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => orgSwitcherRef.current?.present()}
-            style={{
-              marginTop: 16,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: isDark ? "#1E2D45" : "#D0DDFE",
-              backgroundColor: isDark ? "#0F172A" : "#EEF2FA",
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              gap: 12,
-            }}
-          >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: isDark ? "#1F2937" : "#E0E7FF",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+        {isOrgLoading ? (
+          <AccountSkeleton isDark={isDark} />
+        ) : (
+          <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+            <ThemedText
+              weight="700"
+              className={`text-2xl leading-9 ${isDark ? "text-white" : "text-[#101828]"}`}
             >
-              <Building2 size={18} color={isDark ? "#9CA3AF" : "#4F46E5"} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText
-                style={{ fontSize: 12, color: isDark ? "#6B7280" : "#667085" }}
-              >
-                Active organization
-              </ThemedText>
-              <ThemedText
-                weight="700"
-                style={{
-                  fontSize: 15,
-                  marginTop: 2,
-                  color: isDark ? "#F9FAFB" : "#101828",
-                }}
-                numberOfLines={1}
-              >
-                {activeOrg?.name ?? "No organization selected"}
-              </ThemedText>
-            </View>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-            >
-              <ArrowLeftRight
-                size={14}
-                color={isDark ? "#9CA3AF" : "#667085"}
-              />
-              <ThemedText
-                weight="500"
-                style={{ fontSize: 13, color: isDark ? "#9CA3AF" : "#667085" }}
-              >
-                Switch
-              </ThemedText>
-            </View>
-          </TouchableOpacity>
-        </AnimatedEntry>
+              Account
+            </ThemedText>
 
-        {ACCOUNT_SECTIONS.map((section, i) => (
-          <AnimatedEntry key={section.title} index={i + 2}>
-            <AccountSectionCard
-              title={section.title}
-              items={section.items}
-              onPressItem={handlePressItem}
-            />
-          </AnimatedEntry>
-        ))}
+            <AnimatedEntry index={0}>
+              <ProfileHeaderCard fullName={fullName} email={email} />
+            </AnimatedEntry>
 
-        <AnimatedEntry index={ACCOUNT_SECTIONS.length + 2}>
-          {/* Glass logout card */}
-          <View className="mt-7">
-            <LinearGradient
-              colors={
-                isDark
-                  ? ["rgba(240,68,56,0.10)", "rgba(240,68,56,0.04)"]
-                  : ["rgba(240,68,56,0.07)", "rgba(240,68,56,0.02)"]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: isDark
-                  ? "rgba(240,68,56,0.22)"
-                  : "rgba(240,68,56,0.18)",
-                overflow: "hidden",
-              }}
-            >
+            {/* Organization switcher card */}
+            <AnimatedEntry index={1}>
               <TouchableOpacity
-                onPress={handleLogout}
-                activeOpacity={0.8}
-                className="h-[64px] flex-row items-center gap-3.5 px-4"
+                activeOpacity={0.85}
+                onPress={() => orgSwitcherRef.current?.present()}
+                style={{
+                  marginTop: 16,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: isDark ? "#1E2D45" : "#D0DDFE",
+                  backgroundColor: isDark ? "#0F172A" : "#EEF2FA",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  gap: 12,
+                }}
               >
                 <View
                   style={{
                     width: 40,
                     height: 40,
                     borderRadius: 20,
+                    backgroundColor: isDark ? "#1F2937" : "#E0E7FF",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: isDark
-                      ? "rgba(240,68,56,0.18)"
-                      : "rgba(240,68,56,0.12)",
-                    borderWidth: 1,
-                    borderColor: isDark
-                      ? "rgba(240,68,56,0.30)"
-                      : "rgba(240,68,56,0.20)",
                   }}
                 >
-                  <LogOut size={17} color="#F04438" />
+                  <Building2 size={18} color={isDark ? "#9CA3AF" : "#4F46E5"} />
                 </View>
-                <ThemedText weight="500" className="text-base text-[#F04438]">
-                  Log Out
-                </ThemedText>
+                <View style={{ flex: 1 }}>
+                  <ThemedText
+                    style={{
+                      fontSize: 12,
+                      color: isDark ? "#6B7280" : "#667085",
+                    }}
+                  >
+                    Active organization
+                  </ThemedText>
+                  <ThemedText
+                    weight="700"
+                    style={{
+                      fontSize: 15,
+                      marginTop: 2,
+                      color: isDark ? "#F9FAFB" : "#101828",
+                    }}
+                    numberOfLines={1}
+                  >
+                    {activeOrg?.name ?? "No organization selected"}
+                  </ThemedText>
+                </View>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <ArrowLeftRight
+                    size={14}
+                    color={isDark ? "#9CA3AF" : "#667085"}
+                  />
+                  <ThemedText
+                    weight="500"
+                    style={{
+                      fontSize: 13,
+                      color: isDark ? "#9CA3AF" : "#667085",
+                    }}
+                  >
+                    Switch
+                  </ThemedText>
+                </View>
               </TouchableOpacity>
-            </LinearGradient>
-          </View>
-        </AnimatedEntry>
+            </AnimatedEntry>
 
-        <View className="h-6" />
+            {ACCOUNT_SECTIONS.map((section, i) => (
+              <AnimatedEntry key={section.title} index={i + 2}>
+                <AccountSectionCard
+                  title={section.title}
+                  items={section.items}
+                  onPressItem={handlePressItem}
+                />
+              </AnimatedEntry>
+            ))}
+
+            <AnimatedEntry index={ACCOUNT_SECTIONS.length + 2}>
+              {/* Glass logout card */}
+              <View className="mt-7">
+                <LinearGradient
+                  colors={
+                    isDark
+                      ? ["rgba(240,68,56,0.10)", "rgba(240,68,56,0.04)"]
+                      : ["rgba(240,68,56,0.07)", "rgba(240,68,56,0.02)"]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: isDark
+                      ? "rgba(240,68,56,0.22)"
+                      : "rgba(240,68,56,0.18)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                    activeOpacity={0.8}
+                    className="h-[64px] flex-row items-center gap-3.5 px-4"
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: isDark
+                          ? "rgba(240,68,56,0.18)"
+                          : "rgba(240,68,56,0.12)",
+                        borderWidth: 1,
+                        borderColor: isDark
+                          ? "rgba(240,68,56,0.30)"
+                          : "rgba(240,68,56,0.20)",
+                      }}
+                    >
+                      <LogOut size={17} color="#F04438" />
+                    </View>
+                    <ThemedText
+                      weight="500"
+                      className="text-base text-[#F04438]"
+                    >
+                      Log Out
+                    </ThemedText>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
+            </AnimatedEntry>
+
+            <View className="h-6" />
+          </View>
+        )}
       </ScrollView>
 
       <StartCampaignPromptModal

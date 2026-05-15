@@ -1,6 +1,7 @@
 import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import TicketSaleRow from "@/feature/organizer/events/components/TicketSaleRow";
 import TicketTypeCard from "@/feature/organizer/events/components/TicketTypeCard";
@@ -8,7 +9,56 @@ import { useEvent, useTicketsForEvent } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
+
+function TicketSalesSkeleton({ isDark }: { isDark: boolean }) {
+  const border = isDark ? "#374151" : "#E4E7EC";
+  const card = isDark ? "#111827" : "#FCFCFD";
+  return (
+    <View style={{ gap: 12 }}>
+      {/* Summary cards */}
+      {[0, 1].map((i) => (
+        <View
+          key={i}
+          style={{
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: border,
+            backgroundColor: card,
+            padding: 14,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <SkeletonBox width="50%" height={14} borderRadius={5} />
+          <SkeletonBox width="25%" height={14} borderRadius={5} />
+        </View>
+      ))}
+
+      {/* Divider */}
+      <View style={{ height: 1, backgroundColor: border, marginVertical: 4 }} />
+
+      {/* Sale rows */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View key={i}>
+          <SkeletonRow
+            gap={10}
+            style={{ alignItems: "center", paddingVertical: 8 }}
+          >
+            <SkeletonBox width={60} height={22} borderRadius={6} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <SkeletonBox width="60%" height={13} borderRadius={4} />
+              <SkeletonBox width="40%" height={12} borderRadius={4} />
+            </View>
+            <SkeletonBox width={55} height={14} borderRadius={5} />
+          </SkeletonRow>
+          {i < 4 && <View style={{ height: 1, backgroundColor: border }} />}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 const TicketSalesScreen = () => {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
@@ -98,9 +148,7 @@ const TicketSalesScreen = () => {
 
         {/* List or Definition rows or Empty State */}
         {isLoading ? (
-          <View className="flex-1 items-center justify-center py-20">
-            <ActivityIndicator size="large" color="#F15827" />
-          </View>
+          <TicketSalesSkeleton isDark={isDark} />
         ) : hasData ? (
           <ScrollView
             className="flex-1 mt-5"

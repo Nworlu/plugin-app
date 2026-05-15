@@ -1,3 +1,4 @@
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import {
   useDeleteNotification,
@@ -24,7 +25,6 @@ import {
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Modal,
   RefreshControl,
   ScrollView,
@@ -32,6 +32,58 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+function NotificationsSkeleton({ isDark }: { isDark: boolean }) {
+  return (
+    <View
+      style={{
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+        backgroundColor: isDark
+          ? "rgba(255,255,255,0.03)"
+          : "rgba(255,255,255,0.7)",
+        overflow: "hidden",
+      }}
+    >
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View key={i}>
+          <SkeletonRow
+            gap={12}
+            style={{
+              alignItems: "center",
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+            }}
+          >
+            {/* Unread dot space */}
+            <View style={{ width: 6 }} />
+            {/* Icon bubble */}
+            <SkeletonBox width={40} height={40} borderRadius={20} />
+            {/* Content */}
+            <View style={{ flex: 1, gap: 6 }}>
+              <SkeletonBox width="35%" height={11} borderRadius={4} />
+              <SkeletonBox width="90%" height={13} borderRadius={4} />
+              <SkeletonBox width="25%" height={10} borderRadius={4} />
+            </View>
+            {/* Action buttons */}
+            <SkeletonBox width={28} height={28} borderRadius={14} />
+            <SkeletonBox width={28} height={28} borderRadius={14} />
+          </SkeletonRow>
+          {i < 4 && (
+            <View
+              style={{
+                height: 1,
+                backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#F2F4F7",
+                marginHorizontal: 16,
+              }}
+            />
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -530,9 +582,7 @@ const NotificationsScreen = () => {
           }
         >
           {isLoading ? (
-            <View style={{ paddingTop: 60, alignItems: "center" }}>
-              <ActivityIndicator size="large" color="#F04438" />
-            </View>
+            <NotificationsSkeleton isDark={isDark} />
           ) : !notifications || notifications.length === 0 ? (
             <View style={{ paddingTop: 80, alignItems: "center", gap: 12 }}>
               <View

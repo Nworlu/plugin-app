@@ -1,5 +1,6 @@
 import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import {
   AddPayoutInformationModal,
@@ -15,7 +16,6 @@ import {
   useAddBankAccount,
   useBankDetails,
   useBanks,
-  useOrganizer,
   useOrganizerStats,
   useValidateBankAccount,
   useWithdrawalHistory,
@@ -27,13 +27,140 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 
+function EarningsSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark ? "#111827" : "#FFFFFF";
+  const border = isDark ? "#1F2937" : "#E4E7EC";
+  return (
+    <ScrollView
+      style={{ flex: 1, paddingHorizontal: 16 }}
+      contentContainerStyle={{ paddingTop: 20, paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Title */}
+      <SkeletonBox width={120} height={28} borderRadius={8} />
+      <SkeletonBox
+        width="65%"
+        height={14}
+        borderRadius={5}
+        style={{ marginTop: 6 }}
+      />
+
+      {/* Balance card */}
+      <View
+        style={{
+          marginTop: 20,
+          borderRadius: 24,
+          backgroundColor: card,
+          borderWidth: 1,
+          borderColor: border,
+          padding: 20,
+          gap: 14,
+        }}
+      >
+        <SkeletonBox width="40%" height={14} borderRadius={5} />
+        <SkeletonBox width="55%" height={38} borderRadius={10} />
+        <SkeletonRow gap={12}>
+          <SkeletonBox width="45%" height={44} borderRadius={14} />
+          <SkeletonBox width="45%" height={44} borderRadius={14} />
+        </SkeletonRow>
+      </View>
+
+      {/* Total earnings card */}
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: 24,
+          backgroundColor: card,
+          borderWidth: 1,
+          borderColor: border,
+          padding: 20,
+          gap: 10,
+        }}
+      >
+        <SkeletonBox width="50%" height={14} borderRadius={5} />
+        <SkeletonBox width="40%" height={32} borderRadius={8} />
+      </View>
+
+      {/* Stats card */}
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: 24,
+          backgroundColor: card,
+          borderWidth: 1,
+          borderColor: border,
+          padding: 20,
+        }}
+      >
+        <SkeletonRow gap={0} style={{ justifyContent: "space-between" }}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ alignItems: "center", flex: 1, gap: 6 }}>
+              <SkeletonBox width={40} height={24} borderRadius={6} />
+              <SkeletonBox width={55} height={12} borderRadius={4} />
+            </View>
+          ))}
+        </SkeletonRow>
+      </View>
+
+      {/* Payout info card */}
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: 24,
+          backgroundColor: card,
+          borderWidth: 1,
+          borderColor: border,
+          padding: 20,
+          gap: 12,
+        }}
+      >
+        <SkeletonBox width="50%" height={16} borderRadius={5} />
+        <SkeletonRow gap={12} style={{ alignItems: "center" }}>
+          <SkeletonBox width={40} height={40} borderRadius={20} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <SkeletonBox width="60%" height={14} borderRadius={5} />
+            <SkeletonBox width="80%" height={12} borderRadius={4} />
+          </View>
+        </SkeletonRow>
+      </View>
+
+      {/* Withdrawal history */}
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: 24,
+          backgroundColor: card,
+          borderWidth: 1,
+          borderColor: border,
+          padding: 20,
+          gap: 14,
+        }}
+      >
+        <SkeletonBox width="55%" height={16} borderRadius={5} />
+        {[0, 1, 2].map((i) => (
+          <SkeletonRow key={i} gap={12} style={{ alignItems: "center" }}>
+            <SkeletonBox width={36} height={36} borderRadius={18} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <SkeletonBox width="60%" height={13} borderRadius={4} />
+              <SkeletonBox width="40%" height={11} borderRadius={4} />
+            </View>
+            <SkeletonBox width={55} height={13} borderRadius={4} />
+          </SkeletonRow>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
 const EarningsScreen = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const user = useAuthStore((s) => s.user);
   const userId = user?._id ?? "";
   // const { data: organizer } = useOrganizer(userId);
-  const { data: orgStats } = useOrganizerStats(userId ?? "");
+  const { data: orgStats, isLoading: isStatsLoading } = useOrganizerStats(
+    userId ?? "",
+  );
   const payoutSheetRef = useRef<BottomSheetModal>(null);
   const withdrawalSheetRef = useRef<BottomSheetModal>(null);
   const [showBanner, setShowBanner] = useState(true);
@@ -41,7 +168,6 @@ const EarningsScreen = () => {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [selectedBank, setSelectedBank] = useState("");
-
   const [selectedBankCode, setSelectedBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [resolvedAccountName, setResolvedAccountName] = useState("");
@@ -69,8 +195,11 @@ const EarningsScreen = () => {
 
   const { mutate: addBankAccountApi } = useAddBankAccount();
 
-  const { data: withdrawalHistory } = useWithdrawalHistory();
+  const { data: withdrawalHistory, isLoading: isHistoryLoading } =
+    useWithdrawalHistory();
   const { data: withdrawalStats } = useWithdrawalStats();
+
+  const isLoading = isStatsLoading || isHistoryLoading;
 
   const balance = user?.wallet ?? 0;
   const totalEarnings =
@@ -161,121 +290,125 @@ const EarningsScreen = () => {
 
   return (
     <AppSafeArea>
-      <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingTop: 20, paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <ThemedText weight="700" className="text-2xl">
-          Earnings
-        </ThemedText>
-        <ThemedText
-          className={`text-sm mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#2E394C]"}`}
+      {isLoading ? (
+        <EarningsSkeleton isDark={isDark} />
+      ) : (
+        <ScrollView
+          className="flex-1 px-4"
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
         >
-          View and manage all your earnings and payouts here.
-        </ThemedText>
+          <ThemedText weight="700" className="text-2xl">
+            Earnings
+          </ThemedText>
+          <ThemedText
+            className={`text-sm mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#2E394C]"}`}
+          >
+            View and manage all your earnings and payouts here.
+          </ThemedText>
 
-        {showBanner ? (
-          <AnimatedEntry index={1}>
-            <TopUpBanner
-              amount="N320,000"
-              onDismiss={() => setShowBanner(false)}
+          {showBanner ? (
+            <AnimatedEntry index={1}>
+              <TopUpBanner
+                amount="N320,000"
+                onDismiss={() => setShowBanner(false)}
+              />
+            </AnimatedEntry>
+          ) : null}
+
+          <AnimatedEntry index={2}>
+            <BalanceCard
+              hideBalance={hideBalance}
+              balance={balance}
+              onToggleBalance={() => setHideBalance((value) => !value)}
+              onWithdraw={() => setShowWithdrawalModal(true)}
             />
           </AnimatedEntry>
-        ) : null}
 
-        <AnimatedEntry index={2}>
-          <BalanceCard
-            hideBalance={hideBalance}
-            balance={balance}
-            onToggleBalance={() => setHideBalance((value) => !value)}
-            onWithdraw={() => setShowWithdrawalModal(true)}
-          />
-        </AnimatedEntry>
-
-        <AnimatedEntry index={3}>
-          <TotalEarningsCard totalEarnings={totalEarnings} />
-        </AnimatedEntry>
-
-        {orgStats ? (
-          <AnimatedEntry index={4}>
-            <View
-              className="mt-5 rounded-3xl px-4 py-4 flex-row justify-between"
-              style={{
-                borderWidth: 1,
-                borderColor: isDark ? "#374151" : "#E4E7EC",
-                backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
-              }}
-            >
-              <View className="items-center flex-1">
-                <ThemedText weight="700" className="text-xl">
-                  {orgStats.totalTicketsSold}
-                </ThemedText>
-                <ThemedText
-                  weight="500"
-                  className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
-                >
-                  Tickets Sold
-                </ThemedText>
-              </View>
-              <View
-                style={{
-                  width: 1,
-                  backgroundColor: isDark ? "#374151" : "#E4E7EC",
-                }}
-              />
-              <View className="items-center flex-1">
-                <ThemedText weight="700" className="text-xl">
-                  {orgStats.totalEvents}
-                </ThemedText>
-                <ThemedText
-                  weight="500"
-                  className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
-                >
-                  Total Events
-                </ThemedText>
-              </View>
-              <View
-                style={{
-                  width: 1,
-                  backgroundColor: isDark ? "#374151" : "#E4E7EC",
-                }}
-              />
-              <View className="items-center flex-1">
-                <ThemedText weight="700" className="text-xl">
-                  {orgStats.totalFollowers}
-                </ThemedText>
-                <ThemedText
-                  weight="500"
-                  className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
-                >
-                  Followers
-                </ThemedText>
-              </View>
-            </View>
+          <AnimatedEntry index={3}>
+            <TotalEarningsCard totalEarnings={totalEarnings} />
           </AnimatedEntry>
-        ) : null}
 
-        <AnimatedEntry index={5}>
-          <PayoutInformationCard
-            linkedAccount={linkedAccount}
-            onAddBankAccount={() => setShowPayoutModal(true)}
-            onEditLinkedAccount={handleEditLinkedAccount}
-            onRemoveLinkedAccount={handleRemoveLinkedAccount}
-          />
-        </AnimatedEntry>
+          {orgStats ? (
+            <AnimatedEntry index={4}>
+              <View
+                className="mt-5 rounded-3xl px-4 py-4 flex-row justify-between"
+                style={{
+                  borderWidth: 1,
+                  borderColor: isDark ? "#374151" : "#E4E7EC",
+                  backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+                }}
+              >
+                <View className="items-center flex-1">
+                  <ThemedText weight="700" className="text-xl">
+                    {orgStats.totalTicketsSold}
+                  </ThemedText>
+                  <ThemedText
+                    weight="500"
+                    className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
+                  >
+                    Tickets Sold
+                  </ThemedText>
+                </View>
+                <View
+                  style={{
+                    width: 1,
+                    backgroundColor: isDark ? "#374151" : "#E4E7EC",
+                  }}
+                />
+                <View className="items-center flex-1">
+                  <ThemedText weight="700" className="text-xl">
+                    {orgStats.totalEvents}
+                  </ThemedText>
+                  <ThemedText
+                    weight="500"
+                    className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
+                  >
+                    Total Events
+                  </ThemedText>
+                </View>
+                <View
+                  style={{
+                    width: 1,
+                    backgroundColor: isDark ? "#374151" : "#E4E7EC",
+                  }}
+                />
+                <View className="items-center flex-1">
+                  <ThemedText weight="700" className="text-xl">
+                    {orgStats.totalFollowers}
+                  </ThemedText>
+                  <ThemedText
+                    weight="500"
+                    className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
+                  >
+                    Followers
+                  </ThemedText>
+                </View>
+              </View>
+            </AnimatedEntry>
+          ) : null}
 
-        <AnimatedEntry index={6}>
-          <WithdrawalSummaryCard
-            stats={withdrawalStats}
-            history={withdrawalHistory ?? []}
-          />
-        </AnimatedEntry>
+          <AnimatedEntry index={5}>
+            <PayoutInformationCard
+              linkedAccount={linkedAccount}
+              onAddBankAccount={() => setShowPayoutModal(true)}
+              onEditLinkedAccount={handleEditLinkedAccount}
+              onRemoveLinkedAccount={handleRemoveLinkedAccount}
+            />
+          </AnimatedEntry>
 
-        <AnimatedEntry index={7}>
-          <WithdrawalHistoryCard history={withdrawalHistory ?? []} />
-        </AnimatedEntry>
-      </ScrollView>
+          <AnimatedEntry index={6}>
+            <WithdrawalSummaryCard
+              stats={withdrawalStats}
+              history={withdrawalHistory ?? []}
+            />
+          </AnimatedEntry>
+
+          <AnimatedEntry index={7}>
+            <WithdrawalHistoryCard history={withdrawalHistory ?? []} />
+          </AnimatedEntry>
+        </ScrollView>
+      )}
 
       <AddPayoutInformationModal
         ref={payoutSheetRef}

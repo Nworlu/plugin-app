@@ -1,6 +1,7 @@
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import GradientButton from "@/components/gradient-button";
+import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import { useAddAgent, useAgents, useEvent } from "@/hooks/api/use-events";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -9,13 +10,30 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Modal,
   ScrollView,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+
+function AgentsSkeleton({ isDark }: { isDark: boolean }) {
+  return (
+    <View style={{ marginTop: 20, gap: 12 }}>
+      <SkeletonBox width="40%" height={15} borderRadius={5} />
+      {[0, 1, 2].map((i) => (
+        <SkeletonRow key={i} gap={12} style={{ alignItems: "center" }}>
+          <SkeletonBox width={36} height={36} borderRadius={18} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <SkeletonBox width="65%" height={14} borderRadius={5} />
+            <SkeletonBox width={90} height={26} borderRadius={8} />
+          </View>
+          <SkeletonBox width={24} height={24} borderRadius={12} />
+        </SkeletonRow>
+      ))}
+    </View>
+  );
+}
 
 type TicketDef = { ticketId: string; ticketName: string };
 
@@ -226,9 +244,7 @@ const CheckInAgentScreen = () => {
 
           {/* Agent list or empty state */}
           {isLoadingAgents ? (
-            <View className="mt-7 pb-3 items-center">
-              <ActivityIndicator size="small" color="#D92D20" />
-            </View>
+            <AgentsSkeleton isDark={isDark} />
           ) : hasAgents ? (
             <View className="mt-5 pb-2">
               <ThemedText

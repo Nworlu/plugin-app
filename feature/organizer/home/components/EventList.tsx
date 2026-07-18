@@ -1,14 +1,15 @@
 import { ThemedText } from "@/components/themed-text";
+import { AppImage } from "@/components/app-image";
 import { HomeTabTag, OrganizerEvent } from "@/feature/organizer/constants/home";
 import { useOrganizerEvents, useTicketsForEvent } from "@/hooks/api";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
+import { preloadRemoteImages } from "@/utils/image-preload";
 import { ChevronRight, Heart, Ticket } from "lucide-react-native";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -37,10 +38,11 @@ const EventCard = ({
       className="w-full flex-row items-start gap-3"
     >
       <View className="relative">
-        <Image
+        <AppImage
           source={event.image}
-          className="w-28 h-28 rounded-xl"
-          resizeMode="cover"
+          recyclingKey={event.id}
+          style={{ width: 112, height: 112, borderRadius: 12 }}
+          contentFit="cover"
         />
         <TouchableOpacity
           activeOpacity={0.8}
@@ -171,6 +173,13 @@ const EventList = ({ activeTag }: EventListProps) => {
       ticketsSold: 0,
       ticketsTotal: 0,
     }));
+  }, [eventsData]);
+
+  useEffect(() => {
+    if (!eventsData?.length) return;
+    preloadRemoteImages(
+      eventsData.map((event) => event.eventBanner ?? event.thumbnail),
+    ).catch(() => {});
   }, [eventsData]);
 
   if (isLoading) {

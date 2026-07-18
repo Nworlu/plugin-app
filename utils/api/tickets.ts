@@ -1,5 +1,5 @@
 import { apiClient } from "@/utils/api-client";
-import type { ScanTicketResponse, Ticket } from "./types";
+import type { EventAttendee, ScanTicketResponse, Ticket } from "./types";
 
 export type EventTicketsResponse = {
   event: Record<string, unknown>;
@@ -20,6 +20,13 @@ export const ticketsApi = {
   /** Get all tickets for a specific event belonging to the user */
   getForEvent: (eventId: string) =>
     apiClient.get<EventTicketsResponse>(`tickets/user/events/${eventId}`, true),
+
+  /** Get all attendees for a specific organizer event */
+  getAttendeesForEvent: (eventId: string) =>
+    apiClient.get<EventAttendee[] | { attendees: EventAttendee[] }>(
+      `organizers/events/attendees/${eventId}`,
+      true,
+    ),
 
   /** Get tickets by booking ID (no auth required) */
   getByBooking: (bookingId: string) =>

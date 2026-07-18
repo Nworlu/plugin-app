@@ -1,8 +1,10 @@
 import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import AttendeeRecordCard from "@/feature/organizer/events/components/AttendeeRecordCard";
-import { useTicketsForEvent } from "@/hooks/api";
+import { useAttendeesForEvent } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
+import type { EventAttendee } from "@/utils/api/types";
 import { useLocalSearchParams } from "expo-router";
 import { Search } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
@@ -55,22 +57,73 @@ function AttendeesSkeleton({ isDark }: { isDark: boolean }) {
 }
 
 const AttendeeListTab = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const [query, setQuery] = useState("");
 
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
-  const { data: tickets, isLoading } = useTicketsForEvent(eventId ?? "");
+  const { data: attendees, isLoading } = useAttendeesForEvent(eventId ?? "");
+
+  const getAttendeeDate = (attendee: EventAttendee) => {
+    const record = attendee as Record<string, unknown>;
+    const ticketRecord =
+      record.ticket && typeof record.ticket === "object"
+        ? (record.ticket as Record<string, unknown>)
+        : undefined;
+
+    const candidates: unknown[] = [
+      attendee.checkedInAt,
+      attendee.purchaseDate,
+      attendee.createdAt,
+      record.updatedAt,
+      record.date,
+      record.attendedAt,
+      record.checkInDate,
+      record.checkedInDate,
+      record.ticketPurchaseDate,
+      record.ticketPurchasedAt,
+      ticketRecord?.purchaseDate,
+      ticketRecord?.createdAt,
+    ];
+
+    for (const value of candidates) {
+      if (!value) continue;
+      const parsed = new Date(String(value));
+      if (!Number.isNaN(parsed.getTime())) return parsed.toLocaleString();
+    }
+
+    return "—";
+  };
 
   const filteredRows = useMemo(() => {
-    const rows = (tickets ?? []).map((t) => ({
-      id: t.id,
-      email: t.holderInfo?.email ?? "—",
-      packageName: t.ticketData?.name ?? "General Admission",
-      date: t.purchaseDate ? new Date(t.purchaseDate).toLocaleString() : "—",
-      progress: "—",
-      status: t.checkedIn ? "Checked-in" : "Pending",
-    }));
+    const rows = (attendees ?? []).map((attendee: EventAttendee, index) => {
+      const email =
+        attendee.email ??
+        attendee.holderInfo?.email ??
+        attendee.attendeeEmail ??
+        "—";
+      const packageName =
+        attendee.ticketName ??
+        attendee.ticketData?.name ??
+        t("events.wizard.attendees.generalAdmission");
+      const isCheckedIn =
+        attendee.checkedIn === true ||
+        attendee.status?.toLowerCase() === "checked-in" ||
+        attendee.status?.toLowerCase() === "checked_in" ||
+        attendee.status?.toLowerCase() === "checkedin";
+
+      return {
+        id: attendee._id ?? attendee.id ?? `${email}-${packageName}-${index}`,
+        email,
+        packageName,
+        date: getAttendeeDate(attendee),
+        progress: "—",
+        status: isCheckedIn
+          ? t("events.wizard.attendees.checkedIn")
+          : t("events.wizard.attendees.pending"),
+      };
+    });
 
     const term = query.trim().toLowerCase();
     if (!term) return rows;
@@ -81,7 +134,7 @@ const AttendeeListTab = () => {
         row.packageName.toLowerCase().includes(term) ||
         row.status.toLowerCase().includes(term),
     );
-  }, [tickets, query]);
+  }, [attendees, query, t]);
 
   return (
     <>
@@ -103,7 +156,7 @@ const AttendeeListTab = () => {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search ticket type"
+          placeholder={t("events.wizard.attendees.searchPlaceholder")}
           placeholderTextColor={isDark ? "#6B7280" : "#98A2B3"}
           style={{
             flex: 1,
@@ -141,7 +194,7 @@ const AttendeeListTab = () => {
             weight="500"
             className={`text-[16px] ${isDark ? "text-[#E5E7EB]" : "text-[#344054]"}`}
           >
-            Filter
+            {t("events.wizard.attendees.filter")}
           </ThemedText>
         </TouchableOpacity>
 
@@ -168,7 +221,7 @@ const AttendeeListTab = () => {
             weight="500"
             className={`text-[16px] ${isDark ? "text-[#E5E7EB]" : "text-[#344054]"}`}
           >
-            PDF
+            {t("events.wizard.attendees.pdf")}
           </ThemedText>
         </TouchableOpacity>
 
@@ -195,7 +248,7 @@ const AttendeeListTab = () => {
             weight="500"
             className={`text-[16px] ${isDark ? "text-[#E5E7EB]" : "text-[#344054]"}`}
           >
-            CSV
+            {t("events.wizard.attendees.csv")}
           </ThemedText>
         </TouchableOpacity>
       </View>
@@ -223,7 +276,7 @@ const AttendeeListTab = () => {
               <ThemedText
                 className={`text-center mt-6 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
               >
-                No attendees match your search.
+                {t("events.wizard.attendees.noMatch")}
               </ThemedText>
             ) : null}
           </View>

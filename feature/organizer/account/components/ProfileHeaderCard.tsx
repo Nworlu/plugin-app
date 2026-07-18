@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { LinearGradient } from "expo-linear-gradient";
 import { ArrowRightLeft } from "lucide-react-native";
@@ -16,35 +17,62 @@ const ProfileHeaderCard = ({
   email,
   onSwitchProfile,
 }: ProfileHeaderCardProps) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   return (
     <>
-      <View className="flex-row items-center gap-4 mt-2">
-        <View className="w-14 h-14 rounded-full bg-[#2B211B] border border-[#F2F4F7] items-center justify-center">
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: isDark ? "#1F2937" : "#E4E7EC",
+          backgroundColor: isDark ? "#111827" : "#FFFFFF",
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 14,
+        }}
+      >
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: isDark ? "#2B211B" : "#3A2A21",
+            borderWidth: 1,
+            borderColor: isDark ? "#344054" : "#F2F4F7",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <ThemedText weight="500" className="text-[#F9FAFB] text-lg">
-            {fullName.split(" ").map((n) => n[0]).join("").toUpperCase()}
+            {fullName
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()}
           </ThemedText>
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <ThemedText
             weight="500"
             className={`text-base ${isDark ? "text-white" : "text-[#101828]"}`}
+            numberOfLines={1}
           >
             {fullName}
           </ThemedText>
           <ThemedText
             className={`text-sm mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
+            numberOfLines={1}
           >
             {email}
           </ThemedText>
         </View>
       </View>
-
-      <View
-        className={`h-[1px] mt-5 ${isDark ? "bg-[#1F2937]" : "bg-[#F2E8E8]"}`}
-      />
 
       <LinearGradient
         colors={
@@ -63,11 +91,11 @@ const ProfileHeaderCard = ({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingHorizontal:16,
-          paddingVertical:16,
-          marginTop:20,
-          borderRadius:16,
-          borderWidth:1,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          marginTop: 12,
+          borderRadius: 16,
+          borderWidth: 1,
           borderColor: isDark ? "#1E2D45" : "#D0DDFE",
           backgroundColor: isDark ? "#0F172A" : "#EEF2FA",
         }}
@@ -76,13 +104,13 @@ const ProfileHeaderCard = ({
           <ThemedText
             className={`text-xs ${isDark ? "text-[#6B7280]" : "text-[#667085]"}`}
           >
-            Switch to
+            {t("settings.organizer.switchTo")}
           </ThemedText>
           <ThemedText
             weight="500"
             className={`text-base mt-1 ${isDark ? "text-white" : "text-[#101828]"}`}
           >
-            Attendee profile
+            {t("settings.organizer.attendeeProfile")}
           </ThemedText>
         </View>
 
@@ -99,7 +127,7 @@ const ProfileHeaderCard = ({
               weight="500"
               className="text-[#F04438] text-[12px] mt-1.5"
             >
-              Switch
+              {t("settings.organizer.switch")}
             </ThemedText>
           </View>
         </View>

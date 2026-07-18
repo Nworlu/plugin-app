@@ -12,6 +12,7 @@ import {
   WithdrawalHistoryCard,
   WithdrawalSummaryCard,
 } from "@/feature/organizer/earnings/components";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import {
   useAddBankAccount,
   useBankDetails,
@@ -21,6 +22,7 @@ import {
   useWithdrawalHistory,
   useWithdrawalStats,
 } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -153,6 +155,7 @@ function EarningsSkeleton({ isDark }: { isDark: boolean }) {
 }
 
 const EarningsScreen = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const user = useAuthStore((s) => s.user);
@@ -289,7 +292,7 @@ const EarningsScreen = () => {
   };
 
   return (
-    <AppSafeArea>
+    <AppSafeArea className={isDark ? "bg-[#060A12]" : "bg-[#F0F4FF]"}>
       {isLoading ? (
         <EarningsSkeleton isDark={isDark} />
       ) : (
@@ -299,12 +302,12 @@ const EarningsScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           <ThemedText weight="700" className="text-2xl">
-            Earnings
+            {t("earnings.title")}
           </ThemedText>
           <ThemedText
             className={`text-sm mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#2E394C]"}`}
           >
-            View and manage all your earnings and payouts here.
+            {t("earnings.subtitle")}
           </ThemedText>
 
           {showBanner ? (
@@ -331,12 +334,14 @@ const EarningsScreen = () => {
 
           {orgStats ? (
             <AnimatedEntry index={4}>
-              <View
-                className="mt-5 rounded-3xl px-4 py-4 flex-row justify-between"
+              <GlassCard
+                isDark={isDark}
                 style={{
-                  borderWidth: 1,
-                  borderColor: isDark ? "#374151" : "#E4E7EC",
-                  backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+                  marginTop: 20,
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
                 }}
               >
                 <View className="items-center flex-1">
@@ -347,7 +352,7 @@ const EarningsScreen = () => {
                     weight="500"
                     className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
                   >
-                    Tickets Sold
+                    {t("earnings.ticketsSold")}
                   </ThemedText>
                 </View>
                 <View
@@ -364,7 +369,7 @@ const EarningsScreen = () => {
                     weight="500"
                     className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
                   >
-                    Total Events
+                    {t("earnings.totalEvents")}
                   </ThemedText>
                 </View>
                 <View
@@ -381,10 +386,10 @@ const EarningsScreen = () => {
                     weight="500"
                     className={`text-xs mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
                   >
-                    Followers
+                    {t("earnings.followers")}
                   </ThemedText>
                 </View>
-              </View>
+              </GlassCard>
             </AnimatedEntry>
           ) : null}
 

@@ -1,4 +1,5 @@
 import AppSafeArea from "@/components/app-safe-area";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
 import {
   useAddFavourite,
@@ -10,6 +11,7 @@ import {
   useRemoveFavourite,
   useUnfollow,
 } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -26,7 +28,6 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Platform,
   ScrollView,
   Share,
@@ -60,6 +61,7 @@ const formatTime = (t?: string) => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const EventPreviewScreen = () => {
+  const { t } = useTranslation();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -162,7 +164,9 @@ const EventPreviewScreen = () => {
 
   const isOnline = event?.locationType === "online";
   const onlineLink =
-    event?.onlineLocation?.link ?? event?.onlineLocation?.venue ?? "";
+    event?.onlineLocation?.venueLink ??
+    event?.onlineLocation?.onlineVenue ??
+    "";
 
   const shortAbout =
     description.length > 220 ? description.slice(0, 220) + "…" : description;
@@ -194,7 +198,7 @@ const EventPreviewScreen = () => {
             weight="500"
             style={{ fontSize: 12, color: isDark ? "#9CA3AF" : "#344054" }}
           >
-            Preview Mode
+            {t("events.preview.previewMode")}
           </ThemedText>
         </View>
         <TouchableOpacity
@@ -225,7 +229,7 @@ const EventPreviewScreen = () => {
             weight="500"
             style={{ fontSize: 15, color: textSecondary, textAlign: "center" }}
           >
-            Could not load event details. Please try again.
+            {t("events.preview.loadError")}
           </ThemedText>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -239,7 +243,7 @@ const EventPreviewScreen = () => {
             }}
           >
             <ThemedText weight="700" style={{ color: "#fff", fontSize: 14 }}>
-              Go Back
+              {t("events.preview.goBack")}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -260,7 +264,7 @@ const EventPreviewScreen = () => {
                 color: textPrimary,
               }}
             >
-              {title || "Untitled Event"}
+              {title || t("events.edit.untitled")}
             </ThemedText>
             <View className="flex-row items-center gap-3 pt-1">
               <TouchableOpacity onPress={handleShare} activeOpacity={0.8}>
@@ -303,11 +307,12 @@ const EventPreviewScreen = () => {
 
           {/* ── Banner ── */}
           {bannerUri ? (
-            <Image
-              source={{ uri: bannerUri }}
-              className="w-full mt-4"
-              style={{ height: 220 }}
-              resizeMode="cover"
+            <AppImage
+              source={bannerUri}
+              recyclingKey={eventId}
+              style={{ width: "100%", height: 220, marginTop: 16 }}
+              contentFit="cover"
+              priority="high"
             />
           ) : (
             <View
@@ -350,7 +355,7 @@ const EventPreviewScreen = () => {
                         marginTop: 1,
                       }}
                     >
-                      Ends {formatDate(endDate)}
+                      {t("events.preview.ends", { date: formatDate(endDate) })}
                     </ThemedText>
                   ) : null}
                 </View>
@@ -396,7 +401,7 @@ const EventPreviewScreen = () => {
                     weight="700"
                     style={{ fontSize: 14, color: textPrimary }}
                   >
-                    Online Event
+                    {t("events.preview.onlineEvent")}
                   </ThemedText>
                   {onlineLink ? (
                     <ThemedText
@@ -454,9 +459,11 @@ const EventPreviewScreen = () => {
               }}
             >
               {organizer?.thumbnail ? (
-                <Image
-                  source={{ uri: organizer.thumbnail }}
+                <AppImage
+                  source={organizer.thumbnail}
+                  recyclingKey={organizer._id}
                   style={{ width: 52, height: 52, borderRadius: 26 }}
+                  contentFit="cover"
                 />
               ) : (
                 <UserRound size={26} color={isDark ? "#6B7280" : "#98A2B3"} />
@@ -473,7 +480,9 @@ const EventPreviewScreen = () => {
                 <ThemedText
                   style={{ fontSize: 13, color: textSecondary, marginTop: 2 }}
                 >
-                  {organizer.followers.toLocaleString()} followers
+                  {t("events.preview.followers", {
+                    count: organizer.followers.toLocaleString(),
+                  })}
                 </ThemedText>
               ) : organizer?.tagline ? (
                 <ThemedText
@@ -529,7 +538,7 @@ const EventPreviewScreen = () => {
                           : "#344054",
                     }}
                   >
-                    {isFollowing ? "Following" : "Follow"}
+                    {isFollowing ? t("events.preview.following") : t("events.preview.follow")}
                   </ThemedText>
                 </>
               )}
@@ -555,7 +564,7 @@ const EventPreviewScreen = () => {
                   marginBottom: 8,
                 }}
               >
-                About the event
+                {t("events.preview.aboutEvent")}
               </ThemedText>
               <ThemedText
                 style={{ fontSize: 15, color: textPrimary, lineHeight: 24 }}
@@ -574,7 +583,9 @@ const EventPreviewScreen = () => {
                     weight="500"
                     style={{ fontSize: 14, color: textPrimary }}
                   >
-                    {showFullAbout ? "Show less ∧" : "Show more ∨"}
+                    {showFullAbout
+                      ? t("events.preview.showLessArrow")
+                      : t("events.preview.showMoreArrow")}
                   </ThemedText>
                 </TouchableOpacity>
               ) : null}
@@ -599,7 +610,7 @@ const EventPreviewScreen = () => {
                     marginBottom: 10,
                   }}
                 >
-                  Tickets
+                  {t("events.preview.tickets")}
                 </ThemedText>
                 <View
                   className="flex-row items-center justify-between rounded-2xl px-4 py-4"
@@ -613,7 +624,7 @@ const EventPreviewScreen = () => {
                     weight="500"
                     style={{ fontSize: 15, color: textPrimary }}
                   >
-                    General Admission
+                    {t("events.dashboard.generalAdmission")}
                   </ThemedText>
                   <ThemedText
                     weight="700"
@@ -644,7 +655,7 @@ const EventPreviewScreen = () => {
                     marginBottom: 8,
                   }}
                 >
-                  Location
+                  {t("events.preview.location")}
                 </ThemedText>
                 <ThemedText
                   style={{ fontSize: 15, color: textPrimary, marginBottom: 12 }}
@@ -713,7 +724,7 @@ const EventPreviewScreen = () => {
               }}
             >
               <ThemedText weight="700" style={{ color: "#fff", fontSize: 16 }}>
-                Manage Event
+                {t("events.preview.manageEvent")}
               </ThemedText>
             </TouchableOpacity>
 
@@ -738,7 +749,7 @@ const EventPreviewScreen = () => {
                 weight="700"
                 style={{ fontSize: 16, color: textPrimary }}
               >
-                View Insights
+                {t("events.preview.viewInsights")}
               </ThemedText>
             </TouchableOpacity>
           </View>

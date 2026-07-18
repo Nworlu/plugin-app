@@ -1,4 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight } from "lucide-react-native";
@@ -8,58 +10,38 @@ import type { AccountMenuItem } from "../constants/account";
 import AccountIcon from "./AccountIcon";
 
 type AccountSectionCardProps = {
-  title: string;
+  sectionKey: "quickLinks" | "account" | "settings" | "support" | "legal";
   items: AccountMenuItem[];
   onPressItem: (item: AccountMenuItem) => void;
 };
 
 const AccountSectionCard = ({
-  title,
+  sectionKey,
   items,
   onPressItem,
 }: AccountSectionCardProps) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const { t } = useTranslation();
 
   return (
-    <View className="mt-7">
+    <View className="mt-5">
       <ThemedText
         weight="500"
-        className={`text-[13px] uppercase tracking-widest mb-2 ${isDark ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}
+        className={`text-[13px] uppercase tracking-widest mb-3 ${isDark ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}
       >
-        {title}
+        {t(`account.sections.${sectionKey}`)}
       </ThemedText>
 
-      {/* Glass card wrapping all items */}
-      <LinearGradient
-        colors={
-          isDark
-            ? ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"]
-            : ["rgba(255,255,255,0.80)", "rgba(255,255,255,0.50)"]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: isDark
-            ? "rgba(255,255,255,0.08)"
-            : "rgba(255,255,255,0.90)",
-          overflow: "hidden",
-          shadowColor: isDark ? "#000" : "#7090C8",
-          shadowOpacity: isDark ? 0.35 : 0.12,
-          shadowOffset: { width: 0, height: 4 },
-          shadowRadius: 16,
-          elevation: 4,
-        }}
-      >
+      {/* Shared card surface to keep account cards aligned with home/event cards */}
+      <GlassCard isDark={isDark}>
         {items.map((item, idx) => (
           <TouchableOpacity
             key={item.key}
             activeOpacity={0.75}
             onPress={() => onPressItem(item)}
             style={{
-              height: 62,
+              height: 64,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
@@ -82,8 +64,8 @@ const AccountSectionCard = ({
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
                   borderRadius: 12,
                   alignItems: "center",
                   justifyContent: "center",
@@ -103,7 +85,7 @@ const AccountSectionCard = ({
                 weight="400"
                 className={`text-[15px] ${isDark ? "text-[#E5E7EB]" : "text-[#101828]"}`}
               >
-                {item.label}
+                {t(`account.items.${item.key}`)}
               </ThemedText>
             </View>
 
@@ -113,7 +95,7 @@ const AccountSectionCard = ({
             />
           </TouchableOpacity>
         ))}
-      </LinearGradient>
+      </GlassCard>
     </View>
   );
 };

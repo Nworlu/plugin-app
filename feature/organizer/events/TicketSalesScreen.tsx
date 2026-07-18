@@ -3,11 +3,13 @@ import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import TicketSaleRow from "@/feature/organizer/events/components/TicketSaleRow";
-import TicketTypeCard from "@/feature/organizer/events/components/TicketTypeCard";
 import { useEvent, useTicketsForEvent } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
+import { Ticket } from "lucide-react-native";
 import React from "react";
 import { ScrollView, View } from "react-native";
 
@@ -60,7 +62,40 @@ function TicketSalesSkeleton({ isDark }: { isDark: boolean }) {
   );
 }
 
+function SummaryTicketCard({ label, value }: { label: string; value: string }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <GlassCard
+      isDark={isDark}
+      style={{
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+      }}
+    >
+      <View className="flex-row items-center gap-2.5">
+        <Ticket size={24} color={isDark ? "#E5E7EB" : "#270302"} />
+        <View className="flex-1">
+          <ThemedText
+            weight="700"
+            className={`text-[16px] ${isDark ? "text-[#F2F4F7]" : "text-[#111827]"}`}
+          >
+            {label}
+          </ThemedText>
+          <ThemedText
+            className={`text-[14px] mt-0.5 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
+          >
+            {value}
+          </ThemedText>
+        </View>
+      </View>
+    </GlassCard>
+  );
+}
+
 const TicketSalesScreen = () => {
+  const { t } = useTranslation();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -76,21 +111,30 @@ const TicketSalesScreen = () => {
     quantity: number;
     sold: number;
   };
+
+  const buildDefId = (value: unknown, fallback: string) => {
+    const id = typeof value === "string" ? value.trim() : "";
+    return id.length > 0 ? id : fallback;
+  };
+
   const ticketDefs: TicketDef[] = [];
   if (event?.entryTicket) {
     const et = event.entryTicket;
     ticketDefs.push({
-      id: et._id,
-      name: et.ticketName,
+      id: buildDefId(et._id, `entry-${event?._id ?? eventId ?? "event"}`),
+      name: et.ticketName ?? t("events.dashboard.entryTicket"),
       price: et.ticketPrice ?? 0,
       quantity: et.ticketQuantity ?? 0,
       sold: et.ticketsSold ?? 0,
     });
   }
-  (event?.groupedTicket ?? []).forEach((gt) => {
+  (event?.groupedTicket ?? []).forEach((gt, idx) => {
     ticketDefs.push({
-      id: gt._id,
-      name: gt.ticketName,
+      id: buildDefId(
+        gt._id,
+        `grouped-${event?._id ?? eventId ?? "event"}-${idx}`,
+      ),
+      name: gt.ticketName ?? t("events.dashboard.groupedTicket", { index: idx + 1 }),
       price: gt.ticketPrice ?? 0,
       quantity: gt.ticketQuantity ?? 0,
       sold: gt.ticketsSold ?? 0,
@@ -101,22 +145,30 @@ const TicketSalesScreen = () => {
   const hasDefs = ticketDefs.length > 0;
 
   // Derived summary
-  const totalSold = tickets?.filter((t) => t.checkedIn).length ?? 0;
-  const totalCount = tickets?.length ?? 0;
-  const summaryLabel = `${totalSold.toLocaleString()}/${totalCount.toLocaleString()}`;
+  const ticketSalesSummary = hasDefs
+    ? ticketDefs.map((def) => ({
+        id: def.id,
+        name: def.name,
+        sold: def.sold,
+        quantity: def.quantity,
+        price: def.price,
+      }))
+    : [];
 
   return (
     <AppSafeArea>
-      <View className="flex-1 px-4 pt-3">
+      <View
+        className={`flex-1 px-4 pt-3 ${isDark ? "bg-[#020617]" : "bg-white"}`}
+      >
         <BackHeader
-          label="Back"
+          label={t("common.back")}
           onPress={() => router.back()}
           iconColor={isDark ? "#E4E7EC" : "#1D2739"}
           rightNode={<View />}
         />
 
         <ThemedText weight="700" className="text-2xl leading-9 mt-4">
-          Ticket Sales
+          {t("events.tickets.title")}
         </ThemedText>
 
         {/* Sales Summary — one card per ticket type */}
@@ -126,23 +178,23 @@ const TicketSalesScreen = () => {
             isDark ? "text-[#C4B5FD]" : "text-[#3F2B6C]"
           }`}
         >
-          SALES SUMMARY
+          {t("events.tickets.salesSummary")}
         </ThemedText>
 
-        {hasDefs ? (
-          ticketDefs.map((def, i) => (
+        {ticketSalesSummary.length > 0 ? (
+          ticketSalesSummary.map((def, i) => (
             <AnimatedEntry key={def.id} index={i}>
               <View className="mb-3">
-                <TicketTypeCard
+                <SummaryTicketCard
                   label={def.name}
-                  value={`${def.sold.toLocaleString()}/${def.quantity.toLocaleString()} sold · ₦${def.price.toLocaleString()}`}
+                  value={`${def.sold.toLocaleString()}/${def.quantity.toLocaleString()}`}
                 />
               </View>
             </AnimatedEntry>
           ))
         ) : (
           <AnimatedEntry index={0}>
-            <TicketTypeCard label="Individual Package" value={summaryLabel} />
+            <SummaryTicketCard label={t("events.tickets.noTicketType")} value="0/0" />
           </AnimatedEntry>
         )}
 
@@ -156,11 +208,24 @@ const TicketSalesScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             {tickets!.map((ticket, index) => (
-              <AnimatedEntry key={ticket.id} index={index + 1}>
+              <AnimatedEntry
+                key={`${ticket.id ?? ticket._id ?? ticket.ticketNumber ?? "ticket"}-${index}`}
+                index={index + 1}
+              >
                 <TicketSaleRow
-                  reference={`#${ticket.id.slice(0, 7).toUpperCase()}`}
-                  packageName={ticket.ticketData?.name ?? "General Admission"}
-                  sold={`${totalSold}/${totalCount}`}
+                  reference={`#${String(
+                    ticket.id ?? ticket._id ?? ticket.ticketNumber ?? index + 1,
+                  )
+                    .slice(0, 7)
+                    .toUpperCase()}`}
+                  packageName={
+                    ticket.ticketData?.name ?? t("events.dashboard.generalAdmission")
+                  }
+                  sold={
+                    ticket.checkedIn
+                      ? t("events.tickets.checkedIn")
+                      : t("events.tickets.notCheckedIn")
+                  }
                   price={
                     ticket.ticketData?.price
                       ? `₦ ${ticket.ticketData.price.toLocaleString()}`
@@ -184,7 +249,7 @@ const TicketSalesScreen = () => {
                   packageName={def.name}
                   sold={`${def.sold.toLocaleString()}/${def.quantity.toLocaleString()}`}
                   price={
-                    def.price > 0 ? `₦ ${def.price.toLocaleString()}` : "Free"
+                    def.price > 0 ? `₦ ${def.price.toLocaleString()}` : t("events.dashboard.free")
                   }
                   showDivider={index < ticketDefs.length - 1}
                 />
@@ -200,6 +265,7 @@ const TicketSalesScreen = () => {
 };
 
 const EmptyState = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -209,12 +275,12 @@ const EmptyState = () => {
       <View className="w-[120px] h-[80px] relative items-center justify-center">
         {/* Back ticket */}
         <View
-          className="absolute w-[90px] h-[58px] rounded-[10px] border-[2.5px] border-[#270302]"
+          className={`absolute w-[90px] h-[58px] rounded-[10px] border-[2.5px] ${isDark ? "border-[#7F1D1D]" : "border-[#270302]"}`}
           style={{ transform: [{ rotate: "10deg" }], top: 4, left: 10 }}
         />
         {/* Front ticket (receipt-style with lines) */}
         <View
-          className="absolute w-[90px] h-[58px] rounded-[10px] border-[2.5px] border-[#270302] items-center justify-center gap-1.5"
+          className={`absolute w-[90px] h-[58px] rounded-[10px] border-[2.5px] items-center justify-center gap-1.5 ${isDark ? "border-[#7F1D1D]" : "border-[#270302]"}`}
           style={{
             transform: [{ rotate: "-5deg" }],
             bottom: 4,
@@ -222,14 +288,22 @@ const EmptyState = () => {
             backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
           }}
         >
-          <View className="w-[52px] h-[3px] rounded-full bg-[#270302] opacity-30" />
-          <View className="w-[52px] h-[3px] rounded-full bg-[#270302] opacity-30" />
-          <View className="w-[36px] h-[3px] rounded-full bg-[#270302] opacity-30" />
+          <View
+            className={`w-[52px] h-[3px] rounded-full opacity-30 ${isDark ? "bg-[#F87171]" : "bg-[#270302]"}`}
+          />
+          <View
+            className={`w-[52px] h-[3px] rounded-full opacity-30 ${isDark ? "bg-[#F87171]" : "bg-[#270302]"}`}
+          />
+          <View
+            className={`w-[36px] h-[3px] rounded-full opacity-30 ${isDark ? "bg-[#F87171]" : "bg-[#270302]"}`}
+          />
         </View>
       </View>
 
-      <ThemedText className="text-[#969CA5] text-[15px] text-center mt-8 leading-6 px-8">
-        You have no ticket sale, your sales{"\n"}will be recorded here
+      <ThemedText
+        className={`text-[15px] text-center mt-8 leading-6 px-8 ${isDark ? "text-[#98A2B3]" : "text-[#667085]"}`}
+      >
+        {t("events.tickets.emptySales")}
       </ThemedText>
     </View>
   );

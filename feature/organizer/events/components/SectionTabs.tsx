@@ -1,7 +1,7 @@
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/providers/ThemeProvider";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import GlassCard from "./GlassCard";
 
 type TabItem = {
@@ -26,53 +26,63 @@ const SectionTabs = ({
   const isDark = resolvedTheme === "dark";
 
   return (
-    <View className={`flex-row items-center gap-4 ${className ?? ""}`}>
-      {tabs.map((tab) => {
-        const isActive = tab.key === activeKey;
+    <View className={className ?? ""}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          alignItems: "center",
+          gap: 16,
+          paddingRight: 6,
+        }}
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.key === activeKey;
 
-        return (
-          <TouchableOpacity
-            key={tab.key}
-            activeOpacity={0.85}
-            onPress={() => onChange(tab.key)}
-            style={{ paddingHorizontal: isActive ? 0 : 4 }}
-          >
-            {isActive ? (
-              <GlassCard
-                isDark={isDark}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 20,
-                  borderColor: isDark
-                    ? "rgba(229, 231, 235, 0.9)"
-                    : "rgba(15, 23, 42, 0.42)",
-                }}
-              >
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              activeOpacity={0.85}
+              onPress={() => onChange(tab.key)}
+              style={{ paddingHorizontal: isActive ? 0 : 4 }}
+            >
+              {isActive ? (
+                <GlassCard
+                  isDark={isDark}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    borderColor: isDark
+                      ? "rgba(229, 231, 235, 0.9)"
+                      : "rgba(15, 23, 42, 0.42)",
+                  }}
+                >
+                  <ThemedText
+                    weight="500"
+                    style={{
+                      color: isDark ? "#F9FAFB" : "#101928",
+                      fontSize: 16,
+                    }}
+                  >
+                    {tab.label}
+                  </ThemedText>
+                </GlassCard>
+              ) : (
                 <ThemedText
                   weight="500"
                   style={{
-                    color: isDark ? "#F9FAFB" : "#101928",
+                    color: isDark ? "#9CA3AF" : "#586170",
                     fontSize: 16,
                   }}
                 >
                   {tab.label}
                 </ThemedText>
-              </GlassCard>
-            ) : (
-              <ThemedText
-                weight="500"
-                style={{
-                  color: isDark ? "#9CA3AF" : "#586170",
-                  fontSize: 16,
-                }}
-              >
-                {tab.label}
-              </ThemedText>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 };

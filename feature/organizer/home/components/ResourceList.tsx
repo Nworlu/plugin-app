@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import React from "react";
 import { FlatList, View } from "react-native";
@@ -6,6 +7,7 @@ import { resourcesList } from "../../constants/home";
 import ResourceCard from "./ResourceCard";
 
 const ResourceLists = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -40,7 +42,7 @@ const ResourceLists = () => {
         weight="500"
         className={`text-lg ${isDark ? "text-[#E5E7EB]" : "text-[#2E394C]"}`}
       >
-        💡 Resource and tips
+        {t("homeExtras.resourcesTitle")}
       </ThemedText>
 
       <FlatList

@@ -4,6 +4,7 @@ import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import NativeDateTimePicker from "@/feature/organizer/events/components/NativeDateTimePicker";
 import RichTextEditor from "@/feature/organizer/events/components/RichTextEditor";
 import { useReminderEmailForm } from "@/feature/organizer/events/hooks/useReminderEmailForm";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Check } from "lucide-react-native";
 import React from "react";
@@ -37,6 +38,7 @@ const reminderEmailRows = [
 ] as const;
 
 const ReminderEmailsTab = () => {
+  const { t } = useTranslation();
   const form = useReminderEmailForm();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -47,7 +49,7 @@ const ReminderEmailsTab = () => {
         weight="500"
         className={`text-[17px] leading-7 ${isDark ? "text-[#E5E7EB]" : "text-[#1D2739]"}`}
       >
-        Send custom reminder emails to attendees
+        {t("events.wizard.reminders.subtitle")}
       </ThemedText>
 
       <View
@@ -81,7 +83,15 @@ const ReminderListState = ({
 }: {
   onPress: () => void;
   isDark: boolean;
-}) => (
+}) => {
+  const { t } = useTranslation();
+  const statusLabel = (status: string) => {
+    if (status === "Sent") return t("events.wizard.reminders.sent");
+    if (status === "Scheduled") return t("events.wizard.reminders.scheduled");
+    return t("events.wizard.reminders.draft");
+  };
+
+  return (
   <ScrollView
     className="flex-1"
     contentContainerStyle={{ paddingTop: 18, paddingBottom: 24 }}
@@ -92,7 +102,7 @@ const ReminderListState = ({
         weight="700"
         className={`text-[16px] ${isDark ? "text-[#E5E7EB]" : "text-[#1D2739]"}`}
       >
-        Reminder emails
+        {t("events.wizard.reminders.reminderEmails")}
       </ThemedText>
 
       <TouchableOpacity
@@ -101,7 +111,7 @@ const ReminderListState = ({
         className="h-10 rounded-xl border border-[#D92D20] px-4 items-center justify-center"
       >
         <ThemedText weight="500" className="text-[#D92D20] text-[15px]">
-          Create reminder
+          {t("events.wizard.reminders.createReminder")}
         </ThemedText>
       </TouchableOpacity>
     </View>
@@ -149,7 +159,7 @@ const ReminderListState = ({
                       : "text-[#4F46E5]"
                 }`}
               >
-                {item.status}
+                {statusLabel(item.status)}
               </ThemedText>
             </View>
           </View>
@@ -157,13 +167,15 @@ const ReminderListState = ({
       ))}
     </View>
   </ScrollView>
-);
+  );
+};
 
 const ComposeForm = ({
   form,
 }: {
   form: ReturnType<typeof useReminderEmailForm>;
 }) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -189,21 +201,20 @@ const ComposeForm = ({
         <ThemedText
           className={`text-[12px] flex-1 ${isDark ? "text-[#FCD34D]" : "text-[#7A4D00]"}`}
         >
-          This message would be sent to attendees that booked this event
+          {t("events.wizard.reminders.infoBanner")}
         </ThemedText>
       </View>
 
-      {/* Sender name */}
       <View className="mt-4 gap-2">
         <ThemedText
           className={`text-[13px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
         >
-          Sender&apos;s name
+          {t("events.wizard.reminders.sendersName")}
         </ThemedText>
         <TextInput
           value={form.senderName}
           onChangeText={form.setSenderName}
-          placeholder="Enter sender's name"
+          placeholder={t("events.wizard.reminders.enterSendersName")}
           placeholderTextColor="#98A2B3"
           style={{
             height: 44,
@@ -222,12 +233,12 @@ const ComposeForm = ({
         <ThemedText
           className={`text-[13px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
         >
-          Email subject
+          {t("events.wizard.reminders.emailSubject")}
         </ThemedText>
         <TextInput
           value={form.emailSubject}
           onChangeText={form.setEmailSubject}
-          placeholder="Enter your email subject"
+          placeholder={t("events.wizard.reminders.enterEmailSubject")}
           placeholderTextColor="#98A2B3"
           style={{
             height: 44,
@@ -246,32 +257,31 @@ const ComposeForm = ({
         <ThemedText
           className={`text-[13px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
         >
-          Message
+          {t("events.wizard.reminders.message")}
         </ThemedText>
         <RichTextEditor
           value={form.emailMessage}
           onChangeText={form.setEmailMessage}
-          placeholder="Enter message"
+          placeholder={t("events.wizard.reminders.enterMessage")}
         />
       </View>
 
-      {/* Send timing */}
       <View className="mt-4">
         <ThemedText
           weight="500"
           className={`text-[17px] ${isDark ? "text-[#E5E7EB]" : "text-[#475467]"}`}
         >
-          When do you want to send out this message?
+          {t("events.wizard.reminders.whenSend")}
         </ThemedText>
 
         <RadioOption
-          label="Send Now"
+          label={t("events.wizard.reminders.sendNow")}
           selected={form.sendType === "now"}
           onPress={() => form.setSendType("now")}
         />
 
         <RadioOption
-          label="Schedule later"
+          label={t("events.wizard.reminders.scheduleLater")}
           selected={form.sendType === "later"}
           onPress={() => form.setSendType("later")}
         />
@@ -280,7 +290,7 @@ const ComposeForm = ({
           <View className="flex-row gap-3 mt-3">
             <View className="flex-1 gap-1">
               <ThemedText className="text-[#515A6A] text-sm">
-                Start date
+                {t("events.wizard.reminders.startDate")}
               </ThemedText>
               <NativeDateTimePicker
                 mode="date"
@@ -301,7 +311,7 @@ const ComposeForm = ({
 
             <View className="flex-1 gap-1">
               <ThemedText className="text-[#515A6A] text-sm">
-                Start time
+                {t("events.wizard.reminders.startTime")}
               </ThemedText>
               <NativeDateTimePicker
                 mode="time"
@@ -339,16 +349,10 @@ const ComposeForm = ({
         <ThemedText
           className={`text-[13px] leading-6 flex-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
         >
-          By checking this box, I confirm that the email campaign being sent is
-          transactional in nature and is not being used to market, advertise, or
-          otherwise promote any event, product, service, or other offering of
-          the organizer. I understand and agree that the Eventdey Terms of
-          Service apply to the usage of this tool, which is intended for
-          transactional emails pertaining to event registrations.
+          {t("events.wizard.reminders.termsConfirm")}
         </ThemedText>
       </TouchableOpacity>
 
-      {/* Action buttons */}
       <View className="flex-row gap-2 mt-6">
         <TouchableOpacity
           activeOpacity={0.85}
@@ -365,12 +369,16 @@ const ComposeForm = ({
           }}
         >
           <ThemedText weight="700" className="text-[#6B1E13] text-[18px]">
-            Cancel
+            {t("common.cancel")}
           </ThemedText>
         </TouchableOpacity>
 
         <GradientButton
-          label={form.isSendingReminder ? "Sending..." : "Send message"}
+          label={
+            form.isSendingReminder
+              ? t("events.wizard.reminders.sending")
+              : t("events.wizard.reminders.sendMessage")
+          }
           onPress={form.handleSend}
           disabled={!form.canSendReminder || form.isSendingReminder}
           loading={form.isSendingReminder}
@@ -429,29 +437,33 @@ const SendingOverlay = ({
 }: {
   visible: boolean;
   showToast: boolean;
-}) => (
-  <Modal visible={visible} transparent animationType="fade">
-    <View
-      className="flex-1 items-center pt-4 px-4"
-      style={{ backgroundColor: "rgba(2, 9, 18, 0.50)" }}
-    >
-      {showToast ? (
-        <View className="w-full rounded-xl bg-[#EAF6EC] px-4 py-3 flex-row items-center gap-3 border border-[#D1FADF]">
-          <View className="w-9 h-9 rounded-full bg-[#039855] items-center justify-center">
-            <Check size={18} color="#FFFFFF" />
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View
+        className="flex-1 items-center pt-4 px-4"
+        style={{ backgroundColor: "rgba(2, 9, 18, 0.50)" }}
+      >
+        {showToast ? (
+          <View className="w-full rounded-xl bg-[#EAF6EC] px-4 py-3 flex-row items-center gap-3 border border-[#D1FADF]">
+            <View className="w-9 h-9 rounded-full bg-[#039855] items-center justify-center">
+              <Check size={18} color="#FFFFFF" />
+            </View>
+            <View className="flex-1">
+              <ThemedText weight="700" className="text-[#101828] text-[16px]">
+                {t("events.wizard.reminders.messageSent")}
+              </ThemedText>
+              <ThemedText className="text-[#475467] text-[13px] mt-0.5">
+                {t("events.wizard.reminders.messageSentDesc")}
+              </ThemedText>
+            </View>
           </View>
-          <View className="flex-1">
-            <ThemedText weight="700" className="text-[#101828] text-[16px]">
-              Message Sent
-            </ThemedText>
-            <ThemedText className="text-[#475467] text-[13px] mt-0.5">
-              All attendees can now see your reminders
-            </ThemedText>
-          </View>
-        </View>
-      ) : null}
-    </View>
-  </Modal>
-);
+        ) : null}
+      </View>
+    </Modal>
+  );
+};
 
 export default ReminderEmailsTab;

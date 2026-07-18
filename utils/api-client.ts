@@ -1,5 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
+import {
+  isSessionInvalidError,
+  triggerSessionInvalid,
+} from "@/utils/auth-session";
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8001/api";
@@ -24,6 +28,7 @@ export class ApiError extends Error {
     public readonly status: number,
     message: string,
     public readonly detail?: string,
+    public readonly code?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -43,9 +48,15 @@ async function request<T>(
 
   if (withAuth) {
     const token = await tokenStorage.get();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+    if (!token) {
+      throw new ApiError(
+        401,
+        "Authentication required. Please log in to continue.",
+        "Missing authentication token",
+        "AUTH_REQUIRED",
+      );
     }
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   try {
@@ -72,15 +83,26 @@ async function request<T>(
   } catch (err) {
     if (isAxiosError(err) && err.response) {
       const body = err.response.data as ApiResponse<unknown>;
+      const status = body?.status ?? err.response.status;
+      const message = body?.message ?? "An error occurred";
+
       console.log(
         `[API] ❌ ${rest.method ?? "GET"} ${API_BASE_URL.replace(/\/$/, "")}/${path}`,
-        err.response.status,
+        status,
         body,
       );
+
+      if (withAuth && isSessionInvalidError(status, message)) {
+        void triggerSessionInvalid();
+      }
+
       throw new ApiError(
-        body?.status ?? err.response.status,
-        body?.message ?? "An error occurred",
+        status,
+        message,
         (body as unknown as { error?: string })?.error,
+        isSessionInvalidError(status, message)
+          ? "SESSION_INVALID"
+          : undefined,
       );
     }
     throw err;

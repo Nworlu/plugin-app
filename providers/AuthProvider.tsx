@@ -11,16 +11,16 @@ type AuthContextType = {
   user: AuthUser | null;
   completeOnboarding: () => Promise<void>;
   login: (email: string) => Promise<void>;
-  loginStep1: (email: string, password: string) => Promise<void>;
-  loginStep2: (code: string) => Promise<void>;
-  registerStep1: (email: string, phone: string) => Promise<void>;
-  registerStep2: (payload: {
-    code: string;
+  loginStep1: (email: string) => Promise<void>;
+  loginStep2: (email: string, code: string) => Promise<void>;
+  registerStep1: (payload: {
+    email: string;
+    phone: string;
+    country: string;
     firstName: string;
     lastName: string;
-    email: string;
-    password: string;
   }) => Promise<void>;
+  registerStep2: (payload: { code: string; email: string }) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 };

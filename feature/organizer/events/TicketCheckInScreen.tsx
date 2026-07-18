@@ -2,6 +2,7 @@ import AlertModal from "@/components/alert-modal";
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import { useConfirmCheckIn } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import type { ScanTicketResponse } from "@/utils/api/types";
 import { router, useLocalSearchParams } from "expo-router";
@@ -39,6 +40,7 @@ const fmtDate = (iso: string) => {
 };
 
 const TicketCheckInScreen = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -81,8 +83,8 @@ const TicketCheckInScreen = () => {
     if (!ticket) return;
     if (checkedIn) {
       showAlert(
-        "Already Checked In",
-        "This ticket has already been checked in.",
+        t("events.checkIn.alreadyCheckedInTitle"),
+        t("events.checkIn.alreadyCheckedInMessage"),
         "warning",
       );
       return;
@@ -92,8 +94,8 @@ const TicketCheckInScreen = () => {
       setCheckedIn(true);
     } catch {
       showAlert(
-        "Check-in Failed",
-        "Could not confirm check-in. Please try again.",
+        t("events.checkIn.checkInFailed"),
+        t("events.checkIn.checkInFailedMessage"),
         "error",
       );
     }
@@ -141,7 +143,7 @@ const TicketCheckInScreen = () => {
           <ChevronLeft size={16} color={textMain} />
         </TouchableOpacity>
         <ThemedText weight="700" style={{ fontSize: 16, color: textMain }}>
-          Scan invitation QR code
+          {t("events.checkIn.scanQr")}
         </ThemedText>
       </View>
 
@@ -217,7 +219,7 @@ const TicketCheckInScreen = () => {
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText style={{ fontSize: 11, color: textMuted }}>
-                Ticket scanned
+                {t("events.checkIn.ticketScanned")}
               </ThemedText>
               <ThemedText
                 weight="500"
@@ -239,7 +241,7 @@ const TicketCheckInScreen = () => {
                   weight="700"
                   style={{ fontSize: 11, color: "#16A34A" }}
                 >
-                  Checked In
+                  {t("events.tickets.checkedIn")}
                 </ThemedText>
               </View>
             )}
@@ -291,15 +293,15 @@ const TicketCheckInScreen = () => {
           >
             <TicketIcon size={16} color={textMuted} />
             <ThemedText weight="700" style={{ fontSize: 14, color: textMain }}>
-              Ticket Vouchers
+              {t("events.checkIn.ticketVouchers")}
             </ThemedText>
           </View>
 
           {/* Rows */}
           {[
-            { label: "Ticket Type", value: ticket?.ticketData?.name ?? "—" },
-            { label: "Price / ticket", value: fmt(price) },
-            { label: "Quantity ordered", value: String(qty) },
+            { label: t("events.checkIn.ticketType"), value: ticket?.ticketData?.name ?? "—" },
+            { label: t("events.checkIn.pricePerTicket"), value: fmt(price) },
+            { label: t("events.checkIn.quantityOrdered"), value: String(qty) },
           ].map((row) => (
             <View
               key={row.label}
@@ -336,7 +338,7 @@ const TicketCheckInScreen = () => {
             }}
           >
             <ThemedText weight="700" style={{ fontSize: 14, color: textMain }}>
-              Total
+              {t("events.checkIn.total")}
             </ThemedText>
             <ThemedText weight="700" style={{ fontSize: 15, color: textMain }}>
               {fmt(total)}
@@ -361,7 +363,11 @@ const TicketCheckInScreen = () => {
         }}
       >
         <GradientButton
-          label={checkedIn ? "Already Checked In" : "Confirm Check-in"}
+          label={
+            checkedIn
+              ? t("events.checkIn.alreadyCheckedIn")
+              : t("events.checkIn.confirm")
+          }
           onPress={handleConfirm}
           height={52}
           loading={isPending}

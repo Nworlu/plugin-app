@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useIsOffline } from "@/providers/NetworkProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,15 +9,21 @@ import { Animated, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NoNetworkOverlay() {
+  const { t } = useTranslation();
   const isOffline = useIsOffline();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const insets = useSafeAreaInsets();
 
-  // Animate in/out
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(40)).current;
   const pointerEvents = useRef<"none" | "auto">("none");
+
+  const offlineTips = [
+    t("shared.offlineTip1"),
+    t("shared.offlineTip2"),
+    t("shared.offlineTip3"),
+  ];
 
   useEffect(() => {
     if (isOffline) {
@@ -70,57 +77,47 @@ export default function NoNetworkOverlay() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Content */}
       <View
-        style={[
-          styles.content,
-          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
-        ]}
+        className="flex-1 items-center justify-center px-8"
+        style={{
+          paddingTop: insets.top + 24,
+          paddingBottom: insets.bottom + 24,
+        }}
       >
-        {/* Pulsing icon */}
         <PulsingIcon isDark={isDark} />
 
         <ThemedText
           weight="700"
-          style={[styles.title, { color: isDark ? "#F9FAFB" : "#101828" }]}
+          className="text-2xl text-center mb-2"
+          style={{ color: isDark ? "#F9FAFB" : "#101828" }}
         >
-          No Internet Connection
+          {t("shared.noInternet")}
         </ThemedText>
 
         <ThemedText
-          style={[styles.subtitle, { color: isDark ? "#9CA3AF" : "#667085" }]}
+          className="text-sm text-center leading-5 mb-7"
+          style={{ color: isDark ? "#9CA3AF" : "#667085" }}
         >
-          It looks like you're offline. Please check your Wi-Fi or mobile data
-          and try again.
+          {t("shared.offlineMessage")}
         </ThemedText>
 
-        {/* Tips */}
         <View
-          style={[
-            styles.tipsCard,
-            {
-              backgroundColor: isDark ? "#111827" : "#FFFFFF",
-              borderColor: isDark ? "#1F2937" : "#E5E7EB",
-            },
-          ]}
+          className="w-full rounded-2xl border p-4 mb-6"
+          style={{
+            backgroundColor: isDark ? "#111827" : "#FFFFFF",
+            borderColor: isDark ? "#1F2937" : "#E5E7EB",
+            gap: 12,
+          }}
         >
-          {[
-            "Make sure Wi-Fi or mobile data is enabled",
-            "Move to an area with better signal",
-            "Try turning Airplane Mode on and off",
-          ].map((tip, i) => (
-            <View key={i} style={styles.tipRow}>
+          {offlineTips.map((tip, i) => (
+            <View key={i} className="flex-row items-center" style={{ gap: 10 }}>
               <View
-                style={[
-                  styles.tipDot,
-                  { backgroundColor: isDark ? "#374151" : "#E5E7EB" },
-                ]}
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: isDark ? "#374151" : "#E5E7EB" }}
               />
               <ThemedText
-                style={[
-                  styles.tipText,
-                  { color: isDark ? "#D1D5DB" : "#374151" },
-                ]}
+                className="text-xs flex-1 leading-4"
+                style={{ color: isDark ? "#D1D5DB" : "#374151" }}
               >
                 {tip}
               </ThemedText>
@@ -128,31 +125,28 @@ export default function NoNetworkOverlay() {
           ))}
         </View>
 
-        {/* Retry CTA — just visual, actual retry happens automatically via NetInfo */}
         <TouchableOpacity
           activeOpacity={0.85}
-          style={[
-            styles.retryBtn,
-            {
-              borderColor: isDark ? "#374151" : "#D1D5DB",
-              backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
-            },
-          ]}
+          className="flex-row items-center border rounded-xl px-5 py-3"
+          style={{
+            borderColor: isDark ? "#374151" : "#D1D5DB",
+            backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+            gap: 8,
+          }}
         >
           <Wifi size={16} color={isDark ? "#9CA3AF" : "#6B7280"} />
           <ThemedText
             weight="500"
-            style={{ fontSize: 14, color: isDark ? "#D1D5DB" : "#374151" }}
+            className="text-sm"
+            style={{ color: isDark ? "#D1D5DB" : "#374151" }}
           >
-            Waiting for connection…
+            {t("shared.waitingConnection")}
           </ThemedText>
         </TouchableOpacity>
       </View>
     </Animated.View>
   );
 }
-
-// ─── Pulsing WifiOff icon ─────────────────────────────────────────────────────
 
 function PulsingIcon({ isDark }: { isDark: boolean }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -196,7 +190,6 @@ function PulsingIcon({ isDark }: { isDark: boolean }) {
 
   return (
     <View style={styles.iconWrapper}>
-      {/* Outer pulse ring */}
       <Animated.View
         style={[
           styles.pulseRing,
@@ -207,7 +200,6 @@ function PulsingIcon({ isDark }: { isDark: boolean }) {
           },
         ]}
       />
-      {/* Icon circle */}
       <View
         style={[
           styles.iconCircle,
@@ -224,55 +216,6 @@ function PulsingIcon({ isDark }: { isDark: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-  },
-  title: {
-    fontSize: 22,
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  tipsCard: {
-    width: "100%",
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-    marginBottom: 24,
-  },
-  tipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  tipDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  tipText: {
-    fontSize: 13,
-    flex: 1,
-    lineHeight: 18,
-  },
-  retryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
   iconWrapper: {
     width: 110,
     height: 110,

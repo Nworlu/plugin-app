@@ -5,6 +5,7 @@ import {
   useInviteCollaborator,
   useRemoveCollaborator,
 } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import type { Collaborator } from "@/utils/api/types";
 import { LinearGradient } from "expo-linear-gradient";
@@ -45,6 +46,7 @@ const InviteModal = ({
   onClose: () => void;
   isDark: boolean;
 }) => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
   const { mutate: invite, isPending } = useInviteCollaborator();
@@ -83,7 +85,7 @@ const InviteModal = ({
     >
       <AlertModal
         visible={!!inviteError}
-        title="Invitation Error"
+        title={t("settings.collaborators.invitationError")}
         message={inviteError}
         iconType="error"
         onConfirm={() => setInviteError("")}
@@ -105,7 +107,7 @@ const InviteModal = ({
         >
           <View style={{ flex: 1 }} />
           <ThemedText weight="700" style={{ fontSize: 18 }}>
-            Invite Co-Organizer
+            {t("settings.collaborators.inviteCoOrganizer")}
           </ThemedText>
           <View style={{ flex: 1, alignItems: "flex-end" }}>
             <TouchableOpacity
@@ -161,7 +163,7 @@ const InviteModal = ({
                 textAlign: "center",
               }}
             >
-              Add a co-organizer
+              {t("settings.collaborators.addCoOrganizer")}
             </ThemedText>
             <ThemedText
               style={{
@@ -173,8 +175,7 @@ const InviteModal = ({
                 maxWidth: 280,
               }}
             >
-              They'll receive an email invitation with access to help manage
-              your events.
+              {t("settings.collaborators.inviteDescription")}
             </ThemedText>
           </View>
 
@@ -187,7 +188,7 @@ const InviteModal = ({
               marginBottom: 8,
             }}
           >
-            Email address
+            {t("settings.collaborators.emailAddress")}
           </ThemedText>
           <View
             style={{
@@ -220,7 +221,7 @@ const InviteModal = ({
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="colleague@example.com"
+              placeholder={t("settings.collaborators.emailPlaceholder")}
               placeholderTextColor={isDark ? "#4B5563" : "#98A2B3"}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -251,7 +252,7 @@ const InviteModal = ({
             >
               <AlertTriangle size={13} color="#F04438" />
               <ThemedText style={{ fontSize: 12, color: "#F04438" }}>
-                Please enter a valid email address
+                {t("settings.collaborators.validEmailError")}
               </ThemedText>
             </View>
           )}
@@ -279,8 +280,7 @@ const InviteModal = ({
                 lineHeight: 20,
               }}
             >
-              Co-organizers can create and edit events, manage attendees, and
-              view earnings — but cannot remove other collaborators.
+              {t("settings.collaborators.permissionsInfo")}
             </ThemedText>
           </View>
         </ScrollView>
@@ -320,7 +320,7 @@ const InviteModal = ({
                     weight="600"
                     style={{ color: "#fff", fontSize: 15 }}
                   >
-                    Send Invitation
+                    {t("settings.collaborators.sendInvitation")}
                   </ThemedText>
                 </>
               )}
@@ -345,6 +345,7 @@ const CollaboratorRow = ({
   isDark: boolean;
   isLast: boolean;
 }) => {
+  const { t } = useTranslation();
   const isPending = item.status === "pending";
   const initials = item.name
     ? item.name
@@ -364,10 +365,12 @@ const CollaboratorRow = ({
     <>
       <AlertModal
         visible={confirmVisible}
-        title="Remove Collaborator"
-        message={`Remove ${item.name ?? item.email} as a co-organizer?`}
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        title={t("settings.collaborators.removeTitle")}
+        message={t("settings.collaborators.removeMessage", {
+          name: item.name ?? item.email,
+        })}
+        confirmLabel={t("settings.collaborators.remove")}
+        cancelLabel={t("common.cancel")}
         destructive
         iconType="warning"
         onConfirm={() => {
@@ -436,7 +439,7 @@ const CollaboratorRow = ({
                   weight="500"
                   style={{ fontSize: 11, color: "#F79009" }}
                 >
-                  Invitation pending
+                  {t("settings.collaborators.invitationPending")}
                 </ThemedText>
               </>
             ) : (
@@ -446,7 +449,7 @@ const CollaboratorRow = ({
                   weight="500"
                   style={{ fontSize: 11, color: "#12B76A" }}
                 >
-                  Active co-organizer
+                  {t("settings.collaborators.activeCoOrganizer")}
                 </ThemedText>
               </>
             )}
@@ -489,6 +492,7 @@ const CollaboratorRow = ({
 
 const CollaboratorsScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   const {
@@ -545,7 +549,7 @@ const CollaboratorsScreen = () => {
 
           <View style={{ flex: 1, alignItems: "center" }}>
             <ThemedText weight="700" style={{ fontSize: 17 }}>
-              Collaborators
+              {t("settings.collaborators.title")}
             </ThemedText>
           </View>
 
@@ -569,7 +573,7 @@ const CollaboratorsScreen = () => {
             >
               <UserPlus size={14} color="#fff" />
               <ThemedText weight="600" style={{ fontSize: 13, color: "#fff" }}>
-                Invite
+                {t("settings.collaborators.invite")}
               </ThemedText>
             </LinearGradient>
           </TouchableOpacity>
@@ -596,8 +600,16 @@ const CollaboratorsScreen = () => {
               }}
             >
               {[
-                { label: "Active", count: activeCount, color: "#12B76A" },
-                { label: "Pending", count: pendingCount, color: "#F79009" },
+                {
+                  label: t("settings.collaborators.active"),
+                  count: activeCount,
+                  color: "#12B76A",
+                },
+                {
+                  label: t("settings.collaborators.pending"),
+                  count: pendingCount,
+                  color: "#F79009",
+                },
               ].map((stat) => (
                 <LinearGradient
                   key={stat.label}
@@ -667,7 +679,7 @@ const CollaboratorsScreen = () => {
                   textAlign: "center",
                 }}
               >
-                No co-organizers yet
+                {t("settings.collaborators.emptyTitle")}
               </ThemedText>
               <ThemedText
                 style={{
@@ -678,8 +690,7 @@ const CollaboratorsScreen = () => {
                   maxWidth: 260,
                 }}
               >
-                Invite team members to help you create and manage your events
-                together.
+                {t("settings.collaborators.emptyDescription")}
               </ThemedText>
               <TouchableOpacity
                 onPress={() => setShowInviteModal(true)}
@@ -703,7 +714,7 @@ const CollaboratorsScreen = () => {
                     weight="600"
                     style={{ color: "#fff", fontSize: 14 }}
                   >
-                    Invite a co-organizer
+                    {t("settings.collaborators.inviteCoOrganizerBtn")}
                   </ThemedText>
                 </LinearGradient>
               </TouchableOpacity>

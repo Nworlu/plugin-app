@@ -26,18 +26,22 @@ export type AccountMenuItem = {
     | "/(organizer)/notification-settings"
     | "/(organizer)/start-campaign"
     | "/(organizer)/help-center"
+    | "/(organizer)/send-message"
     | "/(organizer)/terms-of-service"
     | "/(organizer)/privacy-policy"
+    | "/(organizer)/privacy-sharing"
     | "/(organizer)/appearance"
     | "/(organizer)/organizer-settings"
     | "/(organizer)/booked-venues"
     | "/(organizer)/collaborators"
     | "/(organizer)/translation"
+    | "/(organizer)/create-event"
     | "/(organizer)/(tabs)/earnings";
 };
 
 export type AccountMenuSection = {
   title: string;
+  sectionKey: "quickLinks" | "account" | "settings" | "support" | "legal";
   items: AccountMenuItem[];
 };
 
@@ -50,8 +54,12 @@ export type DeviceSession = {
 export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
   {
     title: "Quick Links",
+    sectionKey: "quickLinks",
     items: [
-      { key: "create-event", label: "Create event", icon: "list" },
+      { key: "create-event", label: "Create event", icon: "list",
+        route: "/(organizer)/create-event"
+
+       },
       {
         key: "booked-venues",
         label: "Booked Venues",
@@ -74,6 +82,7 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
   },
   {
     title: "Account",
+    sectionKey: "account",
     items: [
       {
         key: "personal-information",
@@ -97,6 +106,7 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
   },
   {
     title: "Settings",
+    sectionKey: "settings",
     items: [
       {
         key: "notifications",
@@ -120,6 +130,7 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
         key: "privacy-sharing",
         label: "Privacy and Sharing",
         icon: "shield-check",
+        route: "/(organizer)/privacy-sharing",
       },
       {
         key: "translation",
@@ -131,6 +142,7 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
   },
   {
     title: "Support",
+    sectionKey: "support",
     items: [
       {
         key: "visit-help-center",
@@ -138,11 +150,12 @@ export const ACCOUNT_SECTIONS: AccountMenuSection[] = [
         icon: "circle-help",
         route: "/(organizer)/help-center",
       },
-      { key: "send-message", label: "Send a message", icon: "send" },
+      { key: "send-message", label: "Send a message", icon: "send", route: "/(organizer)/send-message" },
     ],
   },
   {
     title: "Legal",
+    sectionKey: "legal",
     items: [
       {
         key: "terms",

@@ -4,6 +4,7 @@ import GradientButton from "@/components/gradient-button";
 import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import { useAddAgent, useAgents, useEvent } from "@/hooks/api/use-events";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import type { RawAgent } from "@/utils/api/types";
 import { router, useLocalSearchParams } from "expo-router";
@@ -38,6 +39,7 @@ function AgentsSkeleton({ isDark }: { isDark: boolean }) {
 type TicketDef = { ticketId: string; ticketName: string };
 
 const CheckInAgentScreen = () => {
+  const { t } = useTranslation();
   const { eventId = "" } = useLocalSearchParams<{ eventId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -57,7 +59,7 @@ const CheckInAgentScreen = () => {
   if (eventData?.entryTicket) {
     ticketDefs.push({
       ticketId: eventData.entryTicket._id,
-      ticketName: eventData.entryTicket.ticketName ?? "Entry Ticket",
+      ticketName: eventData.entryTicket.ticketName ?? t("events.agent.entryTicket"),
     });
   }
   (eventData?.groupedTicket ?? []).forEach((t) => {
@@ -84,7 +86,7 @@ const CheckInAgentScreen = () => {
       setAgentEmail("");
       setSelectedDef(null);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to add agent";
+      const msg = e instanceof Error ? e.message : t("events.agent.failedAddAgent");
       setAddError(msg);
     }
   };
@@ -99,7 +101,7 @@ const CheckInAgentScreen = () => {
         keyboardShouldPersistTaps="handled"
       >
         <BackHeader
-          label="Back"
+          label={t("common.back")}
           onPress={() => router.back()}
           iconColor={isDark ? "#E4E7EC" : "#1D2739"}
           rightNode={<View />}
@@ -111,14 +113,13 @@ const CheckInAgentScreen = () => {
           className="text-2xl leading-9 mt-4"
           style={{ color: isDark ? "#E4E7EC" : "#020912" }}
         >
-          Check-in Agents
+          {t("events.agent.title")}
         </ThemedText>
         <ThemedText
           className="text-base mt-0.5 leading-5"
           style={{ color: isDark ? "#8A96A8" : "#515A6A" }}
         >
-          Add Check-in agents to your event to{"\n"}manage specific ticket
-          check-in
+          {t("events.agent.subtitle")}
         </ThemedText>
 
         <View
@@ -138,7 +139,7 @@ const CheckInAgentScreen = () => {
               className="text-xl mb-3"
               style={{ color: isDark ? "#E4E7EC" : "#020912" }}
             >
-              Add agents
+              {t("events.agent.addAgents")}
             </ThemedText>
 
             {/* Email field */}
@@ -147,7 +148,7 @@ const CheckInAgentScreen = () => {
               className="text-sm mb-1.5"
               style={{ color: isDark ? "#9BA8B9" : "#344054" }}
             >
-              Agent email address
+              {t("events.agent.agentEmail")}
             </ThemedText>
             <View
               style={{
@@ -164,7 +165,7 @@ const CheckInAgentScreen = () => {
               <TextInput
                 value={agentEmail}
                 onChangeText={setAgentEmail}
-                placeholder="e.g (mary@gmail.com)"
+                placeholder={t("events.agent.emailPlaceholder")}
                 placeholderTextColor={isDark ? "#4B5563" : "#98A2B3"}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -178,7 +179,7 @@ const CheckInAgentScreen = () => {
               className="text-sm mb-1.5"
               style={{ color: isDark ? "#9BA8B9" : "#344054" }}
             >
-              Ticket type
+              {t("events.agent.ticketType")}
             </ThemedText>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -208,14 +209,14 @@ const CheckInAgentScreen = () => {
                   fontSize: 14,
                 }}
               >
-                {selectedDef ? selectedDef.ticketName : "Select type"}
+                {selectedDef ? selectedDef.ticketName : t("events.agent.selectType")}
               </ThemedText>
               <ChevronDown size={16} color={isDark ? "#9CA3AF" : "#667185"} />
             </TouchableOpacity>
 
             {/* Add Agent button */}
             <GradientButton
-              label={isAdding ? "Adding…" : "Add Agent"}
+              label={isAdding ? t("events.agent.adding") : t("events.agent.addAgent")}
               onPress={handleAddAgent}
               disabled={!canAdd}
               height={48}
@@ -228,7 +229,7 @@ const CheckInAgentScreen = () => {
               </ThemedText>
             ) : !canAdd ? (
               <ThemedText className="text-[#98A2B3] text-xs mt-2">
-                Enter an email and select a ticket type to enable Add Agent.
+                {t("events.agent.addAgentHint")}
               </ThemedText>
             ) : null}
           </View>
@@ -252,7 +253,7 @@ const CheckInAgentScreen = () => {
                 className="text-[15px] mb-3"
                 style={{ color: isDark ? "#E4E7EC" : "#101928" }}
               >
-                Ticket agents
+                {t("events.agent.ticketAgents")}
               </ThemedText>
 
               {agents.map((agent) => (
@@ -411,6 +412,7 @@ const TicketTypePickerModal = ({
   onSelect,
   onClose,
 }: TicketTypePickerModalProps) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -452,11 +454,11 @@ const TicketTypePickerModal = ({
               className="text-[17px] mb-3"
               style={{ color: isDark ? "#E4E7EC" : "#101928" }}
             >
-              Select ticket type
+              {t("events.agent.selectTicketType")}
             </ThemedText>
             {ticketDefs.length === 0 ? (
               <ThemedText className="text-[#98A2B3] text-[14px] text-center py-4">
-                No ticket types available for this event.
+                {t("events.agent.noTicketTypes")}
               </ThemedText>
             ) : (
               ticketDefs.map((def) => {
@@ -505,6 +507,7 @@ const TicketTypePickerModal = ({
 /* ─── Empty State ──────────────────────────────────────────── */
 
 const EmptyState = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const figureColor = isDark ? "#6B3F38" : "#270302";
@@ -613,7 +616,7 @@ const EmptyState = () => {
           marginTop: 8,
         }}
       >
-        You do not have any Agents for this event.
+        {t("events.agent.emptyAgents")}
       </ThemedText>
     </View>
   );

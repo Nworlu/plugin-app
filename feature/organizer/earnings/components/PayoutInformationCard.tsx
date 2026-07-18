@@ -1,5 +1,7 @@
 import { ThemedText } from "@/components/themed-text";
 import { LinkedBankAccount } from "@/feature/organizer/earnings/constants/earnings";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Building2, Pencil, Plus, X } from "lucide-react-native";
 import React from "react";
@@ -18,27 +20,24 @@ const PayoutInformationCard = ({
   onEditLinkedAccount,
   onRemoveLinkedAccount,
 }: PayoutInformationCardProps) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   return (
-    <View
-      className="mt-5 rounded-3xl px-4 py-5"
-      style={{
-        borderWidth: 1,
-        borderColor: isDark ? "#374151" : "#E4E7EC",
-        backgroundColor: isDark ? "#1C1C1E" : "#FBFCFD",
-      }}
+    <GlassCard
+      isDark={isDark}
+      style={{ marginTop: 20, paddingHorizontal: 16, paddingVertical: 20 }}
     >
       {linkedAccount ? (
         <>
           <ThemedText weight="700" className="text-[18px]">
-            Linked Payout Information
+            {t("earnings.linkedPayout")}
           </ThemedText>
           <ThemedText
             className={`text-[14px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
           >
-            Withdrawals from your wallet will be paid to this account.
+            {t("earnings.payoutWithdrawalsNote")}
           </ThemedText>
 
           <View
@@ -69,7 +68,7 @@ const PayoutInformationCard = ({
             >
               <Pencil size={16} color="#F04438" />
               <ThemedText weight="500" className="text-[#F04438] text-[14px]">
-                Edit
+                {t("earnings.edit")}
               </ThemedText>
             </TouchableOpacity>
 
@@ -83,7 +82,7 @@ const PayoutInformationCard = ({
                 weight="500"
                 className={`text-[14px] ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
               >
-                Remove
+                {t("earnings.remove")}
               </ThemedText>
             </TouchableOpacity>
           </View>
@@ -91,12 +90,12 @@ const PayoutInformationCard = ({
       ) : (
         <>
           <ThemedText weight="500" className="text-xl">
-            Add Payout Information
+            {t("earnings.addPayoutInfo")}
           </ThemedText>
           <ThemedText
             className={`text-sm mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
           >
-            Add a bank account to receive payouts
+            {t("earnings.addBankAccountDesc")}
           </ThemedText>
 
           <View className="mt-8 items-center justify-center">
@@ -112,7 +111,7 @@ const PayoutInformationCard = ({
               weight="500"
               className={`text-lg mt-2 text-center ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
             >
-              No bank account Found
+              {t("earnings.noBankAccountFound")}
             </ThemedText>
 
             <TouchableOpacity
@@ -132,13 +131,13 @@ const PayoutInformationCard = ({
             >
               <Plus size={18} color={isDark ? "#E4E7EC" : "#141414"} />
               <ThemedText weight="500" className="text-base">
-                Add Bank Account
+                {t("earnings.addBankAccount")}
               </ThemedText>
             </TouchableOpacity>
           </View>
         </>
       )}
-    </View>
+    </GlassCard>
   );
 };
 

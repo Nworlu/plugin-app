@@ -1,4 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Info } from "lucide-react-native";
 import React from "react";
@@ -9,17 +11,14 @@ type TotalEarningsCardProps = {
 };
 
 const TotalEarningsCard = ({ totalEarnings }: TotalEarningsCardProps) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   return (
-    <View
-      className="mt-5 rounded-3xl px-4 py-4"
-      style={{
-        borderWidth: 1,
-        borderColor: isDark ? "#374151" : "#E4E7EC",
-        backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
-      }}
+    <GlassCard
+      isDark={isDark}
+      style={{ marginTop: 20, paddingHorizontal: 16, paddingVertical: 16 }}
     >
       <View className="flex-row items-start justify-between">
         <View>
@@ -27,7 +26,7 @@ const TotalEarningsCard = ({ totalEarnings }: TotalEarningsCardProps) => {
             weight="500"
             className={`text-base ${isDark ? "text-[#9CA3AF]" : "text-[#888D96]"}`}
           >
-            Total Earnings
+            {t("earnings.totalEarnings")}
           </ThemedText>
           <ThemedText weight="700" className="text-3xl leading-8 mt-2">
             ₦{totalEarnings.toLocaleString()}
@@ -48,10 +47,10 @@ const TotalEarningsCard = ({ totalEarnings }: TotalEarningsCardProps) => {
           weight="500"
           className={`text-base ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
         >
-          Plugin Charges N50 Per Withdrawal
+          {t("earnings.withdrawalFee")}
         </ThemedText>
       </View>
-    </View>
+    </GlassCard>
   );
 };
 

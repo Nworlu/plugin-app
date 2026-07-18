@@ -1,17 +1,34 @@
 import { ThemedText } from "@/components/themed-text";
 import OrganizerProfileForm from "@/feature/organizer/account/components/OrganizerProfileForm";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import { useBankDetails, useOrganizer } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { View } from "react-native";
 import { completeSetuplList } from "../../constants/home";
 import ChecklistItem from "./ChecklistItem";
 
+const SETUP_ITEM_KEYS = [
+  {
+    titleKey: "homeExtras.setupCreateEvent",
+    contentKey: "homeExtras.setupCreateEventDesc",
+  },
+  {
+    titleKey: "homeExtras.setupOrganizerProfile",
+    contentKey: "homeExtras.setupOrganizerProfileDesc",
+  },
+  {
+    titleKey: "homeExtras.setupPayoutAccount",
+    contentKey: "homeExtras.setupPayoutAccountDesc",
+  },
+] as const;
+
 const SetupChecklist = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -33,6 +50,16 @@ const SetupChecklist = () => {
     hasPayoutAccount,
   ];
 
+  const checklistItems = useMemo(
+    () =>
+      completeSetuplList.map((item, index) => ({
+        ...item,
+        title: t(SETUP_ITEM_KEYS[index].titleKey),
+        content: t(SETUP_ITEM_KEYS[index].contentKey),
+      })),
+    [t],
+  );
+
   const handleItemPress = (index: number) => {
     if (index === 0) {
       router.push("/(organizer)/create-event");
@@ -50,50 +77,28 @@ const SetupChecklist = () => {
           weight="500"
           className={`text-lg ${isDark ? "text-[#E5E7EB]" : "text-[#2E394C]"}`}
         >
-          Complete account set-up
+          {t("homeExtras.setupTitle")}
         </ThemedText>
         <ThemedText
           weight="400"
           className={`text-sm ${isDark ? "text-[#9CA3AF]" : "text-[#828994]"}`}
         >
-          Follow the checklist below to complete profile set-up
+          {t("homeExtras.setupSubtitleChecklist")}
         </ThemedText>
       </View>
 
-      {/* Glass card wrapping checklist items */}
-      <LinearGradient
-        colors={
-          isDark
-            ? ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"]
-            : ["rgba(255,255,255,0.82)", "rgba(255,255,255,0.52)"]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: isDark
-            ? "rgba(255,255,255,0.08)"
-            : "rgba(255,255,255,0.90)",
-          overflow: "hidden",
-          shadowColor: isDark ? "#000" : "#7090C8",
-          shadowOpacity: isDark ? 0.35 : 0.12,
-          shadowOffset: { width: 0, height: 4 },
-          shadowRadius: 16,
-          elevation: 4,
-        }}
-      >
-        {completeSetuplList.map((item, index) => (
+      <GlassCard isDark={isDark}>
+        {checklistItems.map((item, index) => (
           <ChecklistItem
             key={index}
             {...item}
             hasCompleted={completionStates[index]}
             onPress={() => handleItemPress(index)}
-            showDivider={index < completeSetuplList.length - 1}
+            showDivider={index < checklistItems.length - 1}
             disabled={completionStates[index]}
           />
         ))}
-      </LinearGradient>
+      </GlassCard>
 
       <OrganizerProfileForm
         ref={profileSheetRef}

@@ -2,6 +2,7 @@ import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import { ThemedText } from "@/components/themed-text";
 import { Venue, venuesList } from "@/feature/organizer/constants/home";
+import { useTranslation } from "@/hooks/use-translation";
 import { useBookings } from "@/providers/BookingsProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import DateTimePicker, {
@@ -16,7 +17,6 @@ import {
   Clock,
   Mail,
   MapPin,
-  Phone,
   User,
   Users,
 } from "lucide-react-native";
@@ -30,6 +30,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import PhoneInput from "react-native-phone-number-input";
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
 
@@ -234,7 +235,10 @@ const SuccessModal = ({
   isDark: boolean;
   venueName: string;
   onDone: () => void;
-}) => (
+}) => {
+  const { t } = useTranslation();
+
+  return (
   <Modal visible={visible} transparent animationType="fade">
     <View
       className="flex-1 items-center justify-center px-8"
@@ -250,21 +254,13 @@ const SuccessModal = ({
           weight="700"
           className={`text-xl text-center ${isDark ? "text-[#F9FAFB]" : "text-[#101928]"}`}
         >
-          Booking Request Sent!
+          {t("homeExtras.bookingRequestSent")}
         </ThemedText>
         <ThemedText
           weight="400"
           className={`text-[13px] text-center leading-5 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
         >
-          Your booking request for{" "}
-          <ThemedText
-            weight="700"
-            className={isDark ? "text-[#F3F4F6]" : "text-[#101928]"}
-          >
-            {venueName}
-          </ThemedText>{" "}
-          has been submitted. The venue manager will contact you within 24 hours
-          to confirm your booking.
+          {t("homeExtras.bookingRequestSentDesc", { venueName })}
         </ThemedText>
         <TouchableOpacity
           activeOpacity={0.85}
@@ -273,17 +269,19 @@ const SuccessModal = ({
           style={{ height: 52 }}
         >
           <ThemedText weight="700" className="text-white text-[15px]">
-            Done
+            {t("homeExtras.done")}
           </ThemedText>
         </TouchableOpacity>
       </View>
     </View>
   </Modal>
-);
+  );
+};
 
 /* ─── Main screen ─────────────────────────────────────────────── */
 
 const BookVenueScreen = () => {
+  const { t } = useTranslation();
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -314,17 +312,18 @@ const BookVenueScreen = () => {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!fullName.trim()) e.fullName = "Full name is required";
-    if (!email.trim()) e.email = "Email is required";
+    if (!fullName.trim()) e.fullName = t("homeExtras.fullNameRequired");
+    if (!email.trim()) e.email = t("homeExtras.emailRequired");
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      e.email = "Enter a valid email address";
-    if (!phone.trim()) e.phone = "Phone number is required";
-    if (!eventType) e.eventType = "Please select an event type";
-    if (!eventDate) e.eventDate = "Event date is required";
-    if (!numberOfDays.trim()) e.numberOfDays = "Number of days is required";
+      e.email = t("homeExtras.emailInvalid");
+    if (!phone.trim()) e.phone = t("homeExtras.phoneRequired");
+    if (!eventType) e.eventType = t("homeExtras.eventTypeRequired");
+    if (!eventDate) e.eventDate = t("homeExtras.eventDateRequired");
+    if (!numberOfDays.trim())
+      e.numberOfDays = t("homeExtras.numberOfDaysRequired");
     else if (isNaN(Number(numberOfDays)) || Number(numberOfDays) < 1)
-      e.numberOfDays = "Enter a valid number of days";
-    if (!expectedGuests) e.expectedGuests = "Please select expected guests";
+      e.numberOfDays = t("homeExtras.numberOfDaysInvalid");
+    if (!expectedGuests) e.expectedGuests = t("homeExtras.expectedGuestsRequired");
     return e;
   };
 
@@ -361,11 +360,11 @@ const BookVenueScreen = () => {
       <AppSafeArea>
         <View className="flex-1 items-center justify-center px-6">
           <ThemedText weight="500" className="text-base text-center">
-            Venue not found.
+            {t("homeExtras.venueNotFound")}
           </ThemedText>
           <TouchableOpacity className="mt-4" onPress={() => router.back()}>
             <ThemedText weight="500" className="text-[#D9302A]">
-              Go back
+              {t("homeExtras.goBack")}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -390,7 +389,7 @@ const BookVenueScreen = () => {
           {/* Top bar */}
           <View className="px-4 pt-3 pb-2">
             <BackHeader
-              label="Back"
+              label={t("shared.back")}
               onPress={() => router.back()}
               iconColor={isDark ? "#E4E7EC" : "#1D2739"}
             />
@@ -409,13 +408,13 @@ const BookVenueScreen = () => {
                 weight="700"
                 className={`text-2xl ${isDark ? "text-[#F9FAFB]" : "text-[#101928]"}`}
               >
-                Book a Venue
+                {t("homeExtras.bookVenueTitle")}
               </ThemedText>
               <ThemedText
                 weight="400"
                 className={`text-[13px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
               >
-                Fill in the details below to request a booking.
+                {t("homeExtras.bookVenueSubtitle")}
               </ThemedText>
             </View>
 
@@ -460,11 +459,11 @@ const BookVenueScreen = () => {
                 weight="700"
                 className={`text-[15px] ${isDark ? "text-[#E5E7EB]" : "text-[#2E394C]"}`}
               >
-                Contact Information
+                {t("homeExtras.contactInformation")}
               </ThemedText>
 
               <FieldWrapper
-                label="Full Name"
+                label={t("homeExtras.fullName")}
                 required
                 isDark={isDark}
                 error={errors.fullName}
@@ -476,14 +475,14 @@ const BookVenueScreen = () => {
                     if (errors.fullName)
                       setErrors((p) => ({ ...p, fullName: "" }));
                   }}
-                  placeholder="e.g. Amara Johnson"
+                  placeholder={t("homeExtras.fullNamePlaceholder")}
                   isDark={isDark}
                   icon={<User size={16} color={iconColor} />}
                 />
               </FieldWrapper>
 
               <FieldWrapper
-                label="Email Address"
+                label={t("homeExtras.emailAddress")}
                 required
                 isDark={isDark}
                 error={errors.email}
@@ -502,29 +501,60 @@ const BookVenueScreen = () => {
               </FieldWrapper>
 
               <FieldWrapper
-                label="Phone Number"
+                label={t("homeExtras.phoneNumber")}
                 required
                 isDark={isDark}
                 error={errors.phone}
               >
-                <StyledInput
-                  value={phone}
-                  onChangeText={(t) => {
-                    setPhone(t);
+                <PhoneInput
+                  defaultValue={phone}
+                  defaultCode="NG"
+                  layout="first"
+                  onChangeFormattedText={(formatted) => {
+                    setPhone(formatted);
                     if (errors.phone) setErrors((p) => ({ ...p, phone: "" }));
                   }}
-                  placeholder="+234 800 000 0000"
-                  isDark={isDark}
-                  keyboardType="phone-pad"
-                  icon={<Phone size={16} color={iconColor} />}
+                  containerStyle={{
+                    width: "100%",
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: isDark ? "#374151" : "#D0D5DD",
+                    backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+                  }}
+                  textContainerStyle={{
+                    paddingVertical: 0,
+                    borderTopRightRadius: 12,
+                    borderBottomRightRadius: 12,
+                    backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+                  }}
+                  countryPickerButtonStyle={{
+                    borderTopLeftRadius: 12,
+                    borderBottomLeftRadius: 12,
+                    backgroundColor: isDark ? "#1F2937" : "#FFFFFF",
+                  }}
+                  codeTextStyle={{
+                    color: isDark ? "#F3F4F6" : "#101928",
+                    fontFamily: "Pally",
+                    fontSize: 14,
+                  }}
+                  textInputStyle={{
+                    color: isDark ? "#F3F4F6" : "#101928",
+                    fontFamily: "Pally",
+                    fontSize: 14,
+                  }}
+                  textInputProps={{
+                    placeholder: "+234 800 000 0000",
+                    placeholderTextColor: isDark ? "#6B7280" : "#98A2B3",
+                  }}
                 />
               </FieldWrapper>
 
-              <FieldWrapper label="Organisation / Company" isDark={isDark}>
+              <FieldWrapper label={t("homeExtras.organisation")} isDark={isDark}>
                 <StyledInput
                   value={organization}
                   onChangeText={setOrganization}
-                  placeholder="Optional"
+                  placeholder={t("common.optional")}
                   isDark={isDark}
                   icon={<Users size={16} color={iconColor} />}
                 />
@@ -535,11 +565,11 @@ const BookVenueScreen = () => {
                 weight="700"
                 className={`text-[15px] pt-2 ${isDark ? "text-[#E5E7EB]" : "text-[#2E394C]"}`}
               >
-                Event Details
+                {t("homeExtras.eventDetails")}
               </ThemedText>
 
               <FieldWrapper
-                label="Type of Event"
+                label={t("homeExtras.typeOfEvent")}
                 required
                 isDark={isDark}
                 error={errors.eventType}
@@ -547,7 +577,7 @@ const BookVenueScreen = () => {
                 <DropdownField
                   value={eventType}
                   options={EVENT_TYPES}
-                  placeholder="Select event type"
+                  placeholder={t("homeExtras.selectEventType")}
                   isDark={isDark}
                   onSelect={(v) => {
                     setEventType(v);
@@ -558,7 +588,7 @@ const BookVenueScreen = () => {
               </FieldWrapper>
 
               <FieldWrapper
-                label="Event Start Date"
+                label={t("homeExtras.eventStartDate")}
                 required
                 isDark={isDark}
                 error={errors.eventDate}
@@ -591,7 +621,7 @@ const BookVenueScreen = () => {
                           month: "long",
                           year: "numeric",
                         })
-                      : "Select a date"}
+                      : t("homeExtras.selectDate")}
                   </ThemedText>
                 </TouchableOpacity>
 
@@ -636,7 +666,7 @@ const BookVenueScreen = () => {
                                   weight="700"
                                   style={{ color: "#D9302A", fontSize: 15 }}
                                 >
-                                  Done
+                                  {t("homeExtras.done")}
                                 </ThemedText>
                               </TouchableOpacity>
                             </View>
@@ -681,7 +711,7 @@ const BookVenueScreen = () => {
               </FieldWrapper>
 
               <FieldWrapper
-                label="Number of Days"
+                label={t("homeExtras.numberOfDays")}
                 required
                 isDark={isDark}
                 error={errors.numberOfDays}
@@ -693,7 +723,7 @@ const BookVenueScreen = () => {
                     if (errors.numberOfDays)
                       setErrors((p) => ({ ...p, numberOfDays: "" }));
                   }}
-                  placeholder="e.g. 2"
+                  placeholder={t("homeExtras.numberOfDaysPlaceholder")}
                   isDark={isDark}
                   keyboardType="numeric"
                   icon={<Clock size={16} color={iconColor} />}
@@ -702,7 +732,7 @@ const BookVenueScreen = () => {
               </FieldWrapper>
 
               <FieldWrapper
-                label="Expected Number of Guests"
+                label={t("homeExtras.expectedGuests")}
                 required
                 isDark={isDark}
                 error={errors.expectedGuests}
@@ -710,7 +740,7 @@ const BookVenueScreen = () => {
                 <DropdownField
                   value={expectedGuests}
                   options={GUEST_OPTIONS}
-                  placeholder="Select a range"
+                  placeholder={t("homeExtras.selectRange")}
                   isDark={isDark}
                   onSelect={(v) => {
                     setExpectedGuests(v);
@@ -720,11 +750,11 @@ const BookVenueScreen = () => {
                 />
               </FieldWrapper>
 
-              <FieldWrapper label="Special Requests" isDark={isDark}>
+              <FieldWrapper label={t("homeExtras.specialRequests")} isDark={isDark}>
                 <StyledInput
                   value={specialRequests}
                   onChangeText={setSpecialRequests}
-                  placeholder="Any special setup, catering notes, accessibility needs…"
+                  placeholder={t("homeExtras.specialRequestsPlaceholder")}
                   isDark={isDark}
                   multiline
                   maxLength={500}
@@ -745,8 +775,10 @@ const BookVenueScreen = () => {
                       weight="400"
                       className={`text-[13px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
                     >
-                      Estimated cost ({numberOfDays} day
-                      {Number(numberOfDays) > 1 ? "s" : ""})
+                      {t("homeExtras.estimatedCost", {
+                        days: numberOfDays,
+                        plural: Number(numberOfDays) > 1 ? "s" : "",
+                      })}
                     </ThemedText>
                     <ThemedText
                       weight="700"
@@ -759,7 +791,7 @@ const BookVenueScreen = () => {
                     weight="400"
                     className={`text-[11px] mt-1 ${isDark ? "text-[#6B7280]" : "text-[#98A2B3]"}`}
                   >
-                    Final amount subject to confirmation by venue.
+                    {t("homeExtras.finalAmountNote")}
                   </ThemedText>
                 </View>
               )}
@@ -785,7 +817,7 @@ const BookVenueScreen = () => {
               className="w-full h-14 rounded-2xl items-center justify-center bg-[#D9302A]"
             >
               <ThemedText weight="700" className="text-white text-[15px]">
-                Submit Booking Request
+                {t("homeExtras.submitBookingRequest")}
               </ThemedText>
             </TouchableOpacity>
           </View>

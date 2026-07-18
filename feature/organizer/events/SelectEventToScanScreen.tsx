@@ -1,15 +1,17 @@
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { AppImage } from "@/components/app-image";
 import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import { OrganizerEvent } from "@/feature/organizer/constants/home";
 import { useOrganizerEvents } from "@/hooks/api/use-events";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
 import { Calendar, MapPin } from "lucide-react-native";
 import React, { useMemo } from "react";
-import { FlatList, Image, TouchableOpacity, View } from "react-native";
+import { FlatList, TouchableOpacity, View } from "react-native";
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -68,6 +70,7 @@ type EventCardProps = {
 };
 
 const EventCard = ({ event, isDark, onPress }: EventCardProps) => {
+  const { t } = useTranslation();
   const card = isDark ? "#111827" : "#FFFFFF";
   const border = isDark ? "#1F2937" : "#EAECF0";
   const textMain = isDark ? "#F9FAFB" : "#101828";
@@ -100,10 +103,11 @@ const EventCard = ({ event, isDark, onPress }: EventCardProps) => {
         }}
       >
         {event.image ? (
-          <Image
+          <AppImage
             source={event.image}
+            recyclingKey={event.id}
             style={{ width: 72, height: 72 }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         ) : (
           <View
@@ -137,7 +141,7 @@ const EventCard = ({ event, isDark, onPress }: EventCardProps) => {
             }}
           />
           <ThemedText weight="500" style={{ fontSize: 11, color: "#0F973D" }}>
-            Live now
+            {t("events.checkIn.liveNow")}
           </ThemedText>
         </View>
 
@@ -172,7 +176,7 @@ const EventCard = ({ event, isDark, onPress }: EventCardProps) => {
         }}
       >
         <ThemedText weight="500" style={{ fontSize: 12, color: "#C5162A" }}>
-          Scan
+          {t("events.checkIn.scan")}
         </ThemedText>
       </View>
     </TouchableOpacity>
@@ -182,6 +186,7 @@ const EventCard = ({ event, isDark, onPress }: EventCardProps) => {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 const SelectEventToScanScreen = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const user = useAuthStore((s) => s.user);
@@ -222,13 +227,13 @@ const SelectEventToScanScreen = () => {
 
   return (
     <AppSafeArea style={{ flex: 1, backgroundColor: bg }}>
-      <BackHeader label="Select Event to Scan" />
+      <BackHeader label={t("events.checkIn.selectEvent")} />
 
       <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
         <ThemedText
           style={{ fontSize: 13, color: textMuted, marginBottom: 16 }}
         >
-          Choose a live event to scan tickets for
+          {t("events.checkIn.chooseLiveEvent")}
         </ThemedText>
 
         {isLoading ? (
@@ -272,7 +277,7 @@ const SelectEventToScanScreen = () => {
                     textAlign: "center",
                   }}
                 >
-                  No live events right now
+                  {t("events.checkIn.noLiveEvents")}
                 </ThemedText>
                 <ThemedText
                   style={{
@@ -283,7 +288,7 @@ const SelectEventToScanScreen = () => {
                     paddingHorizontal: 32,
                   }}
                 >
-                  Events you publish will appear here when they go live
+                  {t("events.checkIn.noLiveEventsHint")}
                 </ThemedText>
               </View>
             }

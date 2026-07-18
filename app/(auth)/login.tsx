@@ -1,38 +1,55 @@
 import GradientButton from "@/components/gradient-button";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
 import { useLoginStep1 } from "@/hooks/api/use-auth";
-import {
+import { useTranslation } from "@/hooks/use-translation";
+import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetModal,
+  BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const { mutate: loginStep1, isPending } = useLoginStep1();
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const sheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => ["50%", "85%"], []);
 
   useEffect(() => {
-    const sheet = sheetRef.current;
-    const t = setTimeout(() => sheet?.present(), 100);
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      sheetRef.current?.snapToIndex(1);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+      sheetRef.current?.snapToIndex(0);
+    });
+
     return () => {
-      clearTimeout(t);
-      sheet?.dismiss();
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
 
@@ -40,14 +57,16 @@ export default function LoginScreen() {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedEmail) {
-      setError("Email address is required");
+      setError(t("auth.login.emailRequired"));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Enter a valid email address");
+      setError(t("auth.login.emailInvalid"));
       return;
     }
     setError("");
+
+    Keyboard.dismiss();
 
     loginStep1(
       { email: trimmedEmail },
@@ -62,7 +81,7 @@ export default function LoginScreen() {
           const message =
             err instanceof Error
               ? err.message
-              : "Something went wrong. Try again.";
+              : t("auth.login.genericError");
           setError(message);
         },
       },
@@ -83,53 +102,60 @@ export default function LoginScreen() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Background photo */}
-      <Image
-        source={require("@/assets/images/event/event-2.jpg")}
-        style={StyleSheet.absoluteFill}
-        resizeMode="cover"
-      />
-      {/* Overlay */}
-      <View style={StyleSheet.absoluteFill} className="bg-black/45" />
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={{ flex: 1 }}>
+        {/* Background photo */}
+        <AppImage
+          source={require("@/assets/images/event-login.webp")}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          priority="high"
+        />
+        {/* Overlay */}
+        <View style={StyleSheet.absoluteFill} className="bg-black/45" />
 
-      <BottomSheetModal
+        <BottomSheet
         ref={sheetRef}
-        enableDynamicSizing
-        keyboardBehavior="interactive"
+        index={0}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
+        bottomInset={0}
         backdropComponent={renderBackdrop}
         enablePanDownToClose={false}
-        backgroundStyle={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
+        backgroundStyle={{
+          backgroundColor: "#FFFFFF",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+        }}
         handleIndicatorStyle={{ backgroundColor: "#E4E7EC" }}
       >
-        <BottomSheetView>
-          <TouchableWithoutFeedback
-            onPress={Keyboard.dismiss}
-            accessible={false}
+        <BottomSheetView style={{ flex: 1 }}>
+          <BottomSheetScrollView
+            contentContainerStyle={{
+              paddingHorizontal: 24,
+              paddingTop: 8,
+              paddingBottom: keyboardHeight > 0 ? 24 : insets.bottom + 28,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <View
-              style={{
-                paddingHorizontal: 24,
-                paddingTop: 8,
-                paddingBottom: insets.bottom + 28,
-              }}
-            >
-              {/* Handle */}
-              <View className="w-10 h-1 bg-[#E4E7EC] rounded-full self-center mb-6" />
-
               <ThemedText
                 weight="700"
                 className="text-[#101928] text-2xl mb-1.5"
               >
-                Log in
+                {t("auth.login.title")}
               </ThemedText>
               <ThemedText
                 weight="400"
                 className="text-[#667085] text-[13px] leading-5 mb-6"
               >
-                Welcome back! Enter your details to access your account
+                {t("auth.login.subtitle")}
               </ThemedText>
 
               {/* Email */}
@@ -137,7 +163,7 @@ export default function LoginScreen() {
                 weight="500"
                 className="text-[#344054] text-[13px] mb-1.5"
               >
-                Email Address
+                {t("auth.login.emailLabel")}
               </ThemedText>
               <View
                 className={`rounded-[10px] h-12 px-3.5 justify-center bg-white border ${
@@ -146,11 +172,11 @@ export default function LoginScreen() {
               >
                 <BottomSheetTextInput
                   value={email}
-                  onChangeText={(t) => {
-                    setEmail(t);
+                  onChangeText={(text) => {
+                    setEmail(text);
                     if (error) setError("");
                   }}
-                  placeholder="Enter your email address"
+                  placeholder={t("auth.login.emailPlaceholder")}
                   placeholderTextColor="#98A2B3"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -170,7 +196,7 @@ export default function LoginScreen() {
 
               {/* Continue */}
               <GradientButton
-                label={isPending ? "Please wait..." : "Continue"}
+                label={isPending ? t("auth.login.pleaseWait") : t("auth.login.continue")}
                 onPress={handleContinue}
                 disabled={isPending}
                 height={52}
@@ -181,24 +207,28 @@ export default function LoginScreen() {
               {/* Switch to sign up */}
               <View className="flex-row justify-center items-center mt-5">
                 <ThemedText weight="400" className="text-[#667085] text-[13px]">
-                  Don&apos;t have an account?{" "}
+                  {t("auth.login.noAccount")}{" "}
                 </ThemedText>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => router.replace("/(auth)/signup")}
                 >
                   <ThemedText
-                    weight="600"
+                    weight="700"
                     className="text-[#D9302A] text-[13px]"
                   >
-                    Sign up
+                    {t("auth.login.signUp")}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
-            </View>
-          </TouchableWithoutFeedback>
+
+              {keyboardHeight > 0 ? (
+                <View style={{ height: keyboardHeight * 0.25 }} />
+              ) : null}
+          </BottomSheetScrollView>
         </BottomSheetView>
-      </BottomSheetModal>
-    </View>
+      </BottomSheet>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

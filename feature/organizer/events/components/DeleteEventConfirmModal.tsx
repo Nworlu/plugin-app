@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Check, Trash2 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -17,6 +18,7 @@ const DeleteEventConfirmModal = ({
   onClose,
   onConfirm,
 }: DeleteEventConfirmModalProps) => {
+  const { t } = useTranslation();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -55,13 +57,13 @@ const DeleteEventConfirmModal = ({
                 weight="700"
                 className={`text-[18px] leading-7 ${isDark ? "text-[#E5E7EB]" : "text-[#101928]"}`}
               >
-                Are you sure you want to delete this event?
+                {t("events.delete.confirmTitle")}
               </ThemedText>
 
               <ThemedText
                 className={`text-[14px] leading-5 mt-4 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
               >
-                Continuing with deletion will lead to the following
+                {t("events.delete.confirmSubtitle")}
               </ThemedText>
             </View>
 
@@ -76,24 +78,25 @@ const DeleteEventConfirmModal = ({
             <ThemedText
               className={`text-[14px] leading-5 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
             >
-              • All event data, including tickets and attendee information, will
-              be permanently removed.
+              • {t("events.delete.bullet1")}
             </ThemedText>
             <ThemedText
               className={`text-[14px] leading-5 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
             >
-              • Attendees will lose access to the event.
+              • {t("events.delete.bullet2")}
             </ThemedText>
             <ThemedText
               className={`text-[14px] leading-5 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
             >
-              • The deletion cannot be undone.
+              • {t("events.delete.bullet3")}
             </ThemedText>
             <ThemedText
               className={`text-[14px] leading-5 ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
             >
-              • Any ongoing or upcoming promotions linked to{" "}
-              {eventTitle ?? "this event"} will be canceled.
+              •{" "}
+              {t("events.delete.bullet4", {
+                eventTitle: eventTitle ?? t("events.delete.thisEvent"),
+              })}
             </ThemedText>
           </View>
 
@@ -119,8 +122,7 @@ const DeleteEventConfirmModal = ({
             <ThemedText
               className={`flex-1 text-[14px] leading-5 ${isDark ? "text-[#9CA3AF]" : "text-[#475467]"}`}
             >
-              I accept the terms of Event Deletion as mentioned on the Privacy
-              policy
+              {t("events.delete.acceptTerms")}
             </ThemedText>
           </TouchableOpacity>
 
@@ -143,7 +145,7 @@ const DeleteEventConfirmModal = ({
                     : "text-[#98A2B3] text-[15px]"
                 }
               >
-                Delete event
+                {t("events.delete.deleteEvent")}
               </ThemedText>
             </TouchableOpacity>
 
@@ -165,7 +167,7 @@ const DeleteEventConfirmModal = ({
                 weight="500"
                 className={`text-[15px] ${isDark ? "text-[#E5E7EB]" : "text-[#1D2739]"}`}
               >
-                Keep Event
+                {t("events.delete.keepEvent")}
               </ThemedText>
             </TouchableOpacity>
           </View>

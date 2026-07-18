@@ -1,8 +1,9 @@
 import { ThemedText } from "@/components/themed-text";
+import { AppImage } from "@/components/app-image";
 import { useTheme } from "@/providers/ThemeProvider";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import GlassCard from "./GlassCard";
 
 type PromotionCampaignBannerProps = {
@@ -29,10 +30,10 @@ const PromotionCampaignBanner = ({
         borderRadius: 16,
       }}
     >
-      <Image
+      <AppImage
         source={require("@/assets/images/home/tips-1.png")}
-        className="w-14 h-14"
-        resizeMode="contain"
+        style={{ width: 56, height: 56 }}
+        contentFit="contain"
       />
       <View className="flex-1">
         <ThemedText

@@ -1,23 +1,25 @@
 import GradientButton from "@/components/gradient-button";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
 import { useLoginStep2, useRegisterStep2 } from "@/hooks/api/use-auth";
+import { useTranslation } from "@/hooks/use-translation";
 import { useAuthStore } from "@/store/auth-store";
-import {
+import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetModal,
+  BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { router, useLocalSearchParams } from "expo-router";
 import { CheckCircle } from "lucide-react-native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,6 +28,7 @@ const CODE_LENGTH = 5;
 const RESEND_SECONDS = 299; // 4:59
 
 export default function VerifyScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { email, mode } = useLocalSearchParams<{
     email: string;
@@ -45,16 +48,30 @@ export default function VerifyScreen() {
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(RESEND_SECONDS);
   const [canResend, setCanResend] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const inputRefs = useRef<(TextInput | null)[]>(Array(CODE_LENGTH).fill(null));
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const sheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => ["55%", "85%"], []);
 
-  // Auto-present on mount
   useEffect(() => {
-    const sheet = sheetRef.current;
-    const t = setTimeout(() => sheet?.present(), 100);
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      sheetRef.current?.snapToIndex(1);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+      sheetRef.current?.snapToIndex(0);
+    });
+
     return () => {
-      clearTimeout(t);
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
 
@@ -113,11 +130,11 @@ export default function VerifyScreen() {
   const handleVerify = () => {
     const fullCode = code.join("");
     if (fullCode.length < CODE_LENGTH) {
-      setError("Enter the 5-digit verification code");
+      setError(t("auth.verify.codeRequired"));
       return;
     }
     setVerifying(true);
-
+    Keyboard.dismiss();
     if (isLoginMode) {
       loginStep2(
         { email: email ?? "", code: fullCode },
@@ -132,7 +149,7 @@ export default function VerifyScreen() {
             setError(
               err instanceof Error
                 ? err.message
-                : "Invalid code. Please try again.",
+                : t("auth.verify.invalidCode"),
             );
             setVerifying(false);
           },
@@ -157,7 +174,7 @@ export default function VerifyScreen() {
             setError(
               err instanceof Error
                 ? err.message
-                : "Invalid code. Please try again.",
+                : t("auth.verify.invalidCode"),
             );
             setVerifying(false);
           },
@@ -207,38 +224,48 @@ export default function VerifyScreen() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={{ flex: 1 }}>
       {/* Full-bleed background */}
-      <Image
-        source={require("@/assets/images/event/event-3.jpg")}
+      <AppImage
+        source={require("@/assets/images/event-verify.jpg")}
         style={StyleSheet.absoluteFill}
-        resizeMode="cover"
+        contentFit="contain"
+        priority="high"
       />
       <View style={StyleSheet.absoluteFill} className="bg-black/45" />
 
-      <BottomSheetModal
+      <BottomSheet
         ref={sheetRef}
-        enableDynamicSizing
-        keyboardBehavior="interactive"
+        index={0}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
+        bottomInset={0}
         backdropComponent={renderBackdrop}
         enablePanDownToClose={false}
-        backgroundStyle={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
+        backgroundStyle={{
+          backgroundColor: "#FFFFFF",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+        }}
         handleIndicatorStyle={{ backgroundColor: "#E4E7EC" }}
       >
-        <BottomSheetView>
-          <TouchableWithoutFeedback
-            onPress={Keyboard.dismiss}
-            accessible={false}
+        <BottomSheetView style={{ flex: 1 }}>
+          <BottomSheetScrollView
+            contentContainerStyle={{
+              paddingHorizontal: 24,
+              paddingTop: 8,
+              paddingBottom: keyboardHeight > 0 ? 24 : insets.bottom + 28,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <View
-              style={{
-                paddingHorizontal: 24,
-                paddingTop: 8,
-                paddingBottom: insets.bottom + 28,
-              }}
-            >
               {/* Handle */}
               <View className="w-10 h-1 bg-[#E4E7EC] rounded-full self-center mb-6" />
 
@@ -246,17 +273,13 @@ export default function VerifyScreen() {
                 weight="700"
                 className="text-[#101928] text-2xl mb-1.5"
               >
-                Verify Account
+                {t("auth.verify.title")}
               </ThemedText>
               <ThemedText
                 weight="400"
                 className="text-[#667085] text-[13px] leading-5 mb-7"
               >
-                Enter the verification code sent to{" "}
-                <ThemedText weight="700" className="text-[#D9302A]">
-                  {email}
-                </ThemedText>{" "}
-                to verify your account
+                {t("auth.verify.subtitle", { email: email ?? "" })}
               </ThemedText>
 
               {/* OTP row  O O O - O O */}
@@ -283,7 +306,7 @@ export default function VerifyScreen() {
               {/* Resend */}
               <View className="flex-row items-center justify-center mt-4">
                 <ThemedText weight="400" className="text-[#667085] text-[13px]">
-                  Didn&apos;t get the code?{" "}
+                  {t("auth.verify.noCode")}{" "}
                 </ThemedText>
                 {canResend ? (
                   <TouchableOpacity activeOpacity={0.7} onPress={handleResend}>
@@ -291,7 +314,7 @@ export default function VerifyScreen() {
                       weight="700"
                       className="text-[#D9302A] text-[13px]"
                     >
-                      Resend
+                      {t("auth.verify.resend")}
                     </ThemedText>
                   </TouchableOpacity>
                 ) : (
@@ -299,7 +322,7 @@ export default function VerifyScreen() {
                     weight="500"
                     className="text-[#667085] text-[13px]"
                   >
-                    Resend in {formattedCountdown()}
+                    {t("auth.verify.resendIn", { time: formattedCountdown() })}
                   </ThemedText>
                 )}
               </View>
@@ -310,13 +333,13 @@ export default function VerifyScreen() {
                   className="h-[52px] rounded-[14px] mt-5 items-center justify-center flex-row gap-2 bg-[#2E7D32]"
                 >
                   <ThemedText weight="700" className="text-white text-[15px]">
-                    Account Verified
+                    {t("auth.verify.verified")}
                   </ThemedText>
                   <CheckCircle size={18} color="#fff" />
                 </TouchableOpacity>
               ) : (
                 <GradientButton
-                  label={verifying ? "Verifying Account" : "Verify"}
+                  label={verifying ? t("auth.verify.verifying") : t("auth.verify.verify")}
                   onPress={handleVerify}
                   height={52}
                   borderRadius={14}
@@ -324,11 +347,15 @@ export default function VerifyScreen() {
                   style={{ marginTop: 20 }}
                 />
               )}
-            </View>
-          </TouchableWithoutFeedback>
+
+              {keyboardHeight > 0 ? (
+                <View style={{ height: keyboardHeight * 0.25 }} />
+              ) : null}
+          </BottomSheetScrollView>
         </BottomSheetView>
-      </BottomSheetModal>
-    </View>
+      </BottomSheet>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

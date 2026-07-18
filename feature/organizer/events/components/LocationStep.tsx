@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import NativeDateTimePicker from "@/feature/organizer/events/components/NativeDateTimePicker";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import * as Location from "expo-location";
 import { ChevronDown, Copy, Crosshair, MapPin, X } from "lucide-react-native";
@@ -77,6 +78,7 @@ export default function LocationStep({
   setLatitude,
   setLongitude,
 }: Props) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -256,7 +258,7 @@ export default function LocationStep({
         <ThemedText
           className={`text-[13px] flex-1 ${value ? (isDark ? "text-[#F2F4F7]" : "text-[#101828]") : "text-[#98A2B3]"}`}
         >
-          {value || "Select"}
+          {value || t("events.wizard.location.select")}
         </ThemedText>
         <ChevronDown size={16} color="#667085" />
       </TouchableOpacity>
@@ -269,26 +271,26 @@ export default function LocationStep({
         weight="700"
         className={`text-[22px] mb-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Where will your event{"\n"}take place?
+        {t("events.wizard.location.title")}
       </ThemedText>
       <ThemedText
         weight="700"
         className={`text-[15px] mt-4 mb-3 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Basic Event Information
+        {t("events.wizard.location.sectionTitle")}
       </ThemedText>
 
       <ThemedText className="text-[13px] text-[#667085] mb-[10px]">
-        Will this be a one-time event or a recurring one ?
+        {t("events.wizard.dateTime.eventTypeQuestion")}
       </ThemedText>
       <View className="flex-row gap-2 mb-[22px]">
         <DarkChip
-          label="Physical"
+          label={t("events.steps.physical")}
           active={locationType === "physical"}
           onPress={() => setLocationType("physical")}
         />
         <DarkChip
-          label="Online"
+          label={t("events.steps.online")}
           active={locationType === "online"}
           onPress={() => setLocationType("online")}
         />
@@ -301,13 +303,13 @@ export default function LocationStep({
             weight="700"
             className={`text-[14px] mb-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
           >
-            Location Address
+            {t("events.wizard.location.locationAddress")}
           </ThemedText>
 
           <ThemedText
             className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
           >
-            Address
+            {t("events.wizard.location.address")}
           </ThemedText>
           {/* Use current location */}
           <TouchableOpacity
@@ -328,7 +330,9 @@ export default function LocationStep({
             <ThemedText
               className={`text-[12px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
             >
-              {isLocating ? "Detecting location…" : "Use current location"}
+              {isLocating
+                ? t("events.wizard.location.detectingLocation")
+                : t("events.steps.useCurrentLocation")}
             </ThemedText>
           </TouchableOpacity>
           {/* Address autocomplete */}
@@ -344,7 +348,7 @@ export default function LocationStep({
               <TextInput
                 value={address}
                 onChangeText={fetchPredictions}
-                placeholder="Search for location or address"
+                placeholder={t("events.wizard.location.searchPlaceholder")}
                 placeholderTextColor={placeholderColor}
                 style={{
                   flex: 1,
@@ -417,17 +421,17 @@ export default function LocationStep({
           </View>
 
           <View className="flex-row gap-[10px] mb-[14px]">
-            <SelectRow label="City" value={city} />
-            <SelectRow label="State" value={locationState} />
+            <SelectRow label={t("events.wizard.location.city")} value={city} />
+            <SelectRow label={t("events.wizard.location.state")} value={locationState} />
           </View>
 
           <View className="flex-row gap-[10px] mb-2">
-            <SelectRow label="Country" value={country} />
+            <SelectRow label={t("events.wizard.location.country")} value={country} />
             <View className="flex-1">
               <ThemedText
                 className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                Zipcode
+                {t("events.wizard.location.zipcode")}
               </ThemedText>
               <TextInput
                 value={zipcode}
@@ -457,14 +461,14 @@ export default function LocationStep({
             weight="700"
             className={`text-[14px] mb-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
           >
-            Virtual Address
+            {t("events.wizard.location.virtualAddress")}
           </ThemedText>
 
           {/* Online Venue */}
           <ThemedText
             className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
           >
-            Online Venue
+            {t("events.wizard.location.onlineVenue")}
           </ThemedText>
           <TouchableOpacity
             onPress={() => setShowVenueModal(true)}
@@ -497,7 +501,7 @@ export default function LocationStep({
               </View>
             ) : (
               <ThemedText className="text-[13px] text-[#98A2B3] flex-1">
-                Select venue
+                {t("events.wizard.location.selectVenue")}
               </ThemedText>
             )}
             <ChevronDown size={16} color="#667085" />
@@ -507,7 +511,7 @@ export default function LocationStep({
           <ThemedText
             className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
           >
-            Venue Link
+            {t("events.wizard.location.venueLink")}
           </ThemedText>
           <View
             className={`flex-row items-center border rounded-[10px] px-3 mb-[14px] ${
@@ -548,7 +552,7 @@ export default function LocationStep({
               <ThemedText
                 className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                Start time
+                {t("events.wizard.dateTime.startTime")}
               </ThemedText>
               <NativeDateTimePicker
                 mode="time"
@@ -560,7 +564,7 @@ export default function LocationStep({
               <ThemedText
                 className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                End time
+                {t("events.wizard.dateTime.endTime")}
               </ThemedText>
               <NativeDateTimePicker
                 mode="time"

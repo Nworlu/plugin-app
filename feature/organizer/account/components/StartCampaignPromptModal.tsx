@@ -1,5 +1,6 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Megaphone } from "lucide-react-native";
 import React from "react";
@@ -19,6 +20,7 @@ const StartCampaignPromptModal = ({
   onDismiss,
 }: StartCampaignPromptModalProps) => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   return (
@@ -83,7 +85,7 @@ const StartCampaignPromptModal = ({
                     textAlign: "left",
                   }}
                 >
-                  Event Campaign
+                  {t("settings.campaign.promptTitle")}
                 </ThemedText>
                 <ThemedText
                   style={{
@@ -94,7 +96,7 @@ const StartCampaignPromptModal = ({
                     textAlign: "left",
                   }}
                 >
-                  Reach the right people with Plugin Campaign Plans.
+                  {t("settings.campaign.promptSubtitle")}
                 </ThemedText>
               </View>
               <View
@@ -111,7 +113,7 @@ const StartCampaignPromptModal = ({
             </View>
 
             <GradientButton
-              label="Start a campaign"
+              label={t("settings.campaign.startCampaign")}
               onPress={onStart}
               style={{ width: 292, marginTop: 0, borderRadius: 12 }}
               height={54}
@@ -137,7 +139,7 @@ const StartCampaignPromptModal = ({
                 weight="500"
                 style={{ fontSize: 16, color: isDark ? "#E5E7EB" : "#101828" }}
               >
-                Cancel
+                {t("common.cancel")}
               </ThemedText>
             </TouchableOpacity>
           </View>

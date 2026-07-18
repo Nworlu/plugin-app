@@ -1,25 +1,26 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
 const EVENT_CATEGORIES = [
-  "Music",
-  "Business",
-  "Food & Drinks",
-  "Community",
-  "Arts",
-  "Entertainment",
-  "Health",
-  "Science & Tech",
-  "Non- Profit",
-  "Hangout",
-  "Family & Education",
-  "Travel & Outdoor",
-  "Fashion",
-  "Sports",
-  "Comedy",
-];
+  { key: "music", value: "Music" },
+  { key: "business", value: "Business" },
+  { key: "food", value: "Food & Drinks" },
+  { key: "community", value: "Community" },
+  { key: "arts", value: "Arts" },
+  { key: "entertainment", value: "Entertainment" },
+  { key: "health", value: "Health" },
+  { key: "tech", value: "Science & Tech" },
+  { key: "nonprofit", value: "Non- Profit" },
+  { key: "hangout", value: "Hangout" },
+  { key: "familyEducation", value: "Family & Education" },
+  { key: "travelOutdoor", value: "Travel & Outdoor" },
+  { key: "fashion", value: "Fashion" },
+  { key: "sports", value: "Sports" },
+  { key: "comedy", value: "Comedy" },
+] as const;
 
 type Props = {
   selectedCategories: string[];
@@ -30,6 +31,7 @@ export default function CategoryStep({
   selectedCategories,
   setSelectedCategories,
 }: Props) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -45,24 +47,24 @@ export default function CategoryStep({
         weight="700"
         className={`text-[22px] mb-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        What kind of events do{"\n"}you organize?
+        {t("events.wizard.category.title")}
       </ThemedText>
       <ThemedText
         weight="700"
         className={`text-[15px] mt-4 mb-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Basic Event Information
+        {t("events.wizard.category.sectionTitle")}
       </ThemedText>
       <ThemedText className="text-[13px] text-[#667085] mb-4">
-        Choose the category that best describes your event
+        {t("events.wizard.category.subtitle")}
       </ThemedText>
       <View className="flex-row flex-wrap gap-2">
-        {EVENT_CATEGORIES.map((cat, idx) => {
-          const isActive = selectedCategories.includes(cat);
+        {EVENT_CATEGORIES.map((cat) => {
+          const isActive = selectedCategories.includes(cat.value);
           return (
             <TouchableOpacity
-              key={`${cat}-${idx}`}
-              onPress={() => toggle(cat)}
+              key={cat.key}
+              onPress={() => toggle(cat.value)}
               className={`py-[7px] px-[14px] rounded-full border ${
                 isActive
                   ? `border-[#F04438] ${isDark ? "bg-[#3A1A1A]" : "bg-[#FDECEC]"}`
@@ -80,7 +82,7 @@ export default function CategoryStep({
                       : "text-[#344054]"
                 }`}
               >
-                {cat}
+                {t(`events.categories.${cat.key}`)}
               </ThemedText>
             </TouchableOpacity>
           );

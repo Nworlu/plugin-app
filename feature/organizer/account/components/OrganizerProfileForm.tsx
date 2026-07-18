@@ -5,6 +5,7 @@ import {
   useGetSignedUrl,
   useUpdateOrganizer,
 } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import type { Organizer } from "@/utils/api/types";
 import {
@@ -45,6 +46,7 @@ const OrganizerProfileForm = forwardRef<
   BottomSheetModal,
   OrganizerProfileFormProps
 >(({ userId, existingOrganizer, onClose, onSuccess }, ref) => {
+  const { t } = useTranslation();
   const isEditing = !!existingOrganizer;
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -54,9 +56,6 @@ const OrganizerProfileForm = forwardRef<
   const [profileThumbnail, setProfileThumbnail] = useState<string | null>(
     existingOrganizer?.banner ?? null,
   );
-  const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [thumbNail, setThumbNail] =
-    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(
     existingOrganizer?.thumbnail ?? null,
   );
@@ -101,10 +100,7 @@ const OrganizerProfileForm = forwardRef<
     [],
   );
 
-  const pickImage = async (
-    setter: (uri: string) => void,
-    setImage: (image: ImagePicker.ImagePickerAsset | null) => void,
-  ) => {
+  const pickImage = async (setter: (uri: string) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -123,7 +119,6 @@ const OrganizerProfileForm = forwardRef<
         };
       }
       // console.log("[OrganizerProfileForm] picked image:", { uri, mimeType, fileName });
-      setImage(result.assets[0]);
       setter(uri);
     }
   };
@@ -281,7 +276,7 @@ const OrganizerProfileForm = forwardRef<
       onClose();
     } catch (err) {
       console.error("[OrganizerProfileForm] save failed:", err);
-      setSaveError("Failed to save profile. Please try again.");
+      setSaveError(t("settings.organizer.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -318,7 +313,9 @@ const OrganizerProfileForm = forwardRef<
           }}
         >
           <ThemedText weight="700" className="text-[18px]">
-            {isEditing ? "Edit Organizer Profile" : "Add Organizer Profile"}
+            {isEditing
+              ? t("settings.organizer.editOrganizerProfile")
+              : t("settings.organizer.addOrganizerProfile")}
           </ThemedText>
           <TouchableOpacity
             onPress={onClose}
@@ -366,7 +363,7 @@ const OrganizerProfileForm = forwardRef<
                   borderWidth: 1,
                   borderColor: isDark ? "#4B5563" : "#EAECF0",
                 }}
-                onPress={() => pickImage(setProfileThumbnail, setThumbNail)}
+                onPress={() => pickImage(setProfileThumbnail)}
               >
                 <Pencil size={13} color={isDark ? "#E4E7EC" : "#344054"} />
               </TouchableOpacity>
@@ -389,7 +386,7 @@ const OrganizerProfileForm = forwardRef<
           ) : (
             <TouchableOpacity
               style={{ alignItems: "center" }}
-              onPress={() => pickImage(setProfileThumbnail, setImage)}
+              onPress={() => pickImage(setProfileThumbnail)}
             >
               <View
                 style={{
@@ -412,7 +409,7 @@ const OrganizerProfileForm = forwardRef<
                     color: isDark ? "#9CA3AF" : "#667085",
                   }}
                 >
-                  Add banner image
+                  {t("settings.organizer.addBannerImage")}
                 </ThemedText>
               </View>
             </TouchableOpacity>
@@ -432,7 +429,7 @@ const OrganizerProfileForm = forwardRef<
           className="mb-2 text-[16px]"
           style={{ paddingHorizontal: 16 }}
         >
-          Organizer profile Image
+          {t("settings.organizer.profileImage")}
         </ThemedText>
         <View
           style={{
@@ -458,7 +455,7 @@ const OrganizerProfileForm = forwardRef<
                   borderWidth: 1,
                   borderColor: isDark ? "#4B5563" : "#EAECF0",
                 }}
-                onPress={() => pickImage(setProfileImage, setImage)}
+                onPress={() => pickImage(setProfileImage)}
               >
                 <Pencil size={13} color={isDark ? "#E4E7EC" : "#344054"} />
               </TouchableOpacity>
@@ -481,7 +478,7 @@ const OrganizerProfileForm = forwardRef<
           ) : (
             <TouchableOpacity
               style={{ alignItems: "center" }}
-              onPress={() => pickImage(setProfileImage, setImage)}
+              onPress={() => pickImage(setProfileImage)}
             >
               <View
                 style={{
@@ -504,7 +501,7 @@ const OrganizerProfileForm = forwardRef<
                     color: isDark ? "#9CA3AF" : "#667085",
                   }}
                 >
-                  Add photo
+                  {t("settings.organizer.addPhoto")}
                 </ThemedText>
               </View>
             </TouchableOpacity>
@@ -521,19 +518,21 @@ const OrganizerProfileForm = forwardRef<
         {/* About organizer section */}
         <View style={{ paddingHorizontal: 16 }}>
           <ThemedText weight="700" className="mb-1 text-[16px]">
-            About organizer
+            {t("settings.organizer.aboutOrganizer")}
           </ThemedText>
           <ThemedText
             className="mb-2 text-[13px]"
             style={{ color: isDark ? "#9CA3AF" : "#667085" }}
           >
-            Let attendees know who is hosting events.
+            {t("settings.organizer.aboutOrganizerHint")}
           </ThemedText>
-          <ThemedText className="mb-1 text-[15px]">Organizer Name</ThemedText>
+          <ThemedText className="mb-1 text-[15px]">
+            {t("settings.organizer.organizerName")}
+          </ThemedText>
           <TextInput
             value={organizerName}
             onChangeText={setOrganizerName}
-            placeholder="Enter Organizer Name"
+            placeholder={t("settings.organizer.enterOrganizerName")}
             placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
             style={{
               borderWidth: 1,
@@ -546,19 +545,19 @@ const OrganizerProfileForm = forwardRef<
             }}
           />
           <ThemedText className="mb-1 text-[15px]">
-            Organizer Bio
+            {t("settings.organizer.organizerBio")}
             <ThemedText
               className="text-[13px]"
               style={{ color: isDark ? "#6B7280" : "#98A2B3" }}
             >
               {" "}
-              ( Max word count is 300 )
+              {t("settings.organizer.maxWordCount")}
             </ThemedText>
           </ThemedText>
           <TextInput
             value={organizerBio}
             onChangeText={setOrganizerBio}
-            placeholder="Let attendees know more about you"
+            placeholder={t("settings.organizer.bioPlaceholder")}
             placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
             multiline
             numberOfLines={4}
@@ -575,12 +574,12 @@ const OrganizerProfileForm = forwardRef<
             }}
           />
           <ThemedText className="mb-1 text-[15px]">
-            Tagline for event pages ( Optional )
+            {t("settings.organizer.taglineOptional")}
           </ThemedText>
           <TextInput
             value={tagline}
             onChangeText={setTagline}
-            placeholder="e.g Welcome to the Party Palace"
+            placeholder={t("settings.organizer.taglinePlaceholder")}
             placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
             style={{
               borderWidth: 1,
@@ -604,18 +603,18 @@ const OrganizerProfileForm = forwardRef<
         {/* Social Media Links */}
         <View style={{ paddingHorizontal: 16 }}>
           <ThemedText weight="700" className="mb-1 text-[16px]">
-            Social media links
+            {t("settings.organizer.socialMediaLinks")}
           </ThemedText>
           <ThemedText
             className="mb-2 text-[13px]"
             style={{ color: isDark ? "#9CA3AF" : "#667085" }}
           >
-            Let attendees know how to connect with you
+            {t("settings.organizer.socialMediaHint")}
           </ThemedText>
           <TextInput
             value={facebook}
             onChangeText={setFacebook}
-            placeholder="Facebook profile link"
+            placeholder={t("settings.organizer.facebookPlaceholder")}
             placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
             autoCapitalize="none"
             keyboardType="url"
@@ -632,7 +631,7 @@ const OrganizerProfileForm = forwardRef<
           <TextInput
             value={instagram}
             onChangeText={setInstagram}
-            placeholder="Instagram profile link"
+            placeholder={t("settings.organizer.instagramPlaceholder")}
             placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
             autoCapitalize="none"
             keyboardType="url"
@@ -676,7 +675,11 @@ const OrganizerProfileForm = forwardRef<
           </View>
         ) : (
           <GradientButton
-            label={isEditing ? "Update Profile" : "Add Profile"}
+            label={
+              isEditing
+                ? t("settings.organizer.updateProfile")
+                : t("settings.organizer.addProfile")
+            }
             onPress={handleSave}
             height={48}
             style={{ marginTop: 0 }}

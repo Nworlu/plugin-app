@@ -1,11 +1,13 @@
 import AlertModal from "@/components/alert-modal";
 import AppSafeArea from "@/components/app-safe-area";
+import { AppImage } from "@/components/app-image";
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import AgendaStep from "@/feature/organizer/events/components/AgendaStep";
 import BasicInfoStep from "@/feature/organizer/events/components/BasicInfoStep";
 import CategoryStep from "@/feature/organizer/events/components/CategoryStep";
 import DateTimeStep from "@/feature/organizer/events/components/DateTimeStep";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import LocationStep from "@/feature/organizer/events/components/LocationStep";
 import ReviewStep from "@/feature/organizer/events/components/ReviewStep";
 import TicketStep from "@/feature/organizer/events/components/TicketStep";
@@ -14,9 +16,9 @@ import {
   useCreateEventBasic,
   useEvent,
   useGetSignedUrl,
-  useOrganizer,
   usePatchEvent,
 } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { router, useFocusEffect, useNavigation } from "expo-router";
@@ -24,7 +26,6 @@ import { ChevronLeft, Eye, Lightbulb, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   BackHandler,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -36,17 +37,13 @@ import {
 
 const TOTAL_STEPS = 7;
 
-const TIPS = [
-  "Make your event name short and memorable.",
-  "Focus on unique aspects to make your description engaging.",
-];
-
 type Props = {
   onSaveDraft?: () => void;
   initialEventId?: string;
 };
 
 const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -76,8 +73,24 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
   const [startTime, setStartTime] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
-  const [timezone] = useState("(GMT+01:00) West Africa Standard Time - Lagos");
+  const [timezone, setTimezone] = useState(
+    "(GMT+01:00) West Africa Standard Time - Lagos",
+  );
   const [recurrence, setRecurrence] = useState("Daily");
+
+  const mergeDateAndTime = useCallback((datePart: Date, timePart: Date) => {
+    const merged = new Date(datePart);
+    merged.setHours(
+      timePart.getHours(),
+      timePart.getMinutes(),
+      timePart.getSeconds(),
+      timePart.getMilliseconds(),
+    );
+    return merged;
+  }, []);
+
+  const eventStartAt = mergeDateAndTime(startDate, startTime);
+  const eventEndAt = mergeDateAndTime(endDate, endTime);
 
   // Step 3 — Location
   const [locationType, setLocationType] = useState<"physical" | "online">(
@@ -107,7 +120,6 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
   const { mutateAsync: getSignedUrl } = useGetSignedUrl();
 
   const user = useAuthStore((s) => s.user);
-  const { data: organizer } = useOrganizer(user?._id ?? "");
 
   // Prefill form when editing a draft
   const { data: existingEvent, isLoading: isEventLoading } = useEvent(
@@ -263,6 +275,14 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
     }, [step]),
   );
 
+  useEffect(() => {
+    const minDurationMs = 60 * 60 * 1000;
+    const minEndAt = new Date(eventStartAt.getTime() + minDurationMs);
+    if (eventEndAt.getTime() >= minEndAt.getTime()) return;
+    setEndDate(minEndAt);
+    setEndTime(minEndAt);
+  }, [eventStartAt, eventEndAt]);
+
   const canGoNext =
     step === 0
       ? eventName.trim().length > 0
@@ -364,7 +384,7 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
                 endDate: endDate.toISOString(),
                 startTime: `${pad(startTime.getHours())}:${pad(startTime.getMinutes())}`,
                 endTime: `${pad(endTime.getHours())}:${pad(endTime.getMinutes())}`,
-                timeZone: "GMT+1",
+                timeZone: timezone,
               },
             }),
             ...(step >= 3 &&
@@ -398,7 +418,7 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
         router.replace("/(organizer)/(tabs)/" as any);
       }
     } catch (e: any) {
-      setSaveError(e?.message ?? "Failed to save draft. Please try again.");
+      setSaveError(e?.message ?? t("events.create.saveDraftFailed"));
     } finally {
       setIsSavingDraft(false);
     }
@@ -466,7 +486,7 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
                 endDate: endDate.toISOString(),
                 startTime: startTimeStr,
                 endTime: endTimeStr,
-                timeZone: "GMT+1",
+                timeZone: timezone,
               },
             },
           });
@@ -516,7 +536,7 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
       setStep((s) => s + 1);
     } catch (e: any) {
       console.error("[CreateEvent] step save failed:", e?.response);
-      const msg = e?.message ?? "Failed to save. Please try again.";
+      const msg = e?.message ?? t("events.create.saveFailedDefault");
       if (step === TOTAL_STEPS - 1) {
         setPublishError(msg);
       } else {
@@ -534,14 +554,14 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
     <AppSafeArea>
       <AlertModal
         visible={!!publishError}
-        title="Publish Failed"
+        title={t("events.create.publishFailed")}
         message={publishError ?? ""}
         iconType="error"
         onConfirm={() => setPublishError(null)}
       />
       <AlertModal
         visible={!!saveError}
-        title="Save Failed"
+        title={t("events.create.saveFailed")}
         message={saveError ?? ""}
         iconType="error"
         onConfirm={() => setSaveError(null)}
@@ -566,7 +586,7 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
                 weight="500"
                 className={`text-[13px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                {isSavingDraft ? "Saving..." : "Save as draft"}
+                {isSavingDraft ? t("events.create.saving") : t("events.create.saveDraft")}
               </ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
@@ -633,6 +653,7 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
                 endTime={endTime}
                 setEndTime={setEndTime}
                 timezone={timezone}
+                setTimezone={setTimezone}
                 recurrence={recurrence}
                 setRecurrence={setRecurrence}
               />
@@ -661,13 +682,21 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
                 setLongitude={setLongitude}
               />
             )}
-            {step === 4 && <AgendaStep eventId={eventId ?? undefined} />}
+            {step === 4 && (
+              <AgendaStep
+                eventId={eventId ?? undefined}
+                eventStartAt={eventStartAt}
+                eventEndAt={eventEndAt}
+              />
+            )}
             {step === 5 && (
               <TicketStep
                 tickets={tickets}
                 setTickets={setTickets}
                 eventId={eventId ?? undefined}
                 isLoading={!!initialEventId && isEventLoading}
+                eventStartAt={eventStartAt}
+                eventEndAt={eventEndAt}
               />
             )}
             {step === 6 && (
@@ -677,6 +706,8 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
                 thumbnail={thumbnail}
                 startDate={startDate}
                 startTime={startTime}
+                endDate={endDate}
+                endTime={endTime}
                 address={address}
                 city={city}
                 country={country}
@@ -706,11 +737,15 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
                 weight="500"
                 className={`text-[15px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                Back
+                {t("events.create.back")}
               </ThemedText>
             </TouchableOpacity>
             <GradientButton
-              label={step === TOTAL_STEPS - 1 ? "Publish Event" : "Next"}
+              label={
+                step === TOTAL_STEPS - 1
+                  ? t("events.create.publish")
+                  : t("events.create.next")
+              }
               onPress={handleNext}
               disabled={!canGoNext || isSaving || isPublishing || isSavingDraft}
               loading={isSaving || isPublishing}
@@ -732,45 +767,58 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
         onRequestClose={() => setShowCongrats(false)}
       >
         <View className="flex-1 bg-black/55 justify-center items-center px-6">
-          <View className="w-full bg-[#FEF0EF] rounded-3xl pt-6 px-5 pb-7 items-center">
+          <GlassCard
+            isDark={isDark}
+            style={{
+              width: "100%",
+              paddingTop: 24,
+              paddingHorizontal: 20,
+              paddingBottom: 28,
+              alignItems: "stretch",
+            }}
+          >
             {(thumbnail ?? eventBanner) ? (
-              <Image
-                source={{ uri: (thumbnail ?? eventBanner)! }}
-                className="rounded-2xl mb-5"
-                style={{ width: "80%", aspectRatio: 0.75 }}
-                resizeMode="cover"
+              <AppImage
+                source={(thumbnail ?? eventBanner)!}
+                style={{ width: "80%", aspectRatio: 0.75, borderRadius: 16, marginBottom: 20, alignSelf: "center" }}
+                contentFit="cover"
+                priority="high"
               />
             ) : (
               <View
-                className="rounded-2xl mb-5 bg-[#F9C5C0]"
+                className="rounded-2xl mb-5 bg-[#F9C5C0] self-center"
                 style={{ width: "80%", aspectRatio: 0.75 }}
               />
             )}
 
             <ThemedText
               weight="700"
-              className="text-[24px] text-[#101828] text-center mb-[10px]"
+              className={`text-[24px] text-center mb-[10px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
             >
-              Congratulations
+              {t("events.create.congratulations")}
             </ThemedText>
-            <ThemedText className="text-[14px] text-[#667085] text-center leading-[22px] mb-6 px-2">
-              Your event has been published, attendees can now see and book
-              tickets for your events
+            <ThemedText
+              className={`text-[14px] text-center leading-[22px] mb-6 px-2 ${isDark ? "text-[#D0D5DD]" : "text-[#667085]"}`}
+            >
+              {t("events.create.congratsMessage")}
             </ThemedText>
 
             <View className="w-full">
               <GradientButton
-                label="Manage Event"
+                label={t("events.create.manageEvent")}
                 onPress={() => {
+                  isNavigatingAway.current = true;
                   router.push("/(organizer)/(tabs)/events");
                   setShowCongrats(false);
                 }}
                 height={52}
+                style={{ width: "100%" }}
               />
             </View>
 
             <TouchableOpacity
               onPress={() => {
+                isNavigatingAway.current = true;
                 setShowCongrats(false);
                 // router.dismissAll();
                 // router.dismiss();
@@ -783,11 +831,11 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
               activeOpacity={0.7}
             >
               <ThemedText weight="500" className="text-[15px] text-[#D92D20]">
-                Preview Event
+                {t("events.create.previewEvent")}
               </ThemedText>
               <Eye size={17} color="#D92D20" />
             </TouchableOpacity>
-          </View>
+          </GlassCard>
         </View>
       </Modal>
 
@@ -802,41 +850,39 @@ const CreateEventScreen = ({ onSaveDraft, initialEventId }: Props) => {
           className="flex-1 bg-black/35 justify-start items-end"
           onPress={() => setShowTips(false)}
         >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            className={`mt-[70px] mr-[14px] border rounded-2xl p-4 max-w-[260px] shadow-md ${
-              isDark
-                ? "bg-[#1C1C1E] border-[#3A3A3C]"
-                : "bg-white border-[#E4E7EC]"
-            }`}
-            style={{ elevation: 8 }}
-          >
-            <View className="flex-row justify-between items-center mb-[10px]">
-              <ThemedText
-                weight="700"
-                className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
-              >
-                Tips to consider
-              </ThemedText>
-              <TouchableOpacity
-                onPress={() => setShowTips(false)}
-                className="p-0.5"
-              >
-                <X size={16} color="#667085" />
-              </TouchableOpacity>
-            </View>
-            {TIPS.map((tip, i) => (
-              <View key={i} className="flex-row gap-[6px] mb-[6px]">
-                <ThemedText className="text-[13px] text-[#667085]">
-                  •
-                </ThemedText>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <GlassCard
+              isDark={isDark}
+              className="mt-[70px] mr-[14px]"
+              style={{ maxWidth: 260, padding: 16 }}
+            >
+              <View className="flex-row justify-between items-center mb-[10px]">
                 <ThemedText
-                  className={`text-[13px] flex-1 leading-5 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                  weight="700"
+                  className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
                 >
-                  {tip}
+                  {t("events.create.tipsToConsider")}
                 </ThemedText>
+                <TouchableOpacity
+                  onPress={() => setShowTips(false)}
+                  className="p-0.5"
+                >
+                  <X size={16} color="#667085" />
+                </TouchableOpacity>
               </View>
-            ))}
+              {[t("events.create.tip1"), t("events.create.tip2")].map((tip, i) => (
+                <View key={i} className="flex-row gap-[6px] mb-[6px]">
+                  <ThemedText className="text-[13px] text-[#667085]">
+                    •
+                  </ThemedText>
+                  <ThemedText
+                    className={`text-[13px] flex-1 leading-5 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                  >
+                    {tip}
+                  </ThemedText>
+                </View>
+              ))}
+            </GlassCard>
           </Pressable>
         </Pressable>
       </Modal>

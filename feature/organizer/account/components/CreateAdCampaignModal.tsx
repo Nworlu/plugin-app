@@ -1,5 +1,6 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import {
   BottomSheetBackdrop,
@@ -199,9 +200,19 @@ const CreateAdCampaignModal = forwardRef<
   BottomSheetModal,
   CreateAdCampaignModalProps
 >(({ onClose, onBack, onNext }, ref) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const snapPoints = useMemo(() => ["90%"], []);
+
+  const genderOptions = useMemo(
+    (): DropdownOption[] => [
+      { label: t("settings.campaign.genderMale"), value: "Male" },
+      { label: t("settings.campaign.genderFemale"), value: "Female" },
+      { label: t("settings.campaign.genderAll"), value: "All" },
+    ],
+    [t],
+  );
 
   const [audienceCategory, setAudienceCategory] = useState("");
   const [gender, setGender] = useState("");
@@ -313,11 +324,11 @@ const CreateAdCampaignModal = forwardRef<
               weight="500"
               style={{ fontSize: 15, color: isDark ? "#E4E7EC" : "#101828" }}
             >
-              Back
+              {t("common.back")}
             </ThemedText>
           </TouchableOpacity>
           <GradientButton
-            label="Next"
+            label={t("common.next")}
             onPress={() =>
               onNext({
                 audienceCategory,
@@ -351,7 +362,7 @@ const CreateAdCampaignModal = forwardRef<
       >
         <View style={{ flex: 1 }}>
           <ThemedText weight="700" style={{ fontSize: 24, color: textMain }}>
-            Create an ad campaign
+            {t("settings.campaign.createAdCampaign")}
           </ThemedText>
           <ThemedText
             style={{
@@ -361,7 +372,7 @@ const CreateAdCampaignModal = forwardRef<
               fontWeight: "500",
             }}
           >
-            Advertise on Facebook and Instagram
+            {t("settings.campaign.advertiseFacebook")}
           </ThemedText>
         </View>
         <TouchableOpacity
@@ -403,10 +414,9 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Choose An Audience
+          {t("settings.campaign.chooseAudience")}
         </ThemedText>
 
-        {/* Target Audience */}
         <ThemedText
           weight="700"
           style={{
@@ -416,7 +426,7 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Target Audience
+          {t("settings.campaign.targetAudience")}
         </ThemedText>
         <View
           style={{
@@ -460,7 +470,7 @@ const CreateAdCampaignModal = forwardRef<
             </View>
           ) : (
             <TextInput
-              placeholder="Audience category"
+              placeholder={t("settings.campaign.audienceCategoryPlaceholder")}
               placeholderTextColor={ph}
               value={audienceCategory}
               onChangeText={setAudienceCategory}
@@ -483,7 +493,7 @@ const CreateAdCampaignModal = forwardRef<
               textDecorationLine: "underline",
             }}
           >
-            How to choose an audience type.
+            {t("settings.campaign.howToChooseAudience")}
           </ThemedText>
         </TouchableOpacity>
 
@@ -497,12 +507,12 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Audience Gender
+          {t("settings.campaign.audienceGender")}
         </ThemedText>
         <DropdownPicker
           value={gender}
-          placeholder="Select gender"
-          options={GENDER_OPTIONS}
+          placeholder={t("settings.campaign.selectGender")}
+          options={genderOptions}
           onSelect={setGender}
         />
 
@@ -516,13 +526,13 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Age Range
+          {t("settings.campaign.ageRange")}
         </ThemedText>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <View style={{ flex: 1 }}>
             <DropdownPicker
               value={ageFrom}
-              placeholder="From"
+              placeholder={t("settings.campaign.from")}
               options={AGE_OPTIONS}
               onSelect={setAgeFrom}
             />
@@ -530,7 +540,7 @@ const CreateAdCampaignModal = forwardRef<
           <View style={{ flex: 1 }}>
             <DropdownPicker
               value={ageTo}
-              placeholder="To"
+              placeholder={t("settings.campaign.to")}
               options={AGE_OPTIONS}
               onSelect={setAgeTo}
             />
@@ -547,7 +557,7 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Location
+          {t("settings.campaign.location")}
         </ThemedText>
         <View
           style={{
@@ -563,7 +573,7 @@ const CreateAdCampaignModal = forwardRef<
           }}
         >
           <TextInput
-            placeholder="Lagos, Nigeria"
+            placeholder={t("settings.campaign.locationPlaceholder")}
             placeholderTextColor={ph}
             value={location}
             onChangeText={setLocation}
@@ -588,7 +598,7 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Ad Image
+          {t("settings.campaign.adImage")}
         </ThemedText>
         <TouchableOpacity
           style={{
@@ -626,10 +636,10 @@ const CreateAdCampaignModal = forwardRef<
               <ThemedText
                 style={{ color: "#F04438", fontSize: 15, marginBottom: 2 }}
               >
-                Upload Image
+                {t("settings.campaign.uploadImage")}
               </ThemedText>
               <ThemedText style={{ color: "#B0B0B0", fontSize: 12 }}>
-                Suggested size: 320 x 489 pixel
+                {t("settings.campaign.suggestedSize")}
               </ThemedText>
             </>
           )}
@@ -645,7 +655,7 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Ad Title
+          {t("settings.campaign.adTitle")}
         </ThemedText>
         <View
           style={{
@@ -660,7 +670,7 @@ const CreateAdCampaignModal = forwardRef<
           }}
         >
           <TextInput
-            placeholder="Enter ad title"
+            placeholder={t("settings.campaign.enterAdTitle")}
             placeholderTextColor={ph}
             value={adTitle}
             onChangeText={setAdTitle}
@@ -681,7 +691,7 @@ const CreateAdCampaignModal = forwardRef<
             color: textMain,
           }}
         >
-          Message
+          {t("settings.campaign.message")}
         </ThemedText>
         <View
           style={{
@@ -711,7 +721,7 @@ const CreateAdCampaignModal = forwardRef<
             ))}
           </View>
           <TextInput
-            placeholder="Enter message"
+            placeholder={t("settings.campaign.enterMessage")}
             placeholderTextColor={ph}
             value={adMessage}
             onChangeText={setAdMessage}

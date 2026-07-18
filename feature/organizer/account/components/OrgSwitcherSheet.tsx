@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { useUserOrganizers } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useOrganizerStore } from "@/store/organizer-store";
 import type { Organizer } from "@/utils/api/types";
@@ -20,6 +21,7 @@ interface OrgSwitcherSheetProps {
 
 const OrgSwitcherSheet = forwardRef<BottomSheetModal, OrgSwitcherSheetProps>(
   ({ userId, onClose }, ref) => {
+    const { t } = useTranslation();
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === "dark";
 
@@ -87,12 +89,12 @@ const OrgSwitcherSheet = forwardRef<BottomSheetModal, OrgSwitcherSheetProps>(
               weight="700"
               style={{ fontSize: 17, color: isDark ? "#F9FAFB" : "#101828" }}
             >
-              Switch Organization
+              {t("settings.organizer.switchOrganization")}
             </ThemedText>
             <ThemedText
               style={{ fontSize: 13, color: textMuted, marginTop: 3 }}
             >
-              Select the organization you want to manage
+              {t("settings.organizer.switchOrganizationHint")}
             </ThemedText>
           </View>
 
@@ -112,7 +114,7 @@ const OrgSwitcherSheet = forwardRef<BottomSheetModal, OrgSwitcherSheetProps>(
                   textAlign: "center",
                 }}
               >
-                No organizations found.{"\n"}Create one to get started.
+                {t("settings.organizer.noOrganizations")}
               </ThemedText>
             </View>
           ) : (
@@ -171,7 +173,7 @@ const OrgSwitcherSheet = forwardRef<BottomSheetModal, OrgSwitcherSheetProps>(
                     {/* Info */}
                     <View style={{ flex: 1 }}>
                       <ThemedText
-                        weight="600"
+                        weight="700"
                         style={{
                           fontSize: 15,
                           color: isDark ? "#F9FAFB" : "#101828",
@@ -233,7 +235,7 @@ const OrgSwitcherSheet = forwardRef<BottomSheetModal, OrgSwitcherSheetProps>(
           >
             <PlusCircle size={20} color="#F04438" />
             <ThemedText weight="500" style={{ fontSize: 14, color: "#F04438" }}>
-              Create new organization
+              {t("settings.organizer.createNewOrganization")}
             </ThemedText>
           </TouchableOpacity>
         </BottomSheetScrollView>

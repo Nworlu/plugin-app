@@ -13,18 +13,19 @@ import {
   usePatchEvent,
   useVendors,
 } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import * as ImagePicker from "expo-image-picker";
 import {
   Calendar,
   ChevronDown,
+  ChevronUp,
   ClipboardList,
   ImageIcon,
   Image as ImageLucide,
   Link,
   List,
   ListOrdered,
-  MoreVertical,
   Pencil,
   Play,
   Plus,
@@ -33,11 +34,19 @@ import {
   Type,
   X,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   TextInput,
   TouchableOpacity,
@@ -77,7 +86,18 @@ const CARD_COLORS = [
 
 /* ─── Component ──────────────────────────────────────────────── */
 
-export default function AgendaStep({ eventId }: { eventId?: string }) {
+type AgendaStepProps = {
+  eventId?: string;
+  eventStartAt?: Date;
+  eventEndAt?: Date;
+};
+
+export default function AgendaStep({
+  eventId,
+  eventStartAt,
+  eventEndAt,
+}: AgendaStepProps) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -121,6 +141,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
   type ImgData = { base64: string; mimeType: string };
   const imageDataRef = useRef<Record<string, ImgData>>({});
   const prefilled = useRef(false);
+  const isSavingGuestRef = useRef(false);
 
   /* seed sessions & guests from API on first load */
   useEffect(() => {
@@ -228,6 +249,11 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
   /* Accordion */
   const [agendaEnabled, setAgendaEnabled] = useState(true);
   const [photosEnabled, setPhotosEnabled] = useState(false);
+  const [agendaDone, setAgendaDone] = useState(false);
+  const [photosDone, setPhotosDone] = useState(false);
+  const [refundDone, setRefundDone] = useState(false);
+  const [featuredDone, setFeaturedDone] = useState(false);
+  const [vendorsDone, setVendorsDone] = useState(false);
 
   /* Active title section */
   type TitleSection = "agenda" | "photos" | "refund" | "featured" | "vendors";
@@ -312,6 +338,45 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
   const [formDescription, setFormDescription] = useState("");
   const [formStartTime, setFormStartTime] = useState(new Date());
   const [formEndTime, setFormEndTime] = useState(new Date());
+  const [formTimeError, setFormTimeError] = useState<string | null>(null);
+
+  const hasSingleDayEventWindow = useMemo(() => {
+    if (!eventStartAt || !eventEndAt) return false;
+    return eventStartAt.toDateString() === eventEndAt.toDateString();
+  }, [eventEndAt, eventStartAt]);
+
+  const minutesOfDay = (value: Date) =>
+    value.getHours() * 60 + value.getMinutes();
+
+  const getSessionTimeError = useCallback(
+    (start: Date, end: Date): string | null => {
+      if (end.getTime() <= start.getTime()) {
+        return t("events.wizard.agenda.timeErrorClosing");
+      }
+
+      if (hasSingleDayEventWindow && eventStartAt && eventEndAt) {
+        const eventStartMins = minutesOfDay(eventStartAt);
+        const eventEndMins = minutesOfDay(eventEndAt);
+        const startMins = minutesOfDay(start);
+        const endMins = minutesOfDay(end);
+
+        if (startMins < eventStartMins || endMins > eventEndMins) {
+          return t("events.wizard.agenda.timeErrorRange");
+        }
+      }
+
+      return null;
+    },
+    [hasSingleDayEventWindow, eventStartAt, eventEndAt, t],
+  );
+
+  useEffect(() => {
+    if (!formOpen) {
+      setFormTimeError(null);
+      return;
+    }
+    setFormTimeError(getSessionTimeError(formStartTime, formEndTime));
+  }, [formOpen, formStartTime, formEndTime, getSessionTimeError]);
 
   /* Rich-text toolbar */
   const [fmtBold, setFmtBold] = useState(false);
@@ -330,6 +395,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
 
   /* ── Derived ── */
   const activeTab = tabs[activeTabIdx];
+  const isSessionsTemplate = activeTab.templateType === "sessions";
 
   /* ── Helpers ── */
 
@@ -342,6 +408,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
     setFormHostPhoto(null);
     setFormStartTime(new Date());
     setFormEndTime(new Date());
+    setFormTimeError(null);
     setFmtBold(false);
     setFmtItalic(false);
     setFmtH1(false);
@@ -372,6 +439,28 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
       },
     ]);
     setActiveTabIdx(newIdx);
+    setFormOpen(false);
+    resetForm();
+  };
+
+  const removeTab = (idx: number) => {
+    if (tabs.length <= 1) return;
+
+    setTabs((prev) =>
+      prev
+        .filter((_, i) => i !== idx)
+        .map((tab, i) => ({
+          ...tab,
+          label: `Agenda ${i + 1}`,
+        })),
+    );
+    setActiveTabIdx((prev) => {
+      if (prev === idx) return Math.max(0, idx - 1);
+      if (prev > idx) return prev - 1;
+      return prev;
+    });
+    setExpandedSessionId(null);
+    setEditingSessionId(null);
     setFormOpen(false);
     resetForm();
   };
@@ -475,6 +564,11 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
 
   const handleSaveSession = async () => {
     if (!formTitle.trim()) return;
+    const rangeError = getSessionTimeError(formStartTime, formEndTime);
+    if (rangeError) {
+      setFormTimeError(rangeError);
+      return;
+    }
     const session: Session = {
       id: Date.now().toString(),
       title: formTitle,
@@ -535,6 +629,11 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
 
   const handleSaveEdit = () => {
     if (!formTitle.trim() || !editingSessionId) return;
+    const rangeError = getSessionTimeError(formStartTime, formEndTime);
+    if (rangeError) {
+      setFormTimeError(rangeError);
+      return;
+    }
     setTabs((prev) =>
       prev.map((tab, idx) =>
         idx === activeTabIdx
@@ -577,7 +676,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
       className={`px-2 py-[2px] rounded-[6px] ${isDark ? "bg-[#2D1F00]" : "bg-[#FEF3C7]"}`}
     >
       <ThemedText weight="700" className="text-[11px] text-[#92400E]">
-        OPTIONAL
+        {t("events.wizard.optional")}
       </ThemedText>
     </View>
   );
@@ -592,6 +691,8 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
     <View className="flex-row gap-[6px]">
       {(["Yes", "No"] as const).map((opt) => {
         const isActive = (opt === "Yes") === value;
+        const label =
+          opt === "Yes" ? t("events.wizard.agenda.yes") : t("events.wizard.agenda.no");
         return (
           <TouchableOpacity
             key={opt}
@@ -603,7 +704,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
               weight={isActive ? "700" : "400"}
               className={`text-[13px] ${isActive ? "text-white" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
             >
-              {opt}
+              {label}
             </ThemedText>
           </TouchableOpacity>
         );
@@ -617,15 +718,20 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
   /* ── Render ── */
 
   const PAGE_TITLES: Record<string, string> = {
-    agenda: "Outline the schedule of\nactivities for your event.",
-    photos: "Add photos that highlight key\nmoments or themes of the event.",
-    refund:
-      "Tick to confirm you have read and\naccepted Plugin's refund policy.",
-    featured: "Highlight any VIP or special guests.",
-    vendors: "Allow marketers and sellers to apply for a slot at your event.",
+    agenda: t("events.wizard.agenda.titles.agenda"),
+    photos: t("events.wizard.agenda.titles.photos"),
+    refund: t("events.wizard.agenda.titles.refund"),
+    featured: t("events.wizard.agenda.titles.featured"),
+    vendors: t("events.wizard.agenda.titles.vendors"),
   };
 
   const uploadedCount = eventPhotos.filter(Boolean).length;
+  const agendaCompleted =
+    agendaDone || tabs.some((tab) => tab.sessions.length > 0);
+  const photosCompleted = photosDone || uploadedCount > 0;
+  const refundCompleted = refundDone || policyAgreed;
+  const featuredCompleted = featuredDone || guests.length > 0;
+  const vendorsCompleted = vendorsDone || vendorPasses.length > 0;
 
   const pickGuestPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -662,49 +768,56 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
   };
 
   const saveGuest = async () => {
-    if (!guestName.trim()) return;
-    let photoUrl: string | undefined;
-    if (guestPhoto) {
-      photoUrl = guestPhoto.startsWith("http")
-        ? guestPhoto
-        : await uploadImage(guestPhoto).catch(() => undefined);
-    }
-    if (editingGuestId) {
-      setGuests((prev) =>
-        prev.map((g) =>
-          g.id === editingGuestId
-            ? { ...g, name: guestName, role: guestRole, photo: guestPhoto }
-            : g,
-        ),
-      );
-    } else {
-      const localId = Date.now().toString();
-      setGuests((prev) => [
-        ...prev,
-        {
-          id: localId,
-          name: guestName,
-          role: guestRole,
-          photo: guestPhoto,
-        },
-      ]);
-      if (eventId) {
-        addGuest({
-          name: guestName,
-          ...(guestRole ? { role: guestRole } : {}),
-          ...(photoUrl ? { photo: photoUrl } : {}),
-        })
-          .then((res) => {
+    if (!guestName.trim() || isSavingGuestRef.current || isAddingGuest) return;
+    isSavingGuestRef.current = true;
+
+    try {
+      let photoUrl: string | undefined;
+      if (guestPhoto) {
+        photoUrl = guestPhoto.startsWith("http")
+          ? guestPhoto
+          : await uploadImage(guestPhoto).catch(() => undefined);
+      }
+      if (editingGuestId) {
+        setGuests((prev) =>
+          prev.map((g) =>
+            g.id === editingGuestId
+              ? { ...g, name: guestName, role: guestRole, photo: guestPhoto }
+              : g,
+          ),
+        );
+      } else {
+        const localId = Date.now().toString();
+        setGuests((prev) => [
+          ...prev,
+          {
+            id: localId,
+            name: guestName,
+            role: guestRole,
+            photo: guestPhoto,
+          },
+        ]);
+        if (eventId) {
+          try {
+            const res = await addGuest({
+              name: guestName,
+              ...(guestRole ? { role: guestRole } : {}),
+              ...(photoUrl ? { photo: photoUrl } : {}),
+            });
             setGuests((prev) =>
               prev.map((g) =>
                 g.id === localId ? { ...g, apiId: res._id } : g,
               ),
             );
-          })
-          .catch(() => {});
+          } catch {
+            // Keep optimistic local guest if API fails
+          }
+        }
       }
+      setShowGuestModal(false);
+    } finally {
+      isSavingGuestRef.current = false;
     }
-    setShowGuestModal(false);
   };
 
   const resetVendorForm = () => {
@@ -872,7 +985,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
           weight="500"
           className={`text-[14px] mt-3 ${isDark ? "text-[#98A2B3]" : "text-[#667085]"}`}
         >
-          Loading event data…
+          {t("events.wizard.agenda.loading")}
         </ThemedText>
       </View>
     );
@@ -890,7 +1003,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
         weight="700"
         className={`text-[15px] mt-4 mb-4 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Event Details
+        {t("events.wizard.eventDetails")}
       </ThemedText>
 
       {/* ── ADD AGENDA ── */}
@@ -907,27 +1020,44 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
           activeOpacity={0.8}
         >
           <View
-            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${agendaEnabled ? "border-[#F04438]" : isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
+            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${
+              agendaCompleted
+                ? "border-[#12B76A]"
+                : agendaEnabled
+                  ? "border-[#F04438]"
+                  : isDark
+                    ? "border-[#2C2C2E]"
+                    : "border-[#E4E7EC]"
+            }`}
           >
-            {agendaEnabled && (
-              <View className="w-2 h-2 rounded-[4px] bg-[#F04438]" />
+            {(agendaEnabled || agendaCompleted) && (
+              <View
+                className={`w-2 h-2 rounded-[4px] ${agendaCompleted ? "bg-[#12B76A]" : "bg-[#F04438]"}`}
+              />
             )}
           </View>
           <ThemedText
             weight="700"
             className={`text-[13px] flex-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
           >
-            ADD AGENDA
+            {t("events.wizard.agenda.addAgenda")}
           </ThemedText>
-          <OptionalBadge />
+          <View className="flex-row items-center shrink-0">
+            <OptionalBadge />
+            <View className="w-5 items-end ml-2">
+              {agendaEnabled ? (
+                <ChevronUp size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              ) : (
+                <ChevronDown size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              )}
+            </View>
+          </View>
         </TouchableOpacity>
 
         {agendaEnabled && (
           <View className="px-[14px] pb-[14px]">
             <ThemedText className="text-[12px] text-[#667085] mb-[14px] leading-[18px]">
-              Add an itinerary or schedule to your event. You can include the
-              time, a description of what will happen, and who will host this
-              part of the event, if applicable.
+              {t("events.wizard.agenda.agendaHintFull")}
             </ThemedText>
 
             {/* Tabs row */}
@@ -935,29 +1065,44 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
               className={`flex-row border-b mb-4 ${isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
             >
               {tabs.map((tab, idx) => (
-                <TouchableOpacity
+                <View
                   key={tab.id}
-                  onPress={() => switchTab(idx)}
                   className={`pb-2 px-1 mr-4 border-b-2 flex-row items-center gap-1 ${idx === activeTabIdx ? "border-[#F04438]" : "border-transparent"}`}
-                  activeOpacity={0.8}
                 >
-                  <ThemedText
-                    weight={idx === activeTabIdx ? "700" : "400"}
-                    className={`text-[13px] ${idx === activeTabIdx ? "text-[#F04438]" : "text-[#667085]"}`}
+                  <TouchableOpacity
+                    onPress={() => switchTab(idx)}
+                    className="flex-row items-center"
+                    activeOpacity={0.8}
                   >
-                    {tab.label}
-                  </ThemedText>
-                  <MoreVertical
-                    size={13}
-                    color={
-                      idx === activeTabIdx
-                        ? "#F04438"
-                        : isDark
-                          ? "#98A2B3"
-                          : "#667085"
-                    }
-                  />
-                </TouchableOpacity>
+                    <ThemedText
+                      weight={idx === activeTabIdx ? "700" : "400"}
+                      className={`text-[13px] ${idx === activeTabIdx ? "text-[#F04438]" : "text-[#667085]"}`}
+                    >
+                      {t("events.wizard.agenda.agendaLabel", {
+                        index: idx + 1,
+                      })}
+                    </ThemedText>
+                  </TouchableOpacity>
+
+                  {tabs.length > 1 ? (
+                    <TouchableOpacity
+                      onPress={() => removeTab(idx)}
+                      className="w-4 h-4 items-center justify-center"
+                      activeOpacity={0.8}
+                    >
+                      <X
+                        size={12}
+                        color={
+                          idx === activeTabIdx
+                            ? "#F04438"
+                            : isDark
+                              ? "#98A2B3"
+                              : "#667085"
+                        }
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               ))}
               <TouchableOpacity
                 onPress={addTab}
@@ -966,7 +1111,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
               >
                 <Plus size={13} color={isDark ? "#98A2B3" : "#667085"} />
                 <ThemedText className="text-[13px] text-[#667085]">
-                  Add Agenda
+                  {t("events.wizard.agenda.addAgendaTab")}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -980,7 +1125,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                   <Calendar size={30} color={isDark ? "#667085" : "#98A2B3"} />
                 </View>
                 <ThemedText className="text-[13px] text-[#667085] mb-[18px]">
-                  You have no Agenda slot for this event
+                  {t("events.wizard.agenda.noAgendaSlot")}
                 </ThemedText>
                 <TouchableOpacity
                   onPress={handleAddSlot}
@@ -991,7 +1136,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     weight="500"
                     className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
                   >
-                    Add Slot
+                    {t("events.wizard.agenda.addSlot")}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
@@ -1027,7 +1172,9 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                       >
                         <View className="flex-1">
                           <ThemedText className="text-[12px] text-[#667085] mb-1">
-                            Duration : {duration} minutes
+                            {t("events.wizard.agenda.durationMinutes", {
+                              minutes: duration,
+                            })}
                           </ThemedText>
                           <ThemedText
                             weight="700"
@@ -1083,7 +1230,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                                 )}
                                 <View>
                                   <ThemedText className="text-[10px] text-[#667085]">
-                                    Host
+                                    {t("events.wizard.agenda.host")}
                                   </ThemedText>
                                   <ThemedText
                                     weight="700"
@@ -1104,7 +1251,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                                 weight="700"
                                 className="text-[13px] text-[#D92D20]"
                               >
-                                Edit slot
+                                {t("events.wizard.agenda.editSlot")}
                               </ThemedText>
                             </TouchableOpacity>
                           </View>
@@ -1124,7 +1271,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     weight="500"
                     className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
                   >
-                    Add Slot
+                    {t("events.wizard.agenda.addSlot")}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
@@ -1138,7 +1285,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                   <ThemedText
                     className={`text-[13px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                   >
-                    Do you have a Host ?
+                    {t("events.wizard.agenda.hasHost")}
                   </ThemedText>
                   <YesNoToggle value={formHasHost} onChange={setFormHasHost} />
                 </View>
@@ -1150,7 +1297,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     <ThemedText
                       className={`text-[12px] mb-2 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                     >
-                      Host photo{" "}
+                      {t("events.wizard.agenda.hostPhoto")}{" "}
                       <ThemedText className="text-[#F04438] text-[12px]">
                         *
                       </ThemedText>
@@ -1202,7 +1349,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                             color={isDark ? "#555" : "#C0C9D4"}
                           />
                           <ThemedText className="text-[12px] text-[#F04438]">
-                            Add Photo
+                            {t("events.wizard.basicInfo.addPhoto")}
                           </ThemedText>
                         </TouchableOpacity>
                       )}
@@ -1212,7 +1359,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     <ThemedText
                       className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                     >
-                      Host Name{" "}
+                      {t("events.wizard.agenda.hostName")}{" "}
                       <ThemedText className="text-[#F04438] text-[12px]">
                         *
                       </ThemedText>
@@ -1220,7 +1367,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     <TextInput
                       value={formHostName}
                       onChangeText={setFormHostName}
-                      placeholder="Enter host name"
+                      placeholder={t("events.wizard.agenda.enterHostName")}
                       placeholderTextColor={placeholderColor}
                       className={`border rounded-[10px] px-3 py-3 text-[13px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E] text-[#F2F4F7]" : "border-[#E4E7EC] bg-white text-[#101828]"}`}
                     />
@@ -1250,7 +1397,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                 <ThemedText
                   className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Session Title{" "}
+                  {t("events.wizard.agenda.sessionTitle")}{" "}
                   <ThemedText className="text-[#F04438] text-[12px]">
                     *
                   </ThemedText>
@@ -1258,335 +1405,358 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                 <TextInput
                   value={formTitle}
                   onChangeText={setFormTitle}
-                  placeholder="Enter session title"
+                  placeholder={t("events.wizard.agenda.enterSessionTitle")}
                   placeholderTextColor={placeholderColor}
                   className={`border rounded-[10px] px-3 py-3 text-[13px] mb-[14px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E] text-[#F2F4F7]" : "border-[#E4E7EC] bg-white text-[#101828]"}`}
                 />
 
-                {/* Description — rich text editor */}
+                {/* Description */}
                 <ThemedText
                   className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Session description{" "}
+                  {isSessionsTemplate
+                    ? t("events.wizard.agenda.sessionDescription")
+                    : t("events.wizard.agenda.freeFormDescription")}{" "}
                   <ThemedText className="text-[12px] text-[#667085]">
-                    (Optional)
+                    {t("events.wizard.agenda.optionalParen")}
                   </ThemedText>
                 </ThemedText>
 
-                {/* Toolbar */}
-                <View
-                  className={`flex-row items-center border border-b-0 rounded-tl-[10px] rounded-tr-[10px] px-2 py-[6px] gap-[2px] ${isDark ? "border-[#2C2C2E] bg-[#2C2C2E]" : "border-[#E4E7EC] bg-[#F9FAFB]"}`}
-                >
-                  {/* Bold */}
-                  <TouchableOpacity
-                    onPress={() => setFmtBold((v) => !v)}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtBold ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText
-                      weight="700"
-                      className={`text-[14px] ${fmtBold ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                {isSessionsTemplate ? (
+                  <>
+                    {/* Toolbar */}
+                    <View
+                      className={`flex-row items-center border border-b-0 rounded-tl-[10px] rounded-tr-[10px] px-2 py-[6px] gap-[2px] ${isDark ? "border-[#2C2C2E] bg-[#2C2C2E]" : "border-[#E4E7EC] bg-[#F9FAFB]"}`}
                     >
-                      B
-                    </ThemedText>
-                  </TouchableOpacity>
-
-                  {/* Italic */}
-                  <TouchableOpacity
-                    onPress={() => setFmtItalic((v) => !v)}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtItalic ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText
-                      className={`text-[14px] ${fmtItalic ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-                      style={{ fontStyle: "italic" }}
-                    >
-                      I
-                    </ThemedText>
-                  </TouchableOpacity>
-
-                  {/* H1 */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setFmtH1((v) => !v);
-                      setFmtH2(false);
-                    }}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtH1 ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText
-                      weight="700"
-                      className={`text-[14px] ${fmtH1 ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-                    >
-                      H
-                    </ThemedText>
-                  </TouchableOpacity>
-
-                  {/* H2 */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setFmtH2((v) => !v);
-                      setFmtH1(false);
-                    }}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtH2 ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText
-                      className={`text-[11px] ${fmtH2 ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-                    >
-                      H
-                    </ThemedText>
-                  </TouchableOpacity>
-
-                  {/* Quote */}
-                  <TouchableOpacity
-                    onPress={() => setFmtQuote((v) => !v)}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtQuote ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <Quote size={14} color={toolbarIconColor(fmtQuote)} />
-                  </TouchableOpacity>
-
-                  {/* Link */}
-                  <TouchableOpacity
-                    onPress={() => setFmtLink((v) => !v)}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtLink ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <Link size={14} color={toolbarIconColor(fmtLink)} />
-                  </TouchableOpacity>
-
-                  {/* List */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setFmtList((v) => !v);
-                      setFmtOrdered(false);
-                    }}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtList ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <List size={14} color={toolbarIconColor(fmtList)} />
-                  </TouchableOpacity>
-
-                  {/* Ordered list */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setFmtOrdered((v) => !v);
-                      setFmtList(false);
-                    }}
-                    className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtOrdered ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
-                    activeOpacity={0.7}
-                  >
-                    <ListOrdered
-                      size={14}
-                      color={toolbarIconColor(fmtOrdered)}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Text area */}
-                <TextInput
-                  ref={descInputRef}
-                  value={formDescription}
-                  onChangeText={setFormDescription}
-                  placeholder="Brief session description"
-                  placeholderTextColor={placeholderColor}
-                  multiline
-                  className={`border border-t-0 px-3 py-3 min-h-[120px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E] text-[#F2F4F7]" : "border-[#E4E7EC] bg-white text-[#101828]"}`}
-                  style={{
-                    fontSize: fmtH1 ? 18 : fmtH2 ? 15 : 13,
-                    textAlignVertical: "top",
-                    fontWeight: fmtBold ? "700" : "400",
-                    fontStyle: fmtItalic ? "italic" : "normal",
-                  }}
-                />
-
-                {/* Attached image thumbnails */}
-                {attachedImages.length > 0 && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className={`border border-t-0 ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"}`}
-                    contentContainerStyle={{ padding: 10, gap: 10 }}
-                  >
-                    {attachedImages.map((img, imgIdx) => (
-                      <View key={imgIdx} className="w-[80px] items-center">
-                        <View
-                          className={`w-[80px] h-[80px] rounded-lg overflow-hidden border ${isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
-                        >
-                          <Image
-                            source={{ uri: img.uri }}
-                            style={{ width: "100%", height: "100%" }}
-                            resizeMode="cover"
-                          />
-                          <TouchableOpacity
-                            onPress={() =>
-                              setAttachedImages((prev) =>
-                                prev.filter((_, i) => i !== imgIdx),
-                              )
-                            }
-                            className="absolute top-1 right-1 w-[18px] h-[18px] rounded-[9px] items-center justify-center"
-                            style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-                            activeOpacity={0.8}
-                          >
-                            <X size={10} color="#fff" />
-                          </TouchableOpacity>
-                        </View>
-                        <ThemedText
-                          numberOfLines={1}
-                          className="text-[10px] text-[#667085] mt-1 max-w-[80px]"
-                        >
-                          {img.name}
-                        </ThemedText>
-                      </View>
-                    ))}
-                  </ScrollView>
-                )}
-
-                {/* Action buttons */}
-                {(
-                  [
-                    {
-                      key: "format",
-                      label: "Text Format",
-                      icon: (
-                        <Type
-                          size={16}
-                          color={isDark ? "#D0D5DD" : "#344054"}
-                        />
-                      ),
-                      trailing: (
-                        <ChevronDown
-                          size={15}
-                          color={isDark ? "#D0D5DD" : "#344054"}
-                          style={{
-                            transform: [
-                              {
-                                rotate: showTextFormatMenu ? "180deg" : "0deg",
-                              },
-                            ],
-                          }}
-                        />
-                      ),
-                      onPress: () => setShowTextFormatMenu((v) => !v),
-                    },
-                    {
-                      key: "video",
-                      label: "Add Video",
-                      icon: (
-                        <Play
-                          size={16}
-                          color={isDark ? "#D0D5DD" : "#344054"}
-                        />
-                      ),
-                      trailing: null,
-                      onPress: pickMediaVideo,
-                    },
-                    {
-                      key: "image",
-                      label: "Attach image",
-                      icon: (
-                        <ImageLucide
-                          size={16}
-                          color={isDark ? "#D0D5DD" : "#344054"}
-                        />
-                      ),
-                      trailing: null,
-                      onPress: pickAttachImage,
-                    },
-                  ] as const
-                ).map((action, i, arr) => (
-                  <TouchableOpacity
-                    key={action.key}
-                    onPress={action.onPress}
-                    className={`flex-row items-center py-[13px] px-[14px] border border-t-0 gap-[10px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"} ${i === arr.length - 1 ? "rounded-bl-[10px] rounded-br-[10px]" : ""}`}
-                    activeOpacity={0.8}
-                  >
-                    {action.icon}
-                    <ThemedText
-                      className={`text-[13px] flex-1 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-                    >
-                      {action.label}
-                    </ThemedText>
-                    {action.trailing}
-                  </TouchableOpacity>
-                ))}
-
-                {/* Text format dropdown */}
-                {showTextFormatMenu && (
-                  <View
-                    className={`border rounded-[10px] mt-1 mb-2 overflow-hidden ${isDark ? "border-[#2C2C2E] bg-[#2C2C2E]" : "border-[#E4E7EC] bg-white"}`}
-                  >
-                    {[
-                      {
-                        label: "Heading 1",
-                        fontSize: 22,
-                        fontWeight: "700" as const,
-                        fontStyle: "normal" as const,
-                      },
-                      {
-                        label: "Heading 2",
-                        fontSize: 17,
-                        fontWeight: "700" as const,
-                        fontStyle: "normal" as const,
-                      },
-                      {
-                        label: "Paragraph",
-                        fontSize: 14,
-                        fontWeight: "400" as const,
-                        fontStyle: "normal" as const,
-                      },
-                      {
-                        label: "Block Quote",
-                        fontSize: 13,
-                        fontWeight: "400" as const,
-                        fontStyle: "italic" as const,
-                      },
-                      {
-                        label: "Code Block",
-                        fontSize: 12,
-                        fontWeight: "400" as const,
-                        fontStyle: "normal" as const,
-                      },
-                    ].map((fmt, i, arr) => (
+                      {/* Bold */}
                       <TouchableOpacity
-                        key={fmt.label}
-                        onPress={() => {
-                          if (fmt.label === "Heading 1") {
-                            setFmtH1(true);
-                            setFmtH2(false);
-                            setFmtQuote(false);
-                          } else if (fmt.label === "Heading 2") {
-                            setFmtH2(true);
-                            setFmtH1(false);
-                            setFmtQuote(false);
-                          } else if (fmt.label === "Block Quote") {
-                            setFmtQuote(true);
-                            setFmtH1(false);
-                            setFmtH2(false);
-                          } else {
-                            setFmtH1(false);
-                            setFmtH2(false);
-                            setFmtQuote(false);
-                          }
-                          setShowTextFormatMenu(false);
-                        }}
-                        className={`py-[10px] px-[14px] ${i < arr.length - 1 ? `border-b ${isDark ? "border-b-[#2C2C2E]" : "border-b-[#E4E7EC]"}` : ""}`}
-                        activeOpacity={0.8}
+                        onPress={() => setFmtBold((v) => !v)}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtBold ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
                       >
                         <ThemedText
-                          weight={fmt.fontWeight}
-                          className={`${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-                          style={{
-                            fontSize: fmt.fontSize,
-                            fontStyle: fmt.fontStyle,
-                          }}
+                          weight="700"
+                          className={`text-[14px] ${fmtBold ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                         >
-                          {fmt.label}
+                          B
                         </ThemedText>
                       </TouchableOpacity>
+
+                      {/* Italic */}
+                      <TouchableOpacity
+                        onPress={() => setFmtItalic((v) => !v)}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtItalic ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
+                      >
+                        <ThemedText
+                          className={`text-[14px] ${fmtItalic ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                          style={{ fontStyle: "italic" }}
+                        >
+                          I
+                        </ThemedText>
+                      </TouchableOpacity>
+
+                      {/* H1 */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setFmtH1((v) => !v);
+                          setFmtH2(false);
+                        }}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtH1 ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
+                      >
+                        <ThemedText
+                          weight="700"
+                          className={`text-[14px] ${fmtH1 ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                        >
+                          H
+                        </ThemedText>
+                      </TouchableOpacity>
+
+                      {/* H2 */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setFmtH2((v) => !v);
+                          setFmtH1(false);
+                        }}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtH2 ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
+                      >
+                        <ThemedText
+                          className={`text-[11px] ${fmtH2 ? "text-[#D92D20]" : isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                        >
+                          H
+                        </ThemedText>
+                      </TouchableOpacity>
+
+                      {/* Quote */}
+                      <TouchableOpacity
+                        onPress={() => setFmtQuote((v) => !v)}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtQuote ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
+                      >
+                        <Quote size={14} color={toolbarIconColor(fmtQuote)} />
+                      </TouchableOpacity>
+
+                      {/* Link */}
+                      <TouchableOpacity
+                        onPress={() => setFmtLink((v) => !v)}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtLink ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
+                      >
+                        <Link size={14} color={toolbarIconColor(fmtLink)} />
+                      </TouchableOpacity>
+
+                      {/* List */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setFmtList((v) => !v);
+                          setFmtOrdered(false);
+                        }}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtList ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
+                      >
+                        <List size={14} color={toolbarIconColor(fmtList)} />
+                      </TouchableOpacity>
+
+                      {/* Ordered list */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setFmtOrdered((v) => !v);
+                          setFmtList(false);
+                        }}
+                        className={`w-8 h-8 rounded-[6px] items-center justify-center ${fmtOrdered ? (isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]") : "bg-transparent"}`}
+                        activeOpacity={0.7}
+                      >
+                        <ListOrdered
+                          size={14}
+                          color={toolbarIconColor(fmtOrdered)}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Text area */}
+                    <TextInput
+                      ref={descInputRef}
+                      value={formDescription}
+                      onChangeText={setFormDescription}
+                      placeholder={t("events.wizard.agenda.briefSessionDesc")}
+                      placeholderTextColor={placeholderColor}
+                      multiline
+                      className={`border border-t-0 px-3 py-3 min-h-[120px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E] text-[#F2F4F7]" : "border-[#E4E7EC] bg-white text-[#101828]"}`}
+                      style={{
+                        fontSize: fmtH1 ? 18 : fmtH2 ? 15 : 13,
+                        textAlignVertical: "top",
+                        fontWeight: fmtBold ? "700" : "400",
+                        fontStyle: fmtItalic ? "italic" : "normal",
+                      }}
+                    />
+
+                    {/* Attached image thumbnails */}
+                    {attachedImages.length > 0 && (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        className={`border border-t-0 ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"}`}
+                        contentContainerStyle={{ padding: 10, gap: 10 }}
+                      >
+                        {attachedImages.map((img, imgIdx) => (
+                          <View key={imgIdx} className="w-[80px] items-center">
+                            <View
+                              className={`w-[80px] h-[80px] rounded-lg overflow-hidden border ${isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
+                            >
+                              <Image
+                                source={{ uri: img.uri }}
+                                style={{ width: "100%", height: "100%" }}
+                                resizeMode="cover"
+                              />
+                              <TouchableOpacity
+                                onPress={() =>
+                                  setAttachedImages((prev) =>
+                                    prev.filter((_, i) => i !== imgIdx),
+                                  )
+                                }
+                                className="absolute top-1 right-1 w-[18px] h-[18px] rounded-[9px] items-center justify-center"
+                                style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+                                activeOpacity={0.8}
+                              >
+                                <X size={10} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                            <ThemedText
+                              numberOfLines={1}
+                              className="text-[10px] text-[#667085] mt-1 max-w-[80px]"
+                            >
+                              {img.name}
+                            </ThemedText>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    )}
+
+                    {/* Action buttons */}
+                    {(
+                      [
+                        {
+                          key: "format",
+                          label: "Text Format",
+                          icon: (
+                            <Type
+                              size={16}
+                              color={isDark ? "#D0D5DD" : "#344054"}
+                            />
+                          ),
+                          trailing: (
+                            <ChevronDown
+                              size={15}
+                              color={isDark ? "#D0D5DD" : "#344054"}
+                              style={{
+                                transform: [
+                                  {
+                                    rotate: showTextFormatMenu
+                                      ? "180deg"
+                                      : "0deg",
+                                  },
+                                ],
+                              }}
+                            />
+                          ),
+                          onPress: () => setShowTextFormatMenu((v) => !v),
+                        },
+                        {
+                          key: "video",
+                          label: "Add Video",
+                          icon: (
+                            <Play
+                              size={16}
+                              color={isDark ? "#D0D5DD" : "#344054"}
+                            />
+                          ),
+                          trailing: null,
+                          onPress: pickMediaVideo,
+                        },
+                        {
+                          key: "image",
+                          label: "Attach image",
+                          icon: (
+                            <ImageLucide
+                              size={16}
+                              color={isDark ? "#D0D5DD" : "#344054"}
+                            />
+                          ),
+                          trailing: null,
+                          onPress: pickAttachImage,
+                        },
+                      ] as const
+                    ).map((action, i, arr) => (
+                      <TouchableOpacity
+                        key={action.key}
+                        onPress={action.onPress}
+                        className={`flex-row items-center py-[13px] px-[14px] border border-t-0 gap-[10px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"} ${i === arr.length - 1 ? "rounded-bl-[10px] rounded-br-[10px]" : ""}`}
+                        activeOpacity={0.8}
+                      >
+                        {action.icon}
+                        <ThemedText
+                          className={`text-[13px] flex-1 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                        >
+                          {action.label}
+                        </ThemedText>
+                        {action.trailing}
+                      </TouchableOpacity>
                     ))}
-                  </View>
+
+                    {/* Text format dropdown */}
+                    {showTextFormatMenu && (
+                      <View
+                        className={`border rounded-[10px] mt-1 mb-2 overflow-hidden ${isDark ? "border-[#2C2C2E] bg-[#2C2C2E]" : "border-[#E4E7EC] bg-white"}`}
+                      >
+                        {[
+                          {
+                            label: "Heading 1",
+                            fontSize: 22,
+                            fontWeight: "700" as const,
+                            fontStyle: "normal" as const,
+                          },
+                          {
+                            label: "Heading 2",
+                            fontSize: 17,
+                            fontWeight: "700" as const,
+                            fontStyle: "normal" as const,
+                          },
+                          {
+                            label: "Paragraph",
+                            fontSize: 14,
+                            fontWeight: "400" as const,
+                            fontStyle: "normal" as const,
+                          },
+                          {
+                            label: "Block Quote",
+                            fontSize: 13,
+                            fontWeight: "400" as const,
+                            fontStyle: "italic" as const,
+                          },
+                          {
+                            label: "Code Block",
+                            fontSize: 12,
+                            fontWeight: "400" as const,
+                            fontStyle: "normal" as const,
+                          },
+                        ].map((fmt, i, arr) => (
+                          <TouchableOpacity
+                            key={fmt.label}
+                            onPress={() => {
+                              if (fmt.label === "Heading 1") {
+                                setFmtH1(true);
+                                setFmtH2(false);
+                                setFmtQuote(false);
+                              } else if (fmt.label === "Heading 2") {
+                                setFmtH2(true);
+                                setFmtH1(false);
+                                setFmtQuote(false);
+                              } else if (fmt.label === "Block Quote") {
+                                setFmtQuote(true);
+                                setFmtH1(false);
+                                setFmtH2(false);
+                              } else {
+                                setFmtH1(false);
+                                setFmtH2(false);
+                                setFmtQuote(false);
+                              }
+                              setShowTextFormatMenu(false);
+                            }}
+                            className={`py-[10px] px-[14px] ${i < arr.length - 1 ? `border-b ${isDark ? "border-b-[#2C2C2E]" : "border-b-[#E4E7EC]"}` : ""}`}
+                            activeOpacity={0.8}
+                          >
+                            <ThemedText
+                              weight={fmt.fontWeight}
+                              className={`${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                              style={{
+                                fontSize: fmt.fontSize,
+                                fontStyle: fmt.fontStyle,
+                              }}
+                            >
+                              {fmt.label}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <TextInput
+                    value={formDescription}
+                    onChangeText={setFormDescription}
+                    placeholder={t("events.wizard.agenda.briefFreeFormDesc")}
+                    placeholderTextColor={placeholderColor}
+                    multiline
+                    className={`border rounded-[10px] px-3 py-3 min-h-[120px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E] text-[#F2F4F7]" : "border-[#E4E7EC] bg-white text-[#101828]"}`}
+                    style={{
+                      fontSize: 13,
+                      textAlignVertical: "top",
+                      fontWeight: "400",
+                      fontStyle: "normal",
+                    }}
+                  />
                 )}
 
                 <View className="h-[14px]" />
@@ -1597,7 +1767,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     <ThemedText
                       className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                     >
-                      Start time{" "}
+                      {t("events.wizard.agenda.startTime")}{" "}
                       <ThemedText className="text-[#F04438] text-[12px]">
                         *
                       </ThemedText>
@@ -1612,7 +1782,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     <ThemedText
                       className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                     >
-                      Closing time{" "}
+                      {t("events.wizard.agenda.closingTime")}{" "}
                       <ThemedText className="text-[#F04438] text-[12px]">
                         *
                       </ThemedText>
@@ -1624,6 +1794,12 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     />
                   </View>
                 </View>
+
+                {formTimeError ? (
+                  <ThemedText className="text-[12px] text-[#F04438] mb-3">
+                    {formTimeError}
+                  </ThemedText>
+                ) : null}
 
                 {/* Delete + Save */}
                 <View className="flex-row gap-[10px] items-center">
@@ -1641,12 +1817,16 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                   <View className="flex-1">
                     <GradientButton
                       label={
-                        editingSessionId ? "Update Session" : "Save Session"
+                        editingSessionId
+                          ? t("events.wizard.agenda.updateSession")
+                          : t("events.wizard.agenda.saveSession")
                       }
                       onPress={
                         editingSessionId ? handleSaveEdit : handleSaveSession
                       }
-                      disabled={!formTitle.trim() || isAddingAgenda}
+                      disabled={
+                        !formTitle.trim() || !!formTimeError || isAddingAgenda
+                      }
                       loading={
                         (isAddingAgenda && !editingSessionId) || isAddingAgenda
                       }
@@ -1657,6 +1837,21 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                 </View>
               </View>
             )}
+
+            <View className="mt-4">
+              <GradientButton
+                label={t("events.wizard.agenda.done")}
+                onPress={() => {
+                  setAgendaDone(true);
+                  setAgendaEnabled(false);
+                  setFormOpen(false);
+                  setEditingSessionId(null);
+                  resetForm();
+                }}
+                height={44}
+                borderRadius={10}
+              />
+            </View>
           </View>
         )}
       </View>
@@ -1675,49 +1870,70 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
           activeOpacity={0.8}
         >
           <View
-            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${photosEnabled ? "border-[#F04438]" : isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
+            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${
+              photosCompleted
+                ? "border-[#12B76A]"
+                : photosEnabled
+                  ? "border-[#F04438]"
+                  : isDark
+                    ? "border-[#2C2C2E]"
+                    : "border-[#E4E7EC]"
+            }`}
           >
-            {photosEnabled && (
-              <View className="w-2 h-2 rounded-[4px] bg-[#F04438]" />
+            {(photosEnabled || photosCompleted) && (
+              <View
+                className={`w-2 h-2 rounded-[4px] ${photosCompleted ? "bg-[#12B76A]" : "bg-[#F04438]"}`}
+              />
             )}
           </View>
           <ThemedText
             weight="700"
             className={`text-[13px] flex-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
           >
-            ADD PHOTO/VIDEOS
+            {t("events.wizard.agenda.addPhotos")}
           </ThemedText>
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center shrink-0">
             <OptionalBadge />
-            <ChevronDown
-              size={16}
-              color={isDark ? "#98A2B3" : "#667085"}
-              style={{
-                transform: [{ rotate: photosEnabled ? "180deg" : "0deg" }],
-              }}
-            />
+            <View className="w-5 items-end ml-2">
+              {photosEnabled ? (
+                <ChevronUp size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              ) : (
+                <ChevronDown size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              )}
+            </View>
           </View>
         </TouchableOpacity>
         {photosEnabled && (
           <View className="px-[14px] pb-[14px]">
             <ThemedText className="text-[12px] text-[#667085] mb-[10px] leading-[18px]">
-              Add photos to show what your event will be about.{"\n"}You can
-              upload up to 6 images.
+              {t("events.wizard.agenda.photosHint")}
             </ThemedText>
             <ThemedText className="text-[13px] text-[#667085] mb-[14px]">
               <ThemedText
                 weight="700"
                 className={`${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
               >
-                {uploadedCount} of 6
+                {t("events.wizard.media.ofSix", { count: uploadedCount })}
               </ThemedText>
-              {"  ·  Photos/Videos uploaded"}
+              {"  ·  "}
+              {t("events.wizard.agenda.photosUploaded")}
             </ThemedText>
             <View className="flex-row gap-2 mb-2">
               {[0, 1, 2].map((i) => renderPhotoSlot(i))}
             </View>
             <View className="flex-row gap-2">
               {[3, 4, 5].map((i) => renderPhotoSlot(i))}
+            </View>
+            <View className="mt-4">
+              <GradientButton
+                label={t("events.wizard.agenda.done")}
+                onPress={() => {
+                  setPhotosDone(true);
+                  setPhotosEnabled(false);
+                }}
+                height={44}
+                borderRadius={10}
+              />
             </View>
           </View>
         )}
@@ -1737,25 +1953,33 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
           activeOpacity={0.8}
         >
           <View
-            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${refundExpanded ? "border-[#F04438]" : isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
+            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${
+              refundCompleted
+                ? "border-[#12B76A]"
+                : refundExpanded
+                  ? "border-[#F04438]"
+                  : isDark
+                    ? "border-[#2C2C2E]"
+                    : "border-[#E4E7EC]"
+            }`}
           >
-            {refundExpanded && (
-              <View className="w-2 h-2 rounded-[4px] bg-[#F04438]" />
+            {(refundExpanded || refundCompleted) && (
+              <View
+                className={`w-2 h-2 rounded-[4px] ${refundCompleted ? "bg-[#12B76A]" : "bg-[#F04438]"}`}
+              />
             )}
           </View>
           <ThemedText
             weight="700"
             className={`text-[13px] flex-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
           >
-            REFUND POLICY
+            {t("events.wizard.agenda.refundPolicy")}
           </ThemedText>
-          <ChevronDown
-            size={16}
-            color={isDark ? "#98A2B3" : "#667085"}
-            style={{
-              transform: [{ rotate: refundExpanded ? "180deg" : "0deg" }],
-            }}
-          />
+          {refundExpanded ? (
+            <ChevronUp size={16} color={isDark ? "#98A2B3" : "#667085"} />
+          ) : (
+            <ChevronDown size={16} color={isDark ? "#98A2B3" : "#667085"} />
+          )}
         </TouchableOpacity>
         {refundExpanded && (
           <View className="px-[14px] pb-[14px]">
@@ -1763,7 +1987,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
               weight="700"
               className={`text-[15px] mb-[10px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
             >
-              Refund Policy for Organizers
+              {t("events.wizard.agenda.refundPolicyTitle")}
             </ThemedText>
             <ThemedText
               className={`text-[13px] leading-5 mb-3 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
@@ -1851,12 +2075,20 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
               <ThemedText
                 className={`text-[13px] leading-5 flex-1 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                I have read and agree to the refund policies and guidelines
-                outlined above. By checking this box, I acknowledge and accept
-                responsibility for adhering to these terms as an event
-                organizer.
+                {t("events.wizard.agenda.agreeRefund")}
               </ThemedText>
             </TouchableOpacity>
+            <View className="mt-4">
+              <GradientButton
+                label={t("events.wizard.agenda.done")}
+                onPress={() => {
+                  setRefundDone(true);
+                  setRefundExpanded(false);
+                }}
+                height={44}
+                borderRadius={10}
+              />
+            </View>
           </View>
         )}
       </View>
@@ -1875,33 +2107,43 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
           activeOpacity={0.8}
         >
           <View
-            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${featuredExpanded ? "border-[#F04438]" : isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
+            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${
+              featuredCompleted
+                ? "border-[#12B76A]"
+                : featuredExpanded
+                  ? "border-[#F04438]"
+                  : isDark
+                    ? "border-[#2C2C2E]"
+                    : "border-[#E4E7EC]"
+            }`}
           >
-            {featuredExpanded && (
-              <View className="w-2 h-2 rounded-[4px] bg-[#F04438]" />
+            {(featuredExpanded || featuredCompleted) && (
+              <View
+                className={`w-2 h-2 rounded-[4px] ${featuredCompleted ? "bg-[#12B76A]" : "bg-[#F04438]"}`}
+              />
             )}
           </View>
           <ThemedText
             weight="700"
             className={`text-[13px] flex-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
           >
-            FEATURED GUEST
+            {t("events.wizard.agenda.featuredGuest")}
           </ThemedText>
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center shrink-0">
             <OptionalBadge />
-            <ChevronDown
-              size={16}
-              color={isDark ? "#98A2B3" : "#667085"}
-              style={{
-                transform: [{ rotate: featuredExpanded ? "180deg" : "0deg" }],
-              }}
-            />
+            <View className="w-5 items-end ml-2">
+              {featuredExpanded ? (
+                <ChevronUp size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              ) : (
+                <ChevronDown size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              )}
+            </View>
           </View>
         </TouchableOpacity>
         {featuredExpanded && (
           <View className="px-[14px] pb-[14px]">
             <ThemedText className="text-[12px] text-[#667085] leading-[18px] mb-[14px]">
-              Create a special guest for your event
+              {t("events.wizard.agenda.featuredGuestHint")}
             </ThemedText>
 
             {/* Saved guest cards */}
@@ -1949,7 +2191,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                         weight="500"
                         className="text-[13px] text-[#D92D20]"
                       >
-                        Edit Details
+                        {t("events.wizard.agenda.editDetails")}
                       </ThemedText>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1989,10 +2231,10 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     weight="700"
                     className={`text-[14px] mb-[2px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
                   >
-                    Create a guest list
+                    {t("events.wizard.agenda.createGuestList")}
                   </ThemedText>
                   <ThemedText className="text-[12px] text-[#667085] leading-[17px]">
-                    Add a guest list to your event for more controlled access
+                    {t("events.wizard.agenda.createGuestListDesc")}
                   </ThemedText>
                 </View>
               </View>
@@ -2008,9 +2250,22 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                 weight="500"
                 className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
               >
-                {guests.length === 0 ? "New Guest list" : "Add new guest list"}
+                {guests.length === 0
+                  ? t("events.wizard.agenda.newGuestList")
+                  : t("events.wizard.agenda.addNewGuestList")}
               </ThemedText>
             </TouchableOpacity>
+            <View className="mt-4">
+              <GradientButton
+                label={t("events.wizard.agenda.done")}
+                onPress={() => {
+                  setFeaturedDone(true);
+                  setFeaturedExpanded(false);
+                }}
+                height={44}
+                borderRadius={10}
+              />
+            </View>
           </View>
         )}
       </View>
@@ -2029,33 +2284,43 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
           activeOpacity={0.8}
         >
           <View
-            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${vendorsExpanded ? "border-[#F04438]" : isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
+            className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center ${
+              vendorsCompleted
+                ? "border-[#12B76A]"
+                : vendorsExpanded
+                  ? "border-[#F04438]"
+                  : isDark
+                    ? "border-[#2C2C2E]"
+                    : "border-[#E4E7EC]"
+            }`}
           >
-            {vendorsExpanded && (
-              <View className="w-2 h-2 rounded-[4px] bg-[#F04438]" />
+            {(vendorsExpanded || vendorsCompleted) && (
+              <View
+                className={`w-2 h-2 rounded-[4px] ${vendorsCompleted ? "bg-[#12B76A]" : "bg-[#F04438]"}`}
+              />
             )}
           </View>
           <ThemedText
             weight="700"
             className={`text-[13px] flex-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
           >
-            ADD VENDORS
+            {t("events.wizard.agenda.addVendors")}
           </ThemedText>
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center shrink-0">
             <OptionalBadge />
-            <ChevronDown
-              size={16}
-              color={isDark ? "#98A2B3" : "#667085"}
-              style={{
-                transform: [{ rotate: vendorsExpanded ? "180deg" : "0deg" }],
-              }}
-            />
+            <View className="w-5 items-end ml-2">
+              {vendorsExpanded ? (
+                <ChevronUp size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              ) : (
+                <ChevronDown size={16} color={isDark ? "#98A2B3" : "#667085"} />
+              )}
+            </View>
           </View>
         </TouchableOpacity>
         {vendorsExpanded && (
           <View className="px-[14px] pb-[14px]">
             <ThemedText className="text-[12px] text-[#667085] leading-[18px] mb-[14px]">
-              Create vendor passes for selling access at your events.
+              {t("events.wizard.agenda.vendorsCreateHint")}
             </ThemedText>
 
             {/* Saved passes */}
@@ -2076,8 +2341,10 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                           className="text-[11px] text-[#12B76A]"
                         >
                           {pass.slots > 0
-                            ? `${pass.slots} Slots created`
-                            : "No slots set"}
+                            ? t("events.wizard.agenda.slotsCreated", {
+                                count: pass.slots,
+                              })
+                            : t("events.wizard.agenda.noSlotsSet")}
                         </ThemedText>
                         <ThemedText
                           weight="700"
@@ -2097,7 +2364,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                             weight="400"
                             className={`text-[11px] ${isDark ? "text-[#C9A09A]" : "text-[#7A4A42]"}`}
                           >
-                            per pass
+                            {t("events.wizard.agenda.perPass")}
                           </ThemedText>
                         </ThemedText>
                       ) : null}
@@ -2203,7 +2470,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                         color={isDark ? "#555" : "#C0C9D4"}
                       />
                       <ThemedText className="text-[12px] text-[#667085]">
-                        Add Photo
+                        {t("events.wizard.basicInfo.addPhoto")}
                       </ThemedText>
                     </TouchableOpacity>
                   )}
@@ -2213,24 +2480,24 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                 <ThemedText
                   className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Vendor Pass Tag
+                  {t("events.wizard.agenda.vendorPassTag")}
                 </ThemedText>
                 <TextInput
                   value={vTag}
                   onChangeText={setVTag}
-                  placeholder="eg. (Phone Booth, shared space)"
+                  placeholder={t("events.wizard.agenda.vendorPassTagPlaceholder")}
                   placeholderTextColor={placeholderColor}
                   className={`border rounded-[10px] px-3 py-3 text-[13px] mb-1 ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E] text-[#F2F4F7]" : "border-[#E4E7EC] bg-white text-[#101828]"}`}
                 />
                 <ThemedText className="text-[11px] text-[#F04438] mb-[14px] leading-4">
-                  Pass tags should be simple and clear for vendors to understand
+                  {t("events.wizard.agenda.passTagHint")}
                 </ThemedText>
 
                 {/* Pass Category */}
                 <ThemedText
                   className={`text-[12px] mb-2 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Pass Category
+                  {t("events.wizard.agenda.passCategory")}
                 </ThemedText>
                 <View
                   className={`border rounded-[10px] px-[10px] py-2 flex-row flex-wrap items-center gap-[6px] mb-[14px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"}`}
@@ -2263,8 +2530,8 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                       onSubmitEditing={addVendorCategory}
                       placeholder={
                         vCategories.length === 0
-                          ? "e.g. Drinks, Games"
-                          : "Add more…"
+                          ? t("events.wizard.agenda.categoryPlaceholder")
+                          : t("events.wizard.agenda.addMore")
                       }
                       placeholderTextColor={placeholderColor}
                       returnKeyType="done"
@@ -2290,7 +2557,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                 <ThemedText
                   className={`text-[12px] mb-[5px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Price Per Pass
+                  {t("events.wizard.agenda.pricePerPass")}
                 </ThemedText>
                 <View
                   className={`flex-row items-center border rounded-[10px] px-3 mb-[14px] ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"}`}
@@ -2304,7 +2571,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                   <TextInput
                     value={vPrice}
                     onChangeText={(t) => setVPrice(t.replace(/[^0-9.]/g, ""))}
-                    placeholder="Enter amount"
+                    placeholder={t("events.wizard.agenda.enterAmount")}
                     placeholderTextColor={placeholderColor}
                     keyboardType="numeric"
                     className={`flex-1 py-3 text-[13px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
@@ -2315,7 +2582,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                 <ThemedText
                   className={`text-[12px] mb-[10px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Slots Available
+                  {t("events.wizard.agenda.slotsAvailable")}
                 </ThemedText>
                 <View className="flex-row items-center gap-4 mb-5">
                   <TouchableOpacity
@@ -2364,7 +2631,11 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                   </TouchableOpacity>
                   <View className="flex-1">
                     <GradientButton
-                      label={editingPassId ? "Update Pass" : "Create Pass"}
+                      label={
+                        editingPassId
+                          ? t("events.wizard.agenda.updatePass")
+                          : t("events.wizard.agenda.createPass")
+                      }
                       onPress={handleCreatePass}
                       disabled={!vTag.trim() || isAddingVendor}
                       loading={isAddingVendor && !editingPassId}
@@ -2388,11 +2659,24 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                   className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
                 >
                   {vendorPasses.length === 0
-                    ? "Create Pass"
-                    : "Add Vendor Pass"}
+                    ? t("events.wizard.agenda.createPass")
+                    : t("events.wizard.agenda.addVendorPass")}
                 </ThemedText>
               </TouchableOpacity>
             )}
+            <View className="mt-4">
+              <GradientButton
+                label={t("events.wizard.agenda.done")}
+                onPress={() => {
+                  setVendorsDone(true);
+                  setVendorsExpanded(false);
+                  setVendorFormOpen(false);
+                  resetVendorForm();
+                }}
+                height={44}
+                borderRadius={10}
+              />
+            </View>
           </View>
         )}
       </View>
@@ -2404,122 +2688,134 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
         animationType="slide"
         onRequestClose={() => setShowGuestModal(false)}
       >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setShowGuestModal(false)}
-          className="flex-1 justify-end"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
+          style={{ flex: 1 }}
         >
-          <TouchableOpacity activeOpacity={1}>
-            <View
-              className={`px-5 pt-[14px] pb-9 rounded-tl-[28px] rounded-tr-[28px] ${isDark ? "bg-[#2C1810]" : "bg-[#F3E8E6]"}`}
-            >
-              {/* Handle */}
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setShowGuestModal(false)}
+            className="flex-1 justify-end"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          >
+            <TouchableOpacity activeOpacity={1}>
               <View
-                className={`w-11 h-1 rounded-[2px] self-center mb-4 ${isDark ? "bg-[#5C3830]" : "bg-[#E8DFDD]"}`}
-              />
-              {/* Header row */}
-              <View className="flex-row items-center justify-between mb-5">
-                <ThemedText
-                  weight="700"
-                  className={`text-[16px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
-                >
-                  Add Guest
-                </ThemedText>
-                <TouchableOpacity
-                  onPress={() => setShowGuestModal(false)}
-                  className={`w-7 h-7 rounded-[14px] border-[1.5px] items-center justify-center ${isDark ? "border-[#3A3A3C]" : "border-[#1F2937]"}`}
-                  activeOpacity={0.8}
-                >
-                  <X size={14} color={isDark ? "#D0D5DD" : "#1F2937"} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Thumbnail label */}
-              <ThemedText className="text-[12px] text-[#667085] mb-2">
-                thumbnail
-              </ThemedText>
-
-              {/* Photo upload box */}
-              <TouchableOpacity
-                onPress={pickGuestPhoto}
-                className={`w-[120px] h-[120px] rounded-[10px] overflow-hidden self-center mb-5 items-center justify-center ${isDark ? "bg-[#2C2C2E]" : "bg-[#1B1B1B]"}`}
-                activeOpacity={0.85}
+                className={`px-5 pt-[14px] pb-9 rounded-tl-[28px] rounded-tr-[28px] ${isDark ? "bg-[#2C1810]" : "bg-[#F3E8E6]"}`}
               >
-                {guestPhoto ? (
-                  <>
-                    <Image
-                      source={{ uri: guestPhoto }}
-                      style={{ width: "100%", height: "100%" }}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      onPress={() => setGuestPhoto(null)}
-                      className="absolute top-[6px] right-[6px] w-[22px] h-[22px] rounded-[11px] items-center justify-center"
-                      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-                      activeOpacity={0.8}
-                    >
-                      <Trash2 size={11} color="#fff" />
-                    </TouchableOpacity>
-                    <View
-                      className="absolute bottom-0 left-0 right-0 py-1 items-center"
-                      style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-                    >
-                      <ThemedText className="text-[10px] text-white">
-                        thumbnail
+                {/* Handle */}
+                <View
+                  className={`w-11 h-1 rounded-[2px] self-center mb-4 ${isDark ? "bg-[#5C3830]" : "bg-[#E8DFDD]"}`}
+                />
+                {/* Header row */}
+                <View className="flex-row items-center justify-between mb-5">
+                  <ThemedText
+                    weight="700"
+                    className={`text-[16px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
+                  >
+                    {t("events.wizard.agenda.addGuest")}
+                  </ThemedText>
+                  <TouchableOpacity
+                    onPress={() => setShowGuestModal(false)}
+                    className={`w-7 h-7 rounded-[14px] border-[1.5px] items-center justify-center ${isDark ? "border-[#3A3A3C]" : "border-[#1F2937]"}`}
+                    activeOpacity={0.8}
+                  >
+                    <X size={14} color={isDark ? "#D0D5DD" : "#1F2937"} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Thumbnail label */}
+                <ThemedText className="text-[12px] text-[#667085] mb-2">
+                  {t("events.wizard.agenda.thumbnail")}
+                </ThemedText>
+
+                {/* Photo upload box */}
+                <TouchableOpacity
+                  onPress={pickGuestPhoto}
+                  className={`w-[120px] h-[120px] rounded-[10px] overflow-hidden self-center mb-5 items-center justify-center ${isDark ? "bg-[#2C2C2E]" : "bg-[#1B1B1B]"}`}
+                  activeOpacity={0.85}
+                >
+                  {guestPhoto ? (
+                    <>
+                      <Image
+                        source={{ uri: guestPhoto }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        onPress={() => setGuestPhoto(null)}
+                        className="absolute top-[6px] right-[6px] w-[22px] h-[22px] rounded-[11px] items-center justify-center"
+                        style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+                        activeOpacity={0.8}
+                      >
+                        <Trash2 size={11} color="#fff" />
+                      </TouchableOpacity>
+                      <View
+                        className="absolute bottom-0 left-0 right-0 py-1 items-center"
+                        style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+                      >
+                        <ThemedText className="text-[10px] text-white">
+                          {t("events.wizard.agenda.thumbnail")}
+                        </ThemedText>
+                      </View>
+                    </>
+                  ) : (
+                    <View className="items-center gap-[6px]">
+                      <ImageIcon size={28} color="#888" />
+                      <ThemedText className="text-[12px] text-[#888]">
+                        {t("events.wizard.basicInfo.addPhoto")}
                       </ThemedText>
                     </View>
-                  </>
-                ) : (
-                  <View className="items-center gap-[6px]">
-                    <ImageIcon size={28} color="#888" />
-                    <ThemedText className="text-[12px] text-[#888]">
-                      Add Photo
-                    </ThemedText>
-                  </View>
-                )}
-              </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
 
-              {/* Guest Name */}
-              <ThemedText
-                className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-              >
-                Guest Name
-              </ThemedText>
-              <TextInput
-                value={guestName}
-                onChangeText={setGuestName}
-                placeholder="Enter guest name"
-                placeholderTextColor={placeholderColor}
-                className={`border rounded-[10px] px-[14px] py-[13px] text-[13px] mb-[14px] ${isDark ? "border-[#2C2C2E] text-[#F2F4F7] bg-[#1C1C1E]" : "border-[#E4E7EC] text-[#101828] bg-white"}`}
-              />
+                {/* Guest Name */}
+                <ThemedText
+                  className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                >
+                  {t("events.wizard.agenda.guestName")}
+                </ThemedText>
+                <TextInput
+                  value={guestName}
+                  onChangeText={setGuestName}
+                  placeholder={t("events.wizard.agenda.enterGuestName")}
+                  placeholderTextColor={placeholderColor}
+                  className={`border rounded-[10px] px-[14px] py-[13px] text-[13px] mb-[14px] ${isDark ? "border-[#2C2C2E] text-[#F2F4F7] bg-[#1C1C1E]" : "border-[#E4E7EC] text-[#101828] bg-white"}`}
+                />
 
-              {/* Role */}
-              <ThemedText
-                className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-              >
-                Enter Role (Optional)
-              </ThemedText>
-              <TextInput
-                value={guestRole}
-                onChangeText={setGuestRole}
-                placeholder="Enter guest name"
-                placeholderTextColor={placeholderColor}
-                className={`border rounded-[10px] px-[14px] py-[13px] text-[13px] mb-5 ${isDark ? "border-[#2C2C2E] text-[#F2F4F7] bg-[#1C1C1E]" : "border-[#E4E7EC] text-[#101828] bg-white"}`}
-              />
+                {/* Role */}
+                <ThemedText
+                  className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                >
+                  {t("events.wizard.agenda.enterRoleOptional")}
+                </ThemedText>
+                <TextInput
+                  value={guestRole}
+                  onChangeText={setGuestRole}
+                  placeholder={t("events.wizard.agenda.enterGuestName")}
+                  placeholderTextColor={placeholderColor}
+                  className={`border rounded-[10px] px-[14px] py-[13px] text-[13px] mb-5 ${isDark ? "border-[#2C2C2E] text-[#F2F4F7] bg-[#1C1C1E]" : "border-[#E4E7EC] text-[#101828] bg-white"}`}
+                />
 
-              {/* Save button */}
-              <GradientButton
-                label={isAddingGuest ? "Saving..." : "Save Guest"}
-                onPress={saveGuest}
-                disabled={!guestName.trim() || isAddingGuest}
-                loading={isAddingGuest}
-                height={52}
-                borderRadius={12}
-              />
-            </View>
+                {/* Save button */}
+                <GradientButton
+                  label={
+                    isAddingGuest
+                      ? t("events.wizard.agenda.saving")
+                      : t("events.wizard.agenda.saveGuest")
+                  }
+                  onPress={() => {
+                    void saveGuest();
+                  }}
+                  disabled={!guestName.trim() || isAddingGuest}
+                  loading={isAddingGuest}
+                  height={52}
+                  borderRadius={12}
+                />
+              </View>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Template Modal ── */}
@@ -2548,16 +2844,18 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
               <View className="items-end mb-[6px]">
                 <TouchableOpacity
                   onPress={() => setShowTemplateModal(false)}
-                  className="w-6 h-6 rounded-[21px] border-[1.5px] border-[#1F2937] items-center justify-center"
+                  className={`w-6 h-6 rounded-[21px] border-[1.5px] items-center justify-center ${
+                    isDark ? "border-[#475467]" : "border-[#1F2937]"
+                  }`}
                 >
-                  <X size={13} color="#1F2937" />
+                  <X size={13} color={isDark ? "#98A2B3" : "#1F2937"} />
                 </TouchableOpacity>
               </View>
               <ThemedText
                 weight="500"
-                className="text-[18px] text-[#232327] mb-5"
+                className={`text-[18px] mb-5 ${isDark ? "text-[#F2F4F7]" : "text-[#232327]"}`}
               >
-                Choose Agenda Template
+                {t("events.wizard.agenda.chooseAgendaTemplate")}
               </ThemedText>
 
               {/* Options */}
@@ -2570,23 +2868,39 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     className={`flex-row items-start border-[1.5px] rounded-2xl p-[18px] mb-4 ${
                       isActive
                         ? `border-[#D92D20] ${isDark ? "bg-[#3B1A1A]" : "bg-[#FEF0EF]"}`
-                        : "border-transparent bg-[#F4F5F6]"
+                        : isDark
+                          ? "border-[#344054] bg-[#1C1C1E]"
+                          : "border-transparent bg-[#F4F5F6]"
                     }`}
                     activeOpacity={0.85}
                   >
                     {/* Icon box */}
                     <View
-                      className={`w-[58px] h-[58px] rounded-[10px] items-center justify-center mr-[14px] shrink-0 ${isDark ? "bg-[#1C1C1E]" : "bg-white"}`}
+                      className={`w-[58px] h-[58px] rounded-[10px] items-center justify-center mr-[14px] shrink-0 ${
+                        isDark ? "bg-[#101828]" : "bg-white"
+                      }`}
                     >
                       {tpl === "sessions" ? (
                         <Calendar
                           size={26}
-                          color={isActive ? "#D92D20" : "#797979"}
+                          color={
+                            isActive
+                              ? "#D92D20"
+                              : isDark
+                                ? "#98A2B3"
+                                : "#797979"
+                          }
                         />
                       ) : (
                         <List
                           size={26}
-                          color={isActive ? "#D92D20" : "#797979"}
+                          color={
+                            isActive
+                              ? "#D92D20"
+                              : isDark
+                                ? "#98A2B3"
+                                : "#797979"
+                          }
                         />
                       )}
                     </View>
@@ -2595,20 +2909,30 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
                     <View className="flex-1 pr-2">
                       <ThemedText
                         weight="700"
-                        className="text-[16px] text-[#2E2E2E] mb-[6px]"
+                        className={`text-[16px] mb-[6px] ${isDark ? "text-[#F2F4F7]" : "text-[#2E2E2E]"}`}
                       >
-                        {tpl === "sessions" ? "Sessions" : "Free Form"}
-                      </ThemedText>
-                      <ThemedText className="text-[14px] text-[#797979] leading-5">
                         {tpl === "sessions"
-                          ? "These are the structured parts of the event, including keynotes, workshops, and panel discussions."
-                          : "This template covers relaxed, spontaneous event elements like networking and social activities."}
+                          ? t("events.wizard.agenda.sessions")
+                          : t("events.wizard.agenda.freeForm")}
+                      </ThemedText>
+                      <ThemedText
+                        className={`text-[14px] leading-5 ${isDark ? "text-[#98A2B3]" : "text-[#797979]"}`}
+                      >
+                        {tpl === "sessions"
+                          ? t("events.wizard.agenda.sessionsDesc")
+                          : t("events.wizard.agenda.freeFormDesc")}
                       </ThemedText>
                     </View>
 
                     {/* Radio */}
                     <View
-                      className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center shrink-0 mt-[2px] ${isActive ? "border-[#D92D20]" : "border-[#D0D5DD]"}`}
+                      className={`w-5 h-5 rounded-[10px] border-2 items-center justify-center shrink-0 mt-[2px] ${
+                        isActive
+                          ? "border-[#D92D20]"
+                          : isDark
+                            ? "border-[#98A2B3]"
+                            : "border-[#D0D5DD]"
+                      }`}
                     >
                       {isActive && (
                         <View className="w-[9px] h-[9px] rounded-[5px] bg-[#D92D20]" />
@@ -2620,7 +2944,7 @@ export default function AgendaStep({ eventId }: { eventId?: string }) {
 
               {/* Continue */}
               <GradientButton
-                label="Continue"
+                label={t("events.wizard.agenda.continue")}
                 onPress={handleContinue}
                 height={52}
                 borderRadius={12}

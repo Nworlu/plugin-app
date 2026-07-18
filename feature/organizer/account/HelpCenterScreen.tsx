@@ -2,6 +2,7 @@ import { AnimatedEntry } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useTranslation } from "@/hooks/use-translation";
 import { router } from "expo-router";
 import {
   ChevronDown,
@@ -18,19 +19,25 @@ type HelpCategory =
   | "Check-In Issues"
   | "Attendee Management";
 
+const CATEGORY_KEYS: { key: HelpCategory; labelKey: string }[] = [
+  { key: "All", labelKey: "settings.help.categoryAll" },
+  {
+    key: "Ticket Management",
+    labelKey: "settings.help.categoryTicketManagement",
+  },
+  { key: "Check-In Issues", labelKey: "settings.help.categoryCheckIn" },
+  {
+    key: "Attendee Management",
+    labelKey: "settings.help.categoryAttendee",
+  },
+];
+
 type HelpArticle = {
   id: string;
   title: string;
   excerpt: string;
   category: Exclude<HelpCategory, "All">;
 };
-
-const CATEGORIES: HelpCategory[] = [
-  "All",
-  "Ticket Management",
-  "Check-In Issues",
-  "Attendee Management",
-];
 
 const HELP_ARTICLES: HelpArticle[] = [
   {
@@ -67,6 +74,7 @@ const HELP_ARTICLES: HelpArticle[] = [
 
 const HelpCenterScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
   const [activeCategory, setActiveCategory] = useState<HelpCategory>("All");
   const [query, setQuery] = useState("");
@@ -104,7 +112,7 @@ const HelpCenterScreen = () => {
             weight="700"
             className={`text-[15px] ${isDark ? "text-white" : "text-[#101828]"}`}
           >
-            Help Center
+            {t("settings.help.title")}
           </ThemedText>
         </View>
       </View>
@@ -118,11 +126,10 @@ const HelpCenterScreen = () => {
           className={`mt-2 px-4 py-4 ${isDark ? "bg-[#111827]" : "bg-[#6A6978]"}`}
         >
           <ThemedText weight="500" className="text-white text-lg leading-8">
-            Welcome to the Help Center
+            {t("settings.help.welcome")}
           </ThemedText>
           <ThemedText className="text-[#E4E7EC] text-base mt-1 leading-5">
-            Find answers, resources, and support to make the most of your
-            experience
+            {t("settings.help.welcomeDescription")}
           </ThemedText>
 
           <View
@@ -132,7 +139,7 @@ const HelpCenterScreen = () => {
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search for answers or guides"
+              placeholder={t("settings.help.searchGuides")}
               placeholderTextColor="#98A2B3"
               style={{ color: isDark ? "#E5E7EB" : "#101828" }}
               className="flex-1 text-[14px]"
@@ -147,13 +154,13 @@ const HelpCenterScreen = () => {
             className="mt-4"
           >
             <View className="flex-row gap-2.5">
-              {CATEGORIES.map((category) => {
-                const isActive = category === activeCategory;
+              {CATEGORY_KEYS.map(({ key, labelKey }) => {
+                const isActive = key === activeCategory;
                 return (
                   <TouchableOpacity
-                    key={category}
+                    key={key}
                     activeOpacity={0.85}
-                    onPress={() => setActiveCategory(category)}
+                    onPress={() => setActiveCategory(key)}
                     className={`h-8 px-4 rounded-full items-center justify-center ${
                       isActive
                         ? isDark
@@ -176,7 +183,7 @@ const HelpCenterScreen = () => {
                             : "text-[#667085] text-[13px]"
                       }
                     >
-                      {category}
+                      {t(labelKey)}
                     </ThemedText>
                   </TouchableOpacity>
                 );
@@ -220,7 +227,7 @@ const HelpCenterScreen = () => {
                         weight="700"
                         className={`text-[14px] ${isDark ? "text-[#9CA3AF]" : "text-[#344054]"}`}
                       >
-                        Read
+                        {t("settings.help.read")}
                       </ThemedText>
                       <ChevronDown
                         size={14}

@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { useScanTicket } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Flashlight, FlashlightOff } from "lucide-react-native";
@@ -34,6 +35,7 @@ const STROKE = 3;
 const CORNER_COLOR = "#FFFFFF";
 
 const QRScannerScreen = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const [permission, requestPermission] = useCameraPermissions();
@@ -100,7 +102,7 @@ const QRScannerScreen = () => {
             paddingHorizontal: 32,
           }}
         >
-          Camera access is required to scan tickets.
+          {t("events.checkIn.cameraRequired")}
         </ThemedText>
         <TouchableOpacity
           onPress={requestPermission}
@@ -112,7 +114,7 @@ const QRScannerScreen = () => {
           }}
         >
           <ThemedText style={{ color: "#FFF", fontWeight: "700" }}>
-            Allow Camera
+            {t("events.checkIn.allowCamera")}
           </ThemedText>
         </TouchableOpacity>
       </View>
@@ -146,7 +148,7 @@ const QRScannerScreen = () => {
         >
           <ChevronLeft size={18} color="#101828" />
           <ThemedText weight="500" style={{ fontSize: 16, color: "#101828" }}>
-            Back
+            {t("common.back")}
           </ThemedText>
         </TouchableOpacity>
 
@@ -161,7 +163,7 @@ const QRScannerScreen = () => {
           }}
           numberOfLines={1}
         >
-          Scan invitation QR code
+          {t("events.checkIn.scanQr")}
         </ThemedText>
 
         {/* Torch toggle — keeps header balanced */}
@@ -335,7 +337,7 @@ const QRScannerScreen = () => {
               textAlign: "center",
             }}
           >
-            Align the QR code inside the frame
+            {t("events.checkIn.alignQr")}
           </ThemedText>
         </View>
 
@@ -375,7 +377,7 @@ const QRScannerScreen = () => {
               <ThemedText style={{ color: "#FFF", fontSize: 13 }}>✓</ThemedText>
             </View>
             <ThemedText weight="500" style={{ color: "#FFF", fontSize: 14 }}>
-              QR code successfully scanned
+              {t("events.checkIn.qrScannedSuccess")}
             </ThemedText>
           </Animated.View>
         )}

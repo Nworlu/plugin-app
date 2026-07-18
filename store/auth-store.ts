@@ -10,6 +10,26 @@ const PROFILE_KEY = "authProfile";
 const USER_KEY = "authUser";
 const ACCOUNT_COMPLETE_KEY = "accountComplete";
 
+function isJwtExpired(token: string): boolean {
+  try {
+    const [, payloadSegment] = token.split(".");
+    if (!payloadSegment) {
+      return true;
+    }
+
+    const normalized = payloadSegment.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(globalThis.atob(normalized)) as { exp?: number };
+
+    if (!payload.exp) {
+      return false;
+    }
+
+    return payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export type AuthProfile = {
   firstName: string;
   lastName: string;
@@ -80,12 +100,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           tokenStorage.get(),
           AsyncStorage.getItem(ACCOUNT_COMPLETE_KEY),
         ]);
+      const tokenIsValid = !!token && !isJwtExpired(token);
+      const shouldAuthenticate =
+        tokenIsValid && accountComplete === "true";
+
+      if (token && !tokenIsValid) {
+        await Promise.all([
+          tokenStorage.remove(),
+          AsyncStorage.removeItem(USER_KEY),
+          AsyncStorage.removeItem(ACCOUNT_COMPLETE_KEY),
+        ]);
+      }
+
       set({
         hasSeenOnboarding: onboarded === "true",
-        isAuthenticated: !!token && accountComplete === "true",
+        isAuthenticated: shouldAuthenticate,
         userEmail: email ?? "",
         profile: profileRaw ? JSON.parse(profileRaw) : null,
-        user: userRaw ? JSON.parse(userRaw) : null,
+        user: tokenIsValid && userRaw ? JSON.parse(userRaw) : null,
       });
     } finally {
       set({ isLoading: false });

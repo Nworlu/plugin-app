@@ -6,6 +6,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import type { Notification as ApiNotification } from "@/utils/api/types";
 import { LinearGradient } from "expo-linear-gradient";
@@ -25,6 +26,7 @@ import {
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   RefreshControl,
   ScrollView,
@@ -142,6 +144,8 @@ const NotificationDetailModal = ({
   onClose: () => void;
   isDark: boolean;
 }) => {
+  const { t } = useTranslation();
+
   if (!notification) return null;
   const color = typeColor(notification.type);
 
@@ -168,7 +172,7 @@ const NotificationDetailModal = ({
         >
           <View style={{ flex: 1 }} />
           <ThemedText weight="700" style={{ fontSize: 18 }}>
-            Notification Details
+            {t("notificationsInbox.detailsTitle")}
           </ThemedText>
           <View style={{ flex: 1, alignItems: "flex-end" }}>
             <TouchableOpacity
@@ -277,7 +281,7 @@ const NotificationDetailModal = ({
                   style={{ fontSize: 12, color: "#F79009" }}
                   weight="500"
                 >
-                  Unread
+                  {t("notificationsInbox.unread")}
                 </ThemedText>
               </View>
             )}
@@ -317,7 +321,7 @@ const NotificationDetailModal = ({
               }}
             >
               <ThemedText weight="600" style={{ color: "#fff", fontSize: 15 }}>
-                Dismiss
+                {t("notificationsInbox.dismiss")}
               </ThemedText>
             </LinearGradient>
           </TouchableOpacity>
@@ -451,6 +455,7 @@ const NotificationRow = ({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 const NotificationsScreen = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -522,7 +527,7 @@ const NotificationsScreen = () => {
               style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
             >
               <ThemedText weight="700" style={{ fontSize: 17 }}>
-                Notifications
+                {t("notificationsInbox.title")}
               </ThemedText>
               {unreadCount > 0 && (
                 <View
@@ -561,7 +566,7 @@ const NotificationsScreen = () => {
                   weight="500"
                   style={{ fontSize: 12, color: "#F04438" }}
                 >
-                  All read
+                  {t("notificationsInbox.allRead")}
                 </ThemedText>
               )}
             </TouchableOpacity>
@@ -603,7 +608,7 @@ const NotificationsScreen = () => {
                 weight="500"
                 style={{ fontSize: 15, color: isDark ? "#9CA3AF" : "#667085" }}
               >
-                No notifications yet
+                {t("notificationsInbox.empty")}
               </ThemedText>
             </View>
           ) : (

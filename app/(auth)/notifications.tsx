@@ -1,6 +1,7 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import { useUpdateSettings } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
 import { Bell } from "lucide-react-native";
@@ -9,6 +10,7 @@ import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { profile, saveProfile, user } = useAuthStore();
   const { mutate: updateSettings, isPending } = useUpdateSettings(
@@ -70,7 +72,7 @@ export default function NotificationsScreen() {
       <View className="self-center flex-row items-center gap-2 bg-black/30 rounded-full px-4 py-2 mb-8">
         <Bell size={14} color="white" />
         <ThemedText weight="500" className="text-white text-[13px]">
-          Notifications
+          {t("auth.notifications.title")}
         </ThemedText>
       </View>
 
@@ -83,7 +85,7 @@ export default function NotificationsScreen() {
         weight="700"
         className="text-white text-[26px] leading-9 text-center px-8 mb-8"
       >
-        Setup Notification{"\n"}Preferences
+        {t("auth.notifications.setupTitle")}
       </ThemedText>
 
       {/* Spacer pushes checkboxes toward the bottom */}
@@ -92,12 +94,12 @@ export default function NotificationsScreen() {
       {/* Options */}
       <View className="px-6 gap-4 mb-6">
         <Checkbox
-          label="I want to receive updates on events, vendors, and plugin newsletters"
+          label={t("auth.notifications.updatesLabel")}
           checked={notifyUpdates}
           onToggle={() => setNotifyUpdates((v) => !v)}
         />
         <Checkbox
-          label="I want updates on events I'm attending or saved"
+          label={t("auth.notifications.attendingLabel")}
           checked={notifyAttending}
           onToggle={() => setNotifyAttending((v) => !v)}
         />
@@ -106,7 +108,7 @@ export default function NotificationsScreen() {
       {/* CTA */}
       <View className="px-6" style={{ paddingBottom: insets.bottom + 24 }}>
         <GradientButton
-          label={isPending ? "Saving..." : "Continue"}
+          label={isPending ? t("auth.notifications.saving") : t("auth.notifications.continue")}
           onPress={handleContinue}
           disabled={isPending}
           height={52}
@@ -120,7 +122,7 @@ export default function NotificationsScreen() {
           className="mt-4 items-center"
         >
           <ThemedText weight="500" className="text-white/80 text-sm">
-            Skip for later
+            {t("auth.notifications.skip")}
           </ThemedText>
         </TouchableOpacity>
       </View>

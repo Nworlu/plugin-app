@@ -21,8 +21,10 @@ import SponsoredCampaignReviewModal, {
 } from "@/feature/organizer/account/components/SponsoredCampaignReviewModal";
 import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import { useOrganizerEvents } from "@/hooks/api/use-events";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
+import { useCampaignStore } from "@/store/campaign-store";
 import type { RawEvent } from "@/utils/api/types";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
@@ -32,34 +34,34 @@ import { ScrollView, TouchableOpacity, View } from "react-native";
 
 type CampaignType = {
   key: string;
-  title: string;
-  subtitle: string;
+  titleKey: string;
+  subtitleKey: string;
   amount: string;
   icon: React.ReactNode;
   bgClassName: string;
 };
 
-const CAMPAIGN_TYPES: CampaignType[] = [
+const CAMPAIGN_TYPE_CONFIG: CampaignType[] = [
   {
     key: "social",
-    title: "Social Media Ads",
-    subtitle: "( Facebook & Instagram )",
+    titleKey: "settings.campaign.socialMediaAds",
+    subtitleKey: "settings.campaign.socialMediaAdsSubtitle",
     amount: "N 8,000",
     icon: <Megaphone size={28} color="#9F7AEA" />,
     bgClassName: "bg-[#E5EAF2]",
   },
   {
     key: "email",
-    title: "Email Campaigns",
-    subtitle: "( Ads to 5000 email list )",
+    titleKey: "settings.campaign.emailCampaigns",
+    subtitleKey: "settings.campaign.emailCampaignsSubtitle",
     amount: "N 25,000",
     icon: <Mail size={30} color="#344054" />,
     bgClassName: "bg-[#DDEBE2]",
   },
   {
     key: "sponsored",
-    title: "Sponsored Listings",
-    subtitle: "( Highlight on Homepage )",
+    titleKey: "settings.campaign.sponsoredListings",
+    subtitleKey: "settings.campaign.sponsoredListingsSubtitle",
     amount: "N 35,000",
     icon: <Layers size={30} color="#344054" />,
     bgClassName: "bg-[#F2EAA8]",
@@ -156,6 +158,7 @@ function mapEventToItem(event: RawEvent): CampaignEventItem {
 
 const StartCampaignScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   const user = useAuthStore((s) => s.user);
@@ -199,6 +202,43 @@ const StartCampaignScreen = () => {
     location: string;
   } | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const addCampaign = useCampaignStore((s) => s.addCampaign);
+
+  const persistActiveCampaign = () => {
+    const event = campaignEvents.find((e) => e.id === selectedEventId);
+    const type =
+      selectedCampaign === "email"
+        ? "email"
+        : selectedCampaign === "sponsored"
+          ? "sponsored"
+          : "social";
+    const amount =
+      type === "email" ? "N 25,000" : type === "sponsored" ? "N 35,000" : "N 8,000";
+    const title =
+      type === "email"
+        ? t("homeExtras.campaignEmail")
+        : type === "sponsored"
+          ? t("homeExtras.campaignSponsored")
+          : t("homeExtras.campaignSocial");
+
+    void addCampaign({
+      type,
+      title,
+      eventName: event?.title ?? "Event",
+      eventId: event?.id,
+      amount,
+    });
+  };
+
+  const campaignTypes = useMemo(
+    () =>
+      CAMPAIGN_TYPE_CONFIG.map((campaign) => ({
+        ...campaign,
+        title: t(campaign.titleKey),
+        subtitle: t(campaign.subtitleKey),
+      })),
+    [t],
+  );
 
   const canProceed = useMemo(
     () => selectedCampaign !== null,
@@ -247,17 +287,17 @@ const StartCampaignScreen = () => {
         >
           <ChevronLeft size={18} color={isDark ? "#E4E7EC" : "#101828"} />
           <ThemedText weight="500" className="text-[17px]">
-            Back
+            {t("common.back")}
           </ThemedText>
         </TouchableOpacity>
 
         <ThemedText weight="700" className="text-2xl mt-4">
-          Start a Campaign
+          {t("settings.campaign.title")}
         </ThemedText>
         <ThemedText
           className={`text-[15px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
         >
-          What type of campaign do you want to create
+          {t("settings.campaign.subtitle")}
         </ThemedText>
 
         <View
@@ -272,7 +312,7 @@ const StartCampaignScreen = () => {
           <ThemedText
             className={`text-[14px] ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
           >
-            You only have access to campaigns plan you select
+            {t("settings.campaign.accessNote")}
           </ThemedText>
         </View>
       </View>
@@ -290,7 +330,7 @@ const StartCampaignScreen = () => {
           </View>
         ) : (
           <View className="gap-3">
-            {CAMPAIGN_TYPES.map((campaign, i) => {
+            {campaignTypes.map((campaign, i) => {
               const isActive = selectedCampaign === campaign.key;
 
               return (
@@ -340,7 +380,7 @@ const StartCampaignScreen = () => {
 
       <View className="px-4 pb-6 pt-2">
         <GradientButton
-          label="Next"
+          label={t("settings.campaign.next")}
           onPress={() => setShowEventModal(true)}
           disabled={!canProceed}
           height={58}
@@ -422,6 +462,7 @@ const StartCampaignScreen = () => {
             setTimeout(() => setShowEventModal(true), 120);
           }}
           onSubmit={() => {
+            persistActiveCampaign();
             setShowAdReviewModal(false);
             setTimeout(() => setShowSuccessModal(true), 120);
           }}
@@ -469,6 +510,7 @@ const StartCampaignScreen = () => {
             setTimeout(() => setShowEventModal(true), 120);
           }}
           onSubmit={() => {
+            persistActiveCampaign();
             setShowEmailReviewModal(false);
             emailReviewSheetRef.current?.dismiss();
             setTimeout(() => setShowSuccessModal(true), 120);
@@ -514,6 +556,7 @@ const StartCampaignScreen = () => {
             setTimeout(() => setShowEventModal(true), 120);
           }}
           onSubmit={() => {
+            persistActiveCampaign();
             setShowSponsoredReviewModal(false);
             setTimeout(() => setShowSuccessModal(true), 120);
           }}
@@ -525,7 +568,7 @@ const StartCampaignScreen = () => {
         visible={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          router.replace("/(organizer)/account" as any);
+          router.replace("/(organizer)/(tabs)" as any);
         }}
       />
     </AppSafeArea>

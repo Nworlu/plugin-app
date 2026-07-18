@@ -7,6 +7,7 @@ import {
   TicketType,
 } from "@/feature/organizer/events/types";
 import { usePatchEvent } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import type {
   EntryTicketApiPayload,
@@ -20,6 +21,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import {
   ChevronDown,
+  ChevronUp,
   ImageIcon,
   Link,
   List,
@@ -41,13 +43,15 @@ import {
 /* ─── Types ───────────────────────────────────────────────────── */
 
 const SEAT_CATEGORIES = [
-  "Non-seated",
-  "Seated",
-  "VIP",
-  "General Admission",
-  "Standing",
-  "Table",
-];
+  { key: "nonSeated", value: "Non-seated" },
+  { key: "seated", value: "Seated" },
+] as const;
+
+const TICKET_TYPE_KEYS: Record<TicketType, string> = {
+  paid: "events.wizard.tickets.paid",
+  free: "events.wizard.tickets.free",
+  donation: "events.wizard.tickets.donation",
+};
 
 const LABEL_COLORS = [
   { name: "Black", hex: "#000000" },
@@ -65,6 +69,8 @@ type TicketStepProps = {
   setTickets: React.Dispatch<React.SetStateAction<Ticket[]>>;
   eventId?: string;
   isLoading?: boolean;
+  eventStartAt?: Date;
+  eventEndAt?: Date;
 };
 
 export default function TicketStep({
@@ -73,6 +79,7 @@ export default function TicketStep({
   eventId,
   isLoading,
 }: TicketStepProps) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -114,7 +121,6 @@ export default function TicketStep({
   /* ── Pricing ── */
   const [price, setPrice] = useState("");
   const [discountPct, setDiscountPct] = useState("0");
-  const [pricingShowDiscount, setPricingShowDiscount] = useState(false);
 
   /* ── Ticket perks ── */
   const [perks, setPerks] = useState("");
@@ -140,21 +146,6 @@ export default function TicketStep({
     ),
     [],
   );
-
-  /* ── Computed ── */
-  if (isLoading) {
-    return (
-      <View className="flex-1 items-center justify-center py-16">
-        <ActivityIndicator size="large" color="#F04438" />
-        <ThemedText
-          weight="500"
-          className={`text-[14px] mt-3 ${isDark ? "text-[#98A2B3]" : "text-[#667085]"}`}
-        >
-          Loading ticket data…
-        </ThemedText>
-      </View>
-    );
-  }
 
   const computedDiscount = (() => {
     const p = parseFloat(price) || 0;
@@ -192,11 +183,14 @@ export default function TicketStep({
     setDetailsSaved(false);
     setLabellingExpanded(false);
     setPricingExpanded(false);
-    setPricingShowDiscount(false);
     setTicketPerksExpanded(false);
   };
 
   const openCreateTicket = (cat: TicketCategory) => {
+    if (tickets.length > 0) {
+      categorySheetRef.current?.dismiss();
+      return;
+    }
     resetForm();
     setSelectedCategory(cat);
     categorySheetRef.current?.dismiss();
@@ -225,9 +219,62 @@ export default function TicketStep({
     setTicketFormOpen(true);
   };
 
+  const mergeDateAndTime = useCallback(
+    (datePart: Date, timePart: Date): Date => {
+      const merged = new Date(datePart);
+      merged.setHours(
+        timePart.getHours(),
+        timePart.getMinutes(),
+        timePart.getSeconds(),
+        timePart.getMilliseconds(),
+      );
+      return merged;
+    },
+    [],
+  );
+
+  const getTicketWindowError = useCallback((): string | null => {
+    const salesStartAt = mergeDateAndTime(salesStartDate, salesStartTime);
+    const salesEndAt = mergeDateAndTime(salesEndDate, salesEndTime);
+
+    if (salesEndAt.getTime() <= salesStartAt.getTime()) {
+      return t("events.wizard.tickets.salesEndError");
+    }
+    return null;
+  }, [
+    mergeDateAndTime,
+    salesStartDate,
+    salesStartTime,
+    salesEndDate,
+    salesEndTime,
+    t,
+  ]);
+
+  const ticketWindowError = useMemo(
+    () => (ticketFormOpen ? getTicketWindowError() : null),
+    [ticketFormOpen, getTicketWindowError],
+  );
+
+  /* ── Computed ── */
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center py-16">
+        <ActivityIndicator size="large" color="#F04438" />
+        <ThemedText
+          weight="500"
+          className={`text-[14px] mt-3 ${isDark ? "text-[#98A2B3]" : "text-[#667085]"}`}
+        >
+          {t("events.wizard.tickets.loading")}
+        </ThemedText>
+      </View>
+    );
+  }
+
   /* Save just the GROUP / ENTRY TICKET DETAILS section */
   const handleSaveDetails = () => {
     if (!ticketName.trim()) return;
+    const rangeError = getTicketWindowError();
+    if (rangeError) return;
     const ticketNum = editingTicketId
       ? (tickets.find((t) => t.id === editingTicketId)?.ticketNumber ??
         tickets.length + 1)
@@ -308,7 +355,7 @@ export default function TicketStep({
         weight="700"
         className="text-[9px] text-[#B45309] tracking-[0.4px]"
       >
-        OPTIONAL
+        {t("events.wizard.optional")}
       </ThemedText>
     </View>
   );
@@ -348,12 +395,16 @@ export default function TicketStep({
       >
         {title}
       </ThemedText>
-      {optional && <OptionalBadge />}
-      <ChevronDown
-        size={16}
-        color="#667085"
-        style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}
-      />
+      <View className="flex-row items-center shrink-0">
+        {optional && <OptionalBadge />}
+        <View className="w-5 items-end ml-2">
+          {expanded ? (
+            <ChevronUp size={16} color={isDark ? "#98A2B3" : "#667085"} />
+          ) : (
+            <ChevronDown size={16} color={isDark ? "#98A2B3" : "#667085"} />
+          )}
+        </View>
+      </View>
     </TouchableOpacity>
   );
 
@@ -372,8 +423,8 @@ export default function TicketStep({
           <SectionHeader
             title={
               selectedCategory === "entry"
-                ? "ENTRY TICKET DETAILS"
-                : "GROUP TICKET DETAILS"
+                ? t("events.wizard.tickets.entryTicketDetails")
+                : t("events.wizard.tickets.groupTicketDetails")
             }
             done={detailsSaved}
             expanded={detailsExpanded}
@@ -384,7 +435,7 @@ export default function TicketStep({
             <View className="px-[14px] pb-4">
               {/* Setting up label */}
               <ThemedText className="text-[12px] text-[#667085] mb-[6px]">
-                Setting up Tickets
+                {t("events.wizard.tickets.settingUp")}
               </ThemedText>
               {/* Ticket type badge */}
               <View
@@ -395,8 +446,8 @@ export default function TicketStep({
                   className="text-[13px] text-white tracking-[0.6px]"
                 >
                   {selectedCategory === "entry"
-                    ? "ENTRY TICKET"
-                    : "GROUP TICKET"}
+                    ? t("events.wizard.tickets.entryTicket")
+                    : t("events.wizard.tickets.groupTicket")}
                 </ThemedText>
               </View>
 
@@ -404,15 +455,15 @@ export default function TicketStep({
               <ThemedText
                 className={`text-[13px] mb-[10px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                Specify your ticket type
+                {t("events.wizard.tickets.specifyType")}
               </ThemedText>
               <View className="flex-row gap-[10px] mb-[18px]">
-                {(["paid", "free", "donation"] as TicketType[]).map((t) => (
+                {(["paid", "free", "donation"] as TicketType[]).map((type) => (
                   <TouchableOpacity
-                    key={t}
-                    onPress={() => setTicketType(t)}
+                    key={type}
+                    onPress={() => setTicketType(type)}
                     className={`px-[18px] py-[9px] rounded-3xl border ${
-                      ticketType === t
+                      ticketType === type
                         ? "bg-[#1F2937] border-[#1F2937]"
                         : isDark
                           ? "border-[#2C2C2E]"
@@ -423,14 +474,14 @@ export default function TicketStep({
                     <ThemedText
                       weight="700"
                       className={`text-[13px] capitalize ${
-                        ticketType === t
+                        ticketType === type
                           ? "text-white"
                           : isDark
                             ? "text-[#D0D5DD]"
                             : "text-[#344054]"
                       }`}
                     >
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                      {t(TICKET_TYPE_KEYS[type])}
                     </ThemedText>
                   </TouchableOpacity>
                 ))}
@@ -440,19 +491,18 @@ export default function TicketStep({
                 weight="700"
                 className={`text-[15px] mb-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
               >
-                Ticket Details
+                {t("events.wizard.tickets.ticketDetails")}
               </ThemedText>
 
-              {/* Ticket Name */}
               <ThemedText
                 className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                Ticket name *
+                {t("events.wizard.tickets.ticketName")}
               </ThemedText>
               <TextInput
                 value={ticketName}
                 onChangeText={(v) => setTicketName(v.slice(0, 200))}
-                placeholder="Enter ticket name"
+                placeholder={t("events.wizard.tickets.enterTicketName")}
                 placeholderTextColor={placeholderColor}
                 maxLength={200}
                 className={`border rounded-[10px] px-[14px] py-[13px] text-[14px] mb-1 ${
@@ -462,14 +512,13 @@ export default function TicketStep({
                 }`}
               />
               <ThemedText className="text-[11px] text-[#F04438] mb-[14px]">
-                Max char - 200 Words
+                {t("events.wizard.tickets.maxChar")}
               </ThemedText>
 
-              {/* Ticket category dropdown */}
               <ThemedText
                 className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                Ticket category
+                {t("events.wizard.tickets.ticketCategory")}
               </ThemedText>
               <TouchableOpacity
                 onPress={() => setSeatCategoryOpen((v) => !v)}
@@ -489,7 +538,7 @@ export default function TicketStep({
                         : "text-[#98A2B3]"
                   }`}
                 >
-                  {seatCategory || "Select category"}
+                  {seatCategory || t("events.wizard.tickets.selectCategory")}
                 </ThemedText>
                 <ChevronDown
                   size={16}
@@ -511,9 +560,9 @@ export default function TicketStep({
                 >
                   {SEAT_CATEGORIES.map((cat, i) => (
                     <TouchableOpacity
-                      key={cat}
+                      key={cat.key}
                       onPress={() => {
-                        setSeatCategory(cat);
+                        setSeatCategory(cat.value);
                         setSeatCategoryOpen(false);
                       }}
                       className={`py-3 px-[14px] ${
@@ -523,7 +572,7 @@ export default function TicketStep({
                             : "border-t border-t-[#E4E7EC]"
                           : ""
                       } ${
-                        seatCategory === cat
+                        seatCategory === cat.value
                           ? isDark
                             ? "bg-[#3B1A1A]"
                             : "bg-[#FEF0EF]"
@@ -533,14 +582,14 @@ export default function TicketStep({
                     >
                       <ThemedText
                         className={`text-[14px] ${
-                          seatCategory === cat
+                          seatCategory === cat.value
                             ? "text-[#D92D20]"
                             : isDark
                               ? "text-[#D0D5DD]"
                               : "text-[#344054]"
                         }`}
                       >
-                        {cat}
+                        {t(`events.wizard.tickets.${cat.key}`)}
                       </ThemedText>
                     </TouchableOpacity>
                   ))}
@@ -551,7 +600,7 @@ export default function TicketStep({
               <ThemedText
                 className={`text-[13px] mb-2 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
               >
-                Quantity
+                {t("events.wizard.tickets.quantity")}
               </ThemedText>
               <View
                 className={`flex-row items-center border rounded-[10px] mb-4 overflow-hidden ${
@@ -601,7 +650,7 @@ export default function TicketStep({
                   <ThemedText
                     className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                   >
-                    Sales starts on *
+                    {t("events.wizard.tickets.salesStartsOn")}
                   </ThemedText>
                   <NativeDateTimePicker
                     mode="date"
@@ -613,7 +662,7 @@ export default function TicketStep({
                   <ThemedText
                     className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                   >
-                    Sales end on *
+                    {t("events.wizard.tickets.salesEndOn")}
                   </ThemedText>
                   <NativeDateTimePicker
                     mode="date"
@@ -629,7 +678,7 @@ export default function TicketStep({
                   <ThemedText
                     className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                   >
-                    Sales start time
+                    {t("events.wizard.tickets.salesStartTime")}
                   </ThemedText>
                   <NativeDateTimePicker
                     mode="time"
@@ -641,7 +690,7 @@ export default function TicketStep({
                   <ThemedText
                     className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                   >
-                    Sales end time
+                    {t("events.wizard.tickets.salesEndTime")}
                   </ThemedText>
                   <NativeDateTimePicker
                     mode="time"
@@ -652,6 +701,12 @@ export default function TicketStep({
               </View>
 
               {/* Trash + Save */}
+              {ticketWindowError ? (
+                <ThemedText className="text-[12px] text-[#F04438] mb-3">
+                  {ticketWindowError}
+                </ThemedText>
+              ) : null}
+
               <View className="flex-row gap-[10px] items-center">
                 <TouchableOpacity
                   onPress={() => {
@@ -667,9 +722,9 @@ export default function TicketStep({
                 </TouchableOpacity>
                 <View className="flex-1">
                   <GradientButton
-                    label="Save"
+                    label={t("events.wizard.tickets.save")}
                     onPress={handleSaveDetails}
-                    disabled={!ticketName.trim()}
+                    disabled={!ticketName.trim() || !!ticketWindowError}
                     height={44}
                     borderRadius={10}
                   />
@@ -688,7 +743,9 @@ export default function TicketStep({
               }`}
             >
               <ThemedText className="text-[11px] text-[#667085] mb-1">
-                Ticket {String(savedTicket.ticketNumber).padStart(3, "0")}
+                {t("events.wizard.tickets.ticketLabel", {
+                  number: String(savedTicket.ticketNumber).padStart(3, "0"),
+                })}
               </ThemedText>
               <View className="flex-row items-center justify-between mb-[10px]">
                 <ThemedText
@@ -702,7 +759,7 @@ export default function TicketStep({
                   activeOpacity={0.8}
                 >
                   <ThemedText className="text-[13px] text-[#D92D20]">
-                    Edit
+                    {t("events.edit.edit")}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
@@ -750,7 +807,7 @@ export default function TicketStep({
           className={`border rounded-xl overflow-hidden mb-2 ${isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
         >
           <SectionHeader
-            title="LABELLING"
+            title={t("events.wizard.tickets.labelling")}
             done={!!labelGuideImage}
             expanded={labellingExpanded}
             onToggle={() => setLabellingExpanded((v) => !v)}
@@ -903,7 +960,7 @@ export default function TicketStep({
           className={`border rounded-xl overflow-hidden mb-2 ${isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
         >
           <SectionHeader
-            title="PRICING AND DISCOUNTS"
+            title={t("events.wizard.tickets.pricing")}
             done={ticketType === "free" ? true : !!price}
             expanded={pricingExpanded}
             onToggle={() => setPricingExpanded((v) => !v)}
@@ -970,54 +1027,37 @@ export default function TicketStep({
                     />
                   </View>
 
-                  {/* Edit Pricing toggle */}
-                  <TouchableOpacity
-                    onPress={() => setPricingShowDiscount((v) => !v)}
-                    activeOpacity={0.8}
-                    className={pricingShowDiscount ? "mb-[14px]" : ""}
-                  >
-                    <ThemedText className="text-[13px] text-[#D92D20]">
-                      {pricingShowDiscount
-                        ? "Hide Pricing \u2227"
-                        : "Edit Pricing"}
-                    </ThemedText>
-                  </TouchableOpacity>
-
                   {/* Discount section */}
-                  {pricingShowDiscount && (
-                    <>
-                      <ThemedText
-                        className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-                      >
-                        Discount price (if applicable)
+                  <ThemedText
+                    className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+                  >
+                    Discount price (if applicable)
+                  </ThemedText>
+                  <View className="flex-row gap-[6px]">
+                    <View
+                      className={`flex-1 flex-row items-center border rounded-[10px] px-2 overflow-hidden ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"}`}
+                    >
+                      <TextInput
+                        value={discountPct}
+                        onChangeText={(v) =>
+                          setDiscountPct(v.replace(/[^0-9.]/g, ""))
+                        }
+                        keyboardType="numeric"
+                        className={`flex-1 text-[14px] py-[13px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
+                        style={{ textAlign: "center" }}
+                      />
+                      <ThemedText className="text-[13px] text-[#667085]">
+                        %
                       </ThemedText>
-                      <View className="flex-row gap-[6px]">
-                        <View
-                          className={`flex-1 flex-row items-center border rounded-[10px] px-2 overflow-hidden ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"}`}
-                        >
-                          <TextInput
-                            value={discountPct}
-                            onChangeText={(v) =>
-                              setDiscountPct(v.replace(/[^0-9.]/g, ""))
-                            }
-                            keyboardType="numeric"
-                            className={`flex-1 text-[14px] py-[13px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
-                            style={{ textAlign: "center" }}
-                          />
-                          <ThemedText className="text-[13px] text-[#667085]">
-                            %
-                          </ThemedText>
-                        </View>
-                        <View
-                          className={`justify-center border rounded-[10px] px-[10px] ${isDark ? "border-[#2C2C2E] bg-[#2C2C2E]" : "border-[#E4E7EC] bg-[#F2F4F7]"}`}
-                        >
-                          <ThemedText className="text-[12px] text-[#667085]">
-                            {"\u20A6"} {computedDiscount}
-                          </ThemedText>
-                        </View>
-                      </View>
-                    </>
-                  )}
+                    </View>
+                    <View
+                      className={`justify-center border rounded-[10px] px-[10px] ${isDark ? "border-[#2C2C2E] bg-[#2C2C2E]" : "border-[#E4E7EC] bg-[#F2F4F7]"}`}
+                    >
+                      <ThemedText className="text-[12px] text-[#667085]">
+                        {"\u20A6"} {computedDiscount}
+                      </ThemedText>
+                    </View>
+                  </View>
                 </>
               ) : (
                 <ThemedText className="text-[13px] text-[#667085] py-2">
@@ -1033,7 +1073,7 @@ export default function TicketStep({
           className={`border rounded-xl overflow-hidden mb-4 ${isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
         >
           <SectionHeader
-            title="TICKET PERKS"
+            title={t("events.wizard.tickets.ticketPerks")}
             done={!!perks.trim()}
             expanded={ticketPerksExpanded}
             onToggle={() => setTicketPerksExpanded((v) => !v)}
@@ -1185,7 +1225,9 @@ export default function TicketStep({
         {/* ── Bottom CTA ── */}
         <GradientButton
           label={
-            selectedCategory === "entry" ? "Add Ticket" : "Add to Group Ticket"
+            selectedCategory === "entry"
+              ? t("events.wizard.tickets.addTicket")
+              : t("events.wizard.tickets.addToGroup")
           }
           loading={isSaving}
           onPress={async () => {
@@ -1266,7 +1308,7 @@ export default function TicketStep({
                 }
               } catch (err: unknown) {
                 const msg =
-                  err instanceof Error ? err.message : "Failed to save ticket";
+                  err instanceof Error ? err.message : t("events.wizard.tickets.saveFailed");
                 setSaveError(msg);
                 return;
               }
@@ -1274,7 +1316,7 @@ export default function TicketStep({
             setTicketFormOpen(false);
             resetForm();
           }}
-          disabled={!detailsSaved || isSaving}
+          disabled={!detailsSaved || !!ticketWindowError || isSaving}
           height={52}
           borderRadius={12}
         />
@@ -1291,7 +1333,7 @@ export default function TicketStep({
         weight="700"
         className={`text-[22px] leading-[30px] mb-6 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Set up your ticketing{"\n"}options for attendees.
+        {t("events.wizard.tickets.title")}
       </ThemedText>
 
       {tickets.length === 0 ? (
@@ -1303,11 +1345,10 @@ export default function TicketStep({
               weight="700"
               className={`text-[18px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
             >
-              {"Let's create tickets"}
+              {t("events.wizard.tickets.letsCreate")}
             </ThemedText>
             <ThemedText className="text-[13px] text-[#667085] text-center leading-5">
-              Create a section if you want to sell multiple ticket{"\n"}that
-              share the same inventory. i.e
+              {t("events.wizard.tickets.emptyHint")}
             </ThemedText>
           </View>
           <TouchableOpacity
@@ -1319,7 +1360,7 @@ export default function TicketStep({
               weight="700"
               className={`text-[15px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
             >
-              Add tickets
+              {t("events.wizard.tickets.addTickets")}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -1346,7 +1387,9 @@ export default function TicketStep({
                   weight="700"
                   className={`text-[18px] mb-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
                 >
-                  {group.category === "entry" ? "ENTRY TICKET" : "GROUP TICKET"}
+                  {group.category === "entry"
+                    ? t("events.wizard.tickets.entryTicket")
+                    : t("events.wizard.tickets.groupTicket")}
                 </ThemedText>
 
                 {group.items.map((ticket) => (
@@ -1389,7 +1432,7 @@ export default function TicketStep({
                             </ThemedText>
                             <ThemedText className="text-[12px] text-[#667085]">
                               {" "}
-                              per person
+                              {t("events.wizard.tickets.perPerson")}
                             </ThemedText>
                           </View>
                         ) : null}
@@ -1415,7 +1458,9 @@ export default function TicketStep({
                             <ThemedText
                               className={`text-[12px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                             >
-                              {ticket.quantity} tickets available
+                              {t("events.wizard.tickets.ticketsAvailable", {
+                                count: ticket.quantity,
+                              })}
                             </ThemedText>
                           </View>
                         ) : null}
@@ -1435,7 +1480,7 @@ export default function TicketStep({
                       >
                         <Trash2 size={14} color="#F04438" />
                         <ThemedText className="text-[13px] text-[#F04438]">
-                          Delete
+                          {t("events.wizard.tickets.delete")}
                         </ThemedText>
                       </TouchableOpacity>
                       <ThemedText className="text-[14px] text-[#667085] mr-3">
@@ -1453,7 +1498,7 @@ export default function TicketStep({
                         <ThemedText
                           className={`text-[13px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                         >
-                          Edit
+                          {t("events.wizard.tickets.edit")}
                         </ThemedText>
                       </TouchableOpacity>
                     </View>
@@ -1462,18 +1507,13 @@ export default function TicketStep({
               </View>
             ));
           })()}
-          <TouchableOpacity
-            onPress={() => categorySheetRef.current?.present()}
-            className={`border-2 border-dashed rounded-[10px] py-[14px] items-center mt-1 ${isDark ? "border-[#2C2C2E]" : "border-[#E4E7EC]"}`}
-            activeOpacity={0.8}
+          <View
+            className={`border rounded-[10px] py-[12px] px-3 items-center mt-1 ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-[#F9FAFB]"}`}
           >
-            <ThemedText
-              weight="500"
-              className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
-            >
-              Add tickets
+            <ThemedText className="text-[13px] text-[#667085] text-center">
+              {t("events.wizard.tickets.oneTicketLimit")}
             </ThemedText>
-          </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -1508,7 +1548,7 @@ export default function TicketStep({
               weight="700"
               className={`text-[18px] ${isDark ? "text-[#F9E8E6]" : "text-[#2C1810]"}`}
             >
-              Select a ticket category
+              {t("events.wizard.tickets.selectCategoryTitle")}
             </ThemedText>
             <TouchableOpacity
               onPress={() => categorySheetRef.current?.dismiss()}
@@ -1528,20 +1568,19 @@ export default function TicketStep({
                 weight="700"
                 className={`text-[17px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
               >
-                Entry Ticket
+                {t("events.wizard.tickets.entryTicketCard")}
               </ThemedText>
               <ThemedText className="text-[13px] text-[#667085] leading-5">
-                General admission tickets that do not have assigned seating or
-                section. These allow entry to the event but are not tied to a
-                specific/section seat.
+                {t("events.wizard.tickets.entryTicketDesc")}
               </ThemedText>
               <TouchableOpacity
                 onPress={() => openCreateTicket("entry")}
-                className="self-start bg-[#D92D20] rounded-[10px] py-[11px] px-[22px]"
+                disabled={tickets.length > 0}
+                className={`self-start rounded-[10px] py-[11px] px-[22px] ${tickets.length > 0 ? "bg-[#98A2B3]" : "bg-[#D92D20]"}`}
                 activeOpacity={0.85}
               >
                 <ThemedText weight="700" className="text-[14px] text-white">
-                  Create ticket
+                  {t("events.wizard.tickets.createTicket")}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -1561,20 +1600,19 @@ export default function TicketStep({
                 weight="700"
                 className={`text-[17px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
               >
-                Grouped Tickets
+                {t("events.wizard.tickets.groupedTickets")}
               </ThemedText>
               <ThemedText className="text-[13px] text-[#667085] leading-5">
-                Tickets associated with specific seats or sections on the
-                seat-map. These are typically good for creating multiple ticket
-                categories
+                {t("events.wizard.tickets.groupedTicketsDesc")}
               </ThemedText>
               <TouchableOpacity
                 onPress={() => openCreateTicket("grouped")}
-                className="self-start bg-[#D92D20] rounded-[10px] py-[11px] px-[22px]"
+                disabled={tickets.length > 0}
+                className={`self-start rounded-[10px] py-[11px] px-[22px] ${tickets.length > 0 ? "bg-[#98A2B3]" : "bg-[#D92D20]"}`}
                 activeOpacity={0.85}
               >
                 <ThemedText weight="700" className="text-[14px] text-white">
-                  Create ticket
+                  {t("events.wizard.tickets.createTicket")}
                 </ThemedText>
               </TouchableOpacity>
             </View>

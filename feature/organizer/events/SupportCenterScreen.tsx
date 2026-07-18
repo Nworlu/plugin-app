@@ -2,6 +2,7 @@ import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronDown, HelpCircle, Search } from "lucide-react-native";
@@ -75,8 +76,24 @@ const ARTICLES: Article[] = [
 
 const SupportCenterScreen = () => {
   useLocalSearchParams<{ eventId?: string }>();
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+
+  const getCategoryLabel = (cat: ArticleCategory) => {
+    switch (cat) {
+      case "All":
+        return t("events.support.categoryAll");
+      case "Ticket Management":
+        return t("events.support.categoryTicketManagement");
+      case "Check-in Issues":
+        return t("events.support.categoryCheckIn");
+      case "Attendee Management":
+        return t("events.support.categoryAttendee");
+      default:
+        return cat;
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<ArticleCategory>("All");
@@ -101,7 +118,7 @@ const SupportCenterScreen = () => {
     <AppSafeArea>
       <View className="px-4 pt-2">
         <BackHeader
-          label="Back"
+          label={t("common.back")}
           onPress={() => router.back()}
           iconColor={isDark ? "#E4E7EC" : "#101928"}
           textClassName={isDark ? "text-[#E4E7EC]" : "text-[#101928]"}
@@ -111,12 +128,10 @@ const SupportCenterScreen = () => {
         {/* Hero card */}
         <View className="mt-3 rounded-2xl bg-[#6A6978] px-4 py-3.5">
           <ThemedText weight="700" className="text-white text-xl leading-8">
-            Support Center
+            {t("events.support.title")}
           </ThemedText>
           <ThemedText className="text-[#E5E7EB] text-sm mt-1.5 leading-5">
-            Welcome to Support Center! Here, you can find solutions for common
-            issues, access step-by-step guides for DIY fixes, and submit support
-            tickets directly to our admin agents
+            {t("events.support.welcomeMessage")}
           </ThemedText>
 
           <View
@@ -134,7 +149,7 @@ const SupportCenterScreen = () => {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Event name"
+              placeholder={t("events.support.searchPlaceholder")}
               placeholderTextColor="#98A2B3"
               style={{
                 marginLeft: 8,
@@ -200,7 +215,7 @@ const SupportCenterScreen = () => {
                     : "#586170",
                 }}
               >
-                {cat}
+                {getCategoryLabel(cat)}
               </ThemedText>
             </TouchableOpacity>
           );
@@ -236,6 +251,7 @@ type ArticleRowProps = {
 };
 
 const ArticleRow = ({ article, showDivider }: ArticleRowProps) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -272,7 +288,7 @@ const ArticleRow = ({ article, showDivider }: ArticleRowProps) => {
 
         <View className="flex-row items-center gap-1">
           <ThemedText weight="700" className="text-[#1D2739] text-[14px]">
-            Read
+            {t("events.support.read")}
           </ThemedText>
           <ChevronDown size={14} color="#1D2739" />
         </View>
@@ -289,9 +305,7 @@ const ArticleRow = ({ article, showDivider }: ArticleRowProps) => {
           }}
         >
           <ThemedText className="text-[#344054] text-[14px] leading-5">
-            {
-              'To reassign a ticket, go to the Attendees section of your event, find the attendee, tap the three-dot menu, and select "Reassign Ticket". Enter the new attendee\'s email and confirm.'
-            }
+            {t("events.support.reassignSteps")}
           </ThemedText>
         </View>
       ) : null}
@@ -304,6 +318,7 @@ const ArticleRow = ({ article, showDivider }: ArticleRowProps) => {
 /* ─── Need Help Card ───────────────────────────────────────── */
 
 const NeedHelpCard = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -339,17 +354,17 @@ const NeedHelpCard = () => {
 
       <View className="px-4 py-4">
         <ThemedText weight="700" className="text-[#101928] text-[16px]">
-          Need Help?
+          {t("events.support.needHelp")}
         </ThemedText>
         <ThemedText weight="700" className="text-[#101928] text-[16px]">
-          Reach out to support agent
+          {t("events.support.reachOut")}
         </ThemedText>
         <ThemedText className="text-[#667185] text-[13px] mt-1">
-          Submit a support request to get assistance from our admin agents
+          {t("events.support.submitRequest")}
         </ThemedText>
 
         <GradientButton
-          label="Talk to an Agent"
+          label={t("events.support.talkToAgent")}
           onPress={() => {}}
           style={{ marginTop: 16 }}
           height={48}

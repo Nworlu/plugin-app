@@ -1,3 +1,4 @@
+import { Colors } from "@/constants/theme";
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
@@ -13,17 +14,18 @@ type GlassCardProps = {
 const GlassCard = ({ isDark, children, className, style }: GlassCardProps) => {
   const canUseNativeGlass =
     Platform.OS === "ios" && isGlassEffectAPIAvailable();
+  const palette = isDark ? Colors.dark : Colors.light;
 
   const baseStyle: ViewStyle = {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     borderColor: isDark
-      ? "rgba(203, 213, 225, 0.26)"
-      : "rgba(148, 163, 184, 0.24)",
+      ? "rgba(208, 213, 221, 0.24)"
+      : "rgba(208, 213, 221, 0.7)",
     backgroundColor: isDark
-      ? "rgba(15, 23, 42, 0.34)"
-      : "rgba(255, 255, 255, 0.50)",
+      ? "rgba(17, 24, 39, 0.62)"
+      : "rgba(255, 255, 255, 0.86)",
   };
 
   const chrome = (
@@ -53,13 +55,13 @@ const GlassCard = ({ isDark, children, className, style }: GlassCardProps) => {
         colors={
           isDark
             ? [
-                "rgba(96, 165, 250, 0.08)",
-                "rgba(129, 140, 248, 0.05)",
+                "rgba(188, 22, 34, 0.12)",
+                "rgba(244, 112, 45, 0.08)",
                 "rgba(0,0,0,0)",
               ]
             : [
-                "rgba(191, 219, 254, 0.18)",
-                "rgba(221, 214, 254, 0.14)",
+                "rgba(188, 22, 34, 0.08)",
+                "rgba(244, 112, 45, 0.1)",
                 "rgba(255,255,255,0)",
               ]
         }
@@ -76,11 +78,11 @@ const GlassCard = ({ isDark, children, className, style }: GlassCardProps) => {
           left: 1,
           right: 1,
           bottom: 1,
-          borderRadius: 11,
+          borderRadius: 15,
           borderWidth: 1,
           borderColor: isDark
             ? "rgba(255,255,255,0.08)"
-            : "rgba(255,255,255,0.55)",
+            : "rgba(255,255,255,0.65)",
         }}
       />
 
@@ -95,7 +97,7 @@ const GlassCard = ({ isDark, children, className, style }: GlassCardProps) => {
         glassEffectStyle="regular"
         colorScheme={isDark ? "dark" : "light"}
         tintColor={
-          isDark ? "rgba(15, 23, 42, 0.38)" : "rgba(255, 255, 255, 0.34)"
+          isDark ? "rgba(17, 24, 39, 0.42)" : "rgba(255, 255, 255, 0.46)"
         }
         style={[baseStyle, style]}
       >
@@ -110,8 +112,8 @@ const GlassCard = ({ isDark, children, className, style }: GlassCardProps) => {
       style={[
         baseStyle,
         {
-          shadowColor: isDark ? "#020617" : "#64748B",
-          shadowOpacity: isDark ? 0.36 : 0.18,
+          shadowColor: isDark ? "#020617" : "#344054",
+          shadowOpacity: isDark ? 0.34 : 0.14,
           shadowRadius: 20,
           shadowOffset: { width: 0, height: 10 },
           elevation: 8,

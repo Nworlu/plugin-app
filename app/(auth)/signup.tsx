@@ -1,43 +1,73 @@
 import GradientButton from "@/components/gradient-button";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
 import { useRegisterStep1 } from "@/hooks/api/use-auth";
-import {
+import { useTranslation } from "@/hooks/use-translation";
+import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetModal,
   BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
+import PhoneInput from "react-native-phone-number-input";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SignupScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [country] = useState("NG");
-  const [error, setError] = useState("");
+  const [phoneNational, setPhoneNational] = useState("");
+  const [country, setCountry] = useState("NG");
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    form: "",
+  });
+
+  const clearError = (field: keyof typeof errors) => {
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
   const { mutate: registerStep1, isPending } = useRegisterStep1();
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const sheetRef = useRef<BottomSheet>(null);
+  const scrollRef = useRef<React.ElementRef<typeof BottomSheetScrollView>>(null);
+  const phoneInputRef = useRef<PhoneInput>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const snapPoints = useMemo(() => ["70%", "94%"], []);
 
   useEffect(() => {
-    const sheet = sheetRef.current;
-    const t = setTimeout(() => sheet?.present(), 100);
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      sheetRef.current?.snapToIndex(1);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+      sheetRef.current?.snapToIndex(0);
+    });
+
     return () => {
-      clearTimeout(t);
-      sheet?.dismiss();
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
 
@@ -45,34 +75,59 @@ export default function SignupScreen() {
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
     const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPhone = phone.trim();
+
+    const nextErrors = {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      form: "",
+    };
 
     if (!trimmedFirst) {
-      setError("First name is required");
-      return;
+      nextErrors.firstName = t("auth.signup.firstNameRequired");
     }
     if (!trimmedLast) {
-      setError("Last name is required");
-      return;
+      nextErrors.lastName = t("auth.signup.lastNameRequired");
     }
     if (!trimmedEmail) {
-      setError("Email address is required");
+      nextErrors.email = t("auth.signup.emailRequired");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      nextErrors.email = t("auth.signup.emailInvalid");
+    }
+
+    const phoneCheck =
+      phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero();
+    const nationalNumber = (phoneCheck?.number ?? phoneNational).trim();
+    const formattedPhone = (phoneCheck?.formattedNumber ?? phone).trim();
+
+    if (!nationalNumber) {
+      nextErrors.phone = t("auth.signup.phoneRequired");
+    } else if (!phoneInputRef.current?.isValidNumber(nationalNumber)) {
+      nextErrors.phone = t("auth.signup.phoneInvalid");
+    }
+
+    const hasErrors = Object.values(nextErrors).some(Boolean);
+    if (hasErrors) {
+      setErrors(nextErrors);
+      requestAnimationFrame(() => {
+        if (nextErrors.firstName || nextErrors.lastName) {
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        } else if (nextErrors.email) {
+          scrollRef.current?.scrollTo({ y: 180, animated: true });
+        } else if (nextErrors.phone) {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }
+      });
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Enter a valid email address");
-      return;
-    }
-    if (!trimmedPhone) {
-      setError("Phone number is required");
-      return;
-    }
-    setError("");
+
+    Keyboard.dismiss();
 
     registerStep1(
       {
         email: trimmedEmail,
-        phone: trimmedPhone,
+        phone: formattedPhone,
         country,
         firstName: trimmedFirst,
         lastName: trimmedLast,
@@ -83,7 +138,7 @@ export default function SignupScreen() {
             pathname: "/(auth)/verify",
             params: {
               email: trimmedEmail,
-              phone: trimmedPhone,
+              phone: formattedPhone,
               mode: "register",
             },
           });
@@ -92,8 +147,8 @@ export default function SignupScreen() {
           const message =
             err instanceof Error
               ? err.message
-              : "Something went wrong. Try again.";
-          setError(message);
+              : t("auth.signup.genericError");
+          setErrors((prev) => ({ ...prev, form: message }));
         },
       },
     );
@@ -113,56 +168,64 @@ export default function SignupScreen() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={{ flex: 1 }}>
       {/* Background photo */}
-      <Image
-        source={require("@/assets/images/event/event-2.jpg")}
+      <AppImage
+        source={require("@/assets/images/event-register.jpg")}
         style={StyleSheet.absoluteFill}
-        resizeMode="cover"
+        contentFit="cover"
+        priority="high"
       />
       {/* Overlay */}
       <View style={StyleSheet.absoluteFill} className="bg-black/45" />
 
-      <BottomSheetModal
+      <BottomSheet
         ref={sheetRef}
-        enableDynamicSizing
-        keyboardBehavior="interactive"
+        index={0}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
+        bottomInset={0}
         backdropComponent={renderBackdrop}
         enablePanDownToClose={false}
-        backgroundStyle={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
+        backgroundStyle={{
+          backgroundColor: "#FFFFFF",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+        }}
         handleIndicatorStyle={{ backgroundColor: "#E4E7EC" }}
       >
-        <BottomSheetView>
-          <TouchableWithoutFeedback
-            onPress={Keyboard.dismiss}
-            accessible={false}
-          >
-            <BottomSheetScrollView
-              contentContainerStyle={{
-                paddingHorizontal: 24,
-                paddingTop: 8,
-                paddingBottom: insets.bottom + 28,
-              }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
+        <BottomSheetView style={{ flex: 1 }}>
+        <BottomSheetScrollView
+          ref={scrollRef}
+          contentContainerStyle={{
+            paddingHorizontal: 24,
+            paddingTop: 8,
+            paddingBottom: keyboardHeight > 0 ? 24 : insets.bottom + 28,
+          }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
               {/* Handle */}
-              <View className="w-10 h-1 bg-[#E4E7EC] rounded-full self-center mb-6" />
+              {/* <View className="w-10 h-1 bg-[#E4E7EC] rounded-full self-center mb-6" /> */}
 
               <ThemedText
                 weight="700"
                 className="text-[#101928] text-2xl mb-1.5"
               >
-                Sign up
+                {t("auth.signup.title")}
               </ThemedText>
               <ThemedText
                 weight="400"
                 className="text-[#667085] text-[13px] leading-5 mb-6"
               >
-                We need your details to verify your account and keep your
-                tickets safe
+                {t("auth.signup.subtitle")}
               </ThemedText>
 
               {/* First name */}
@@ -170,77 +233,91 @@ export default function SignupScreen() {
                 weight="500"
                 className="text-[#344054] text-[13px] mb-1.5"
               >
-                First Name
+                {t("auth.signup.firstName")}
               </ThemedText>
               <View
                 className={`rounded-[10px] h-12 px-3.5 justify-center bg-white border ${
-                  error === "First name is required"
-                    ? "border-[#D9302A]"
-                    : "border-[#D0D5DD]"
+                  errors.firstName ? "border-[#D9302A]" : "border-[#D0D5DD]"
                 }`}
               >
                 <BottomSheetTextInput
                   value={firstName}
-                  onChangeText={(t) => {
-                    setFirstName(t);
-                    if (error) setError("");
+                  onChangeText={(text) => {
+                    setFirstName(text);
+                    if (errors.firstName) clearError("firstName");
                   }}
-                  placeholder="Enter your first name"
+                  placeholder={t("auth.signup.firstNamePlaceholder")}
                   placeholderTextColor="#98A2B3"
                   autoCapitalize="words"
                   style={{ fontSize: 14, color: "#101928" }}
                 />
               </View>
+              {errors.firstName ? (
+                <ThemedText
+                  weight="400"
+                  className="text-[#D9302A] text-[11px] mt-1"
+                >
+                  {errors.firstName}
+                </ThemedText>
+              ) : null}
 
               {/* Last name */}
               <ThemedText
                 weight="500"
                 className="text-[#344054] text-[13px] mb-1.5 mt-4"
               >
-                Last Name
+                {t("auth.signup.lastName")}
               </ThemedText>
               <View
                 className={`rounded-[10px] h-12 px-3.5 justify-center bg-white border ${
-                  error === "Last name is required"
-                    ? "border-[#D9302A]"
-                    : "border-[#D0D5DD]"
+                  errors.lastName ? "border-[#D9302A]" : "border-[#D0D5DD]"
                 }`}
               >
                 <BottomSheetTextInput
                   value={lastName}
-                  onChangeText={(t) => {
-                    setLastName(t);
-                    if (error) setError("");
+                  onChangeText={(text) => {
+                    setLastName(text);
+                    if (errors.lastName) clearError("lastName");
                   }}
-                  placeholder="Enter your last name"
+                  placeholder={t("auth.signup.lastNamePlaceholder")}
                   placeholderTextColor="#98A2B3"
                   autoCapitalize="words"
                   style={{ fontSize: 14, color: "#101928" }}
                 />
               </View>
+              {errors.lastName ? (
+                <ThemedText
+                  weight="400"
+                  className="text-[#D9302A] text-[11px] mt-1"
+                >
+                  {errors.lastName}
+                </ThemedText>
+              ) : null}
 
               {/* Email */}
               <ThemedText
                 weight="500"
                 className="text-[#344054] text-[13px] mb-1.5 mt-4"
               >
-                Email Address
+                {t("auth.signup.emailLabel")}
               </ThemedText>
               <View
                 className={`rounded-[10px] h-12 px-3.5 justify-center bg-white border ${
-                  error === "Email address is required" ||
-                  error === "Enter a valid email address"
-                    ? "border-[#D9302A]"
-                    : "border-[#D0D5DD]"
+                  errors.email ? "border-[#D9302A]" : "border-[#D0D5DD]"
                 }`}
               >
                 <BottomSheetTextInput
                   value={email}
-                  onChangeText={(t) => {
-                    setEmail(t);
-                    if (error) setError("");
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) clearError("email");
                   }}
-                  placeholder="Enter your email address"
+                  onFocus={() => {
+                    requestAnimationFrame(() => {
+                      scrollRef.current?.scrollTo({ y: 180, animated: true });
+                    });
+                  }}
+                  placeholder={t("auth.signup.emailPlaceholder")}
                   placeholderTextColor="#98A2B3"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -248,13 +325,12 @@ export default function SignupScreen() {
                   style={{ fontSize: 14, color: "#101928" }}
                 />
               </View>
-
-              {error ? (
+              {errors.email ? (
                 <ThemedText
                   weight="400"
                   className="text-[#D9302A] text-[11px] mt-1"
                 >
-                  {error}
+                  {errors.email}
                 </ThemedText>
               ) : null}
 
@@ -263,31 +339,96 @@ export default function SignupScreen() {
                 weight="500"
                 className="text-[#344054] text-[13px] mb-1.5 mt-4"
               >
-                Phone Number
+                {t("auth.signup.phoneLabel")}
               </ThemedText>
               <View
-                className={`rounded-[10px] h-12 px-3.5 justify-center bg-white border ${
-                  error === "Phone number is required"
-                    ? "border-[#D9302A]"
-                    : "border-[#D0D5DD]"
+                className={`rounded-[10px] border ${
+                  errors.phone ? "border-[#D9302A]" : "border-[#D0D5DD]"
                 }`}
               >
-                <BottomSheetTextInput
-                  value={phone}
-                  onChangeText={(t) => {
-                    setPhone(t);
-                    if (error) setError("");
+                <PhoneInput
+                  ref={phoneInputRef}
+                  defaultCode="NG"
+                  layout="second"
+                  disableArrowIcon={false}
+                  onChangeText={(text) => {
+                    setPhoneNational(text);
+                    if (errors.phone) clearError("phone");
                   }}
-                  placeholder="+234 000 000 0000"
-                  placeholderTextColor="#98A2B3"
-                  keyboardType="phone-pad"
-                  style={{ fontSize: 14, color: "#101928" }}
+                  onChangeFormattedText={(formatted) => {
+                    setPhone(formatted);
+                  }}
+                  onChangeCountry={(selectedCountry) => {
+                    setCountry(selectedCountry.cca2);
+                    if (errors.phone) clearError("phone");
+                  }}
+                  containerStyle={{
+                    width: "100%",
+                    height: 48,
+                    borderWidth: 0,
+                    backgroundColor: "#FFFFFF",
+                  }}
+                  flagButtonStyle={{
+                    minWidth: 108,
+                    paddingHorizontal: 10,
+                  }}
+                  textContainerStyle={{
+                    flex: 1,
+                    paddingVertical: 0,
+                    paddingHorizontal: 12,
+                    backgroundColor: "#FFFFFF",
+                    borderLeftWidth: 1,
+                    borderLeftColor: "#EAECF0",
+                  }}
+                  countryPickerButtonStyle={{
+                    backgroundColor: "#FFFFFF",
+                  }}
+                  codeTextStyle={{
+                    color: "#101928",
+                    fontFamily: "Pally",
+                    fontSize: 14,
+                    marginRight: 4,
+                  }}
+                  textInputStyle={{
+                    color: "#101928",
+                    fontFamily: "Pally",
+                    fontSize: 14,
+                    flex: 1,
+                    paddingVertical: 0,
+                  }}
+                  textInputProps={{
+                    placeholder: "800 000 0000",
+                    placeholderTextColor: "#98A2B3",
+                    onFocus: () => {
+                      requestAnimationFrame(() => {
+                        scrollRef.current?.scrollToEnd({ animated: true });
+                      });
+                    },
+                  }}
                 />
               </View>
 
+              {errors.phone ? (
+                <ThemedText
+                  weight="400"
+                  className="text-[#D9302A] text-[11px] mt-1"
+                >
+                  {errors.phone}
+                </ThemedText>
+              ) : null}
+
+              {errors.form ? (
+                <ThemedText
+                  weight="400"
+                  className="text-[#D9302A] text-[11px] mt-3 text-center"
+                >
+                  {errors.form}
+                </ThemedText>
+              ) : null}
+
               {/* Continue */}
               <GradientButton
-                label={isPending ? "Please wait..." : "Continue"}
+                label={isPending ? t("auth.signup.pleaseWait") : t("auth.signup.continue")}
                 onPress={handleContinue}
                 disabled={isPending}
                 height={52}
@@ -298,25 +439,25 @@ export default function SignupScreen() {
               {/* Legal footer */}
               <View className="flex-row flex-wrap justify-center mt-4 gap-x-1">
                 <ThemedText weight="400" className="text-[#98A2B3] text-xs">
-                  By registering you accept our
+                  {t("auth.signup.termsPrefix")}
                 </ThemedText>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => router.push("/(organizer)/terms-of-service")}
+                  // onPress={() => router.push("/(organizer)/terms-of-service")}
                 >
                   <ThemedText weight="500" className="text-[#D9302A] text-xs">
-                    Terms of Use
+                    {t("auth.signup.termsOfUse")}
                   </ThemedText>
                 </TouchableOpacity>
                 <ThemedText weight="400" className="text-[#98A2B3] text-xs">
-                  and
+                  {t("auth.signup.and")}
                 </ThemedText>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => router.push("/(organizer)/privacy-policy")}
+                  // onPress={() => router.push("/(organizer)/privacy-policy")}
                 >
                   <ThemedText weight="500" className="text-[#D9302A] text-xs">
-                    Privacy Policy.
+                    {t("auth.signup.privacyPolicy")}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
@@ -324,7 +465,7 @@ export default function SignupScreen() {
               {/* Switch to login */}
               <View className="flex-row justify-center items-center mt-3">
                 <ThemedText weight="400" className="text-[#667085] text-[13px]">
-                  Already have an account?{" "}
+                  {t("auth.signup.hasAccount")}{" "}
                 </ThemedText>
                 <TouchableOpacity
                   activeOpacity={0.7}
@@ -334,14 +475,18 @@ export default function SignupScreen() {
                     weight="700"
                     className="text-[#D9302A] text-[13px]"
                   >
-                    Log in
+                    {t("auth.signup.logIn")}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
-            </BottomSheetScrollView>
-          </TouchableWithoutFeedback>
+
+              {keyboardHeight > 0 ? (
+                <View style={{ height: keyboardHeight * 0.35 }} />
+              ) : null}
+        </BottomSheetScrollView>
         </BottomSheetView>
-      </BottomSheetModal>
-    </View>
+      </BottomSheet>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

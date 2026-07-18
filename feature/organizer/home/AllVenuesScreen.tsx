@@ -1,8 +1,10 @@
 import { AnimatedListItem } from "@/components/animated-list-item";
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
 import { Venue, venuesList } from "@/feature/organizer/constants/home";
+import { useTranslation } from "@/hooks/use-translation";
 import { useViewableList } from "@/hooks/use-viewable-list";
 import { useTheme } from "@/providers/ThemeProvider";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,16 +13,23 @@ import { MapPin, Search, Star, Users, X } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
-  Image,
   ScrollView,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
-const FILTERS = ["All", "Small (<200)", "Medium (200–500)", "Large (500+)"];
+const FILTERS = [
+  { key: "all", labelKey: "homeExtras.all" },
+  { key: "small", labelKey: "homeExtras.small" },
+  { key: "medium", labelKey: "homeExtras.medium" },
+  { key: "large", labelKey: "homeExtras.large" },
+] as const;
+
+type FilterKey = (typeof FILTERS)[number]["key"];
 
 const VenueRow = ({ venue }: { venue: Venue }) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -46,10 +55,12 @@ const VenueRow = ({ venue }: { venue: Venue }) => {
       }}
     >
       {/* Full-bleed photo */}
-      <Image
+      <AppImage
         source={venue.image}
+        recyclingKey={venue.id}
+        priority="high"
         style={{ position: "absolute", width: "100%", height: 200 }}
-        resizeMode="cover"
+        contentFit="cover"
       />
 
       {/* Top vignette */}
@@ -187,7 +198,7 @@ const VenueRow = ({ venue }: { venue: Venue }) => {
               weight="400"
               style={{ color: "rgba(255,255,255,0.42)", fontSize: 10 }}
             >
-              per day
+              {t("homeExtras.perDayShort")}
             </ThemedText>
           </View>
         </View>
@@ -262,7 +273,7 @@ const VenueRow = ({ venue }: { venue: Venue }) => {
             }}
           >
             <ThemedText weight="700" style={{ color: "#fff", fontSize: 12 }}>
-              Book
+              {t("homeExtras.book")}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -272,11 +283,12 @@ const VenueRow = ({ venue }: { venue: Venue }) => {
 };
 
 const AllVenuesScreen = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   const [query, setQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const { visibleIds, onViewableItemsChanged, viewabilityConfig } =
     useViewableList();
 
@@ -294,13 +306,13 @@ const AllVenuesScreen = () => {
     }
 
     switch (activeFilter) {
-      case "Small (<200)":
+      case "small":
         list = list.filter((v) => v.capacity < 200);
         break;
-      case "Medium (200–500)":
+      case "medium":
         list = list.filter((v) => v.capacity >= 200 && v.capacity <= 500);
         break;
-      case "Large (500+)":
+      case "large":
         list = list.filter((v) => v.capacity > 500);
         break;
     }
@@ -314,7 +326,7 @@ const AllVenuesScreen = () => {
         {/* Header + search — padded */}
         <View className="px-4">
           <BackHeader
-            label="Back"
+            label={t("shared.back")}
             onPress={() => router.back()}
             iconColor={isDark ? "#E4E7EC" : "#1D2739"}
           />
@@ -323,7 +335,7 @@ const AllVenuesScreen = () => {
             weight="700"
             className={`text-2xl mt-4 mb-4 ${isDark ? "text-[#F9FAFB]" : "text-[#101928]"}`}
           >
-            Available Venues
+            {t("homeExtras.availableVenues")}
           </ThemedText>
 
           {/* Search bar */}
@@ -337,7 +349,7 @@ const AllVenuesScreen = () => {
             <Search size={16} color={isDark ? "#6B7280" : "#98A2B3"} />
             <TextInput
               className="flex-1 text-[14px]"
-              placeholder="Search by name or city…"
+              placeholder={t("homeExtras.searchByNameOrCity")}
               placeholderTextColor={isDark ? "#6B7280" : "#98A2B3"}
               value={query}
               onChangeText={setQuery}
@@ -363,12 +375,12 @@ const AllVenuesScreen = () => {
           }}
         >
           {FILTERS.map((item) => {
-            const isActive = item === activeFilter;
+            const isActive = item.key === activeFilter;
             return (
               <TouchableOpacity
-                key={item}
+                key={item.key}
                 activeOpacity={0.8}
-                onPress={() => setActiveFilter(item)}
+                onPress={() => setActiveFilter(item.key)}
                 // style={{ flexShrink: 0 }}
                 className={`px-4 items-center justify-center rounded-full h-10 border ${
                   isActive
@@ -389,7 +401,7 @@ const AllVenuesScreen = () => {
                         : "text-[#475367]"
                   }`}
                 >
-                  {item}
+                  {t(item.labelKey)}
                 </ThemedText>
               </TouchableOpacity>
             );
@@ -403,7 +415,7 @@ const AllVenuesScreen = () => {
               weight="500"
               className={`text-[15px] ${isDark ? "text-[#6B7280]" : "text-[#98A2B3]"}`}
             >
-              No venues match your search.
+              {t("homeExtras.noVenuesMatch")}
             </ThemedText>
           </View>
         ) : (

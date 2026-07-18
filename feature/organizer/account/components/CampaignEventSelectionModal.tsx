@@ -1,4 +1,5 @@
 import GradientButton from "@/components/gradient-button";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/providers/ThemeProvider";
 import {
@@ -10,7 +11,6 @@ import { Check, Square, X } from "lucide-react-native";
 import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  Image,
   ImageSourcePropType,
   ScrollView,
   TouchableOpacity,
@@ -149,10 +149,11 @@ const CampaignEventSelectionModal = React.forwardRef<
                 return (
                   <View key={event.id} className="pt-3 pb-4">
                     <View className="flex-row gap-3">
-                      <Image
+                      <AppImage
                         source={event.image}
-                        className="w-[56px] h-[56px] rounded-md"
-                        resizeMode="cover"
+                        recyclingKey={event.id}
+                        style={{ width: 56, height: 56, borderRadius: 6 }}
+                        contentFit="cover"
                       />
 
                       <View className="flex-1">

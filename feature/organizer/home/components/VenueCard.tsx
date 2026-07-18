@@ -1,11 +1,12 @@
 import { ThemedText } from "@/components/themed-text";
+import { AppImage } from "@/components/app-image";
 import { Venue } from "@/feature/organizer/constants/home";
 import { useTheme } from "@/providers/ThemeProvider";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { MapPin, Star, Users, Zap } from "lucide-react-native";
 import React from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 const CARD_WIDTH = 240;
 const CARD_HEIGHT = 310;
@@ -43,10 +44,12 @@ const VenueCard = ({ venue }: VenueCardProps) => {
       }}
     >
       {/* ── Full-bleed photo ── */}
-      <Image
+      <AppImage
         source={venue.image}
+        recyclingKey={venue.id}
+        priority="high"
         style={{ position: "absolute", width: CARD_WIDTH, height: CARD_HEIGHT }}
-        resizeMode="cover"
+        contentFit="cover"
       />
 
       {/* ── Top-to-mid soft scrim ── */}

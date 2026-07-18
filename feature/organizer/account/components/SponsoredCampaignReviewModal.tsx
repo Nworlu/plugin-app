@@ -1,5 +1,6 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import {
   BottomSheetBackdrop,
@@ -32,42 +33,46 @@ type SponsoredCampaignReviewModalProps = {
   onDismiss: () => void;
 };
 
-const CAMPAIGN_TYPES = [
-  {
-    label: "Social Media Ads",
-    desc: "(Facebook & Instagram)",
-    value: "Social Media Ads - NGN 8,000",
-    iconBg: "#E0E7FF",
-    checked: false,
-  },
-  {
-    label: "Email Campaigns",
-    desc: "(Ads to 5000 email list)",
-    value: "Email Campaigns - NGN 25,000",
-    iconBg: "#F1F5F9",
-    checked: false,
-  },
-  {
-    label: "Sponsored Listings",
-    desc: "(Highlight on Homepage)",
-    value: "Sponsored Listings - NGN 35,000",
-    iconBg: "#FEF3C7",
-    checked: true,
-  },
-];
+const SOCIAL_MEDIA_VALUE = "Social Media Ads - NGN 8,000";
+const EMAIL_CAMPAIGN_VALUE = "Email Campaigns - NGN 25,000";
+const SPONSORED_LISTING_VALUE = "Sponsored Listings - NGN 35,000";
 
 const SponsoredCampaignReviewModal = React.forwardRef<
   BottomSheetModal,
   SponsoredCampaignReviewModalProps
 >(({ visible, payload, onBack, onEdit, onSubmit, onDismiss }, ref) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const snapPoints = useMemo(() => ["80%"], []);
+  const campaignTypes = useMemo(
+    () => [
+      {
+        label: t("settings.organizer.socialMediaAds"),
+        desc: t("settings.organizer.socialMediaAdsSubtitle"),
+        value: SOCIAL_MEDIA_VALUE,
+        iconBg: "#E0E7FF",
+      },
+      {
+        label: t("settings.organizer.emailCampaigns"),
+        desc: t("settings.organizer.emailCampaignsSubtitle"),
+        value: EMAIL_CAMPAIGN_VALUE,
+        iconBg: "#F1F5F9",
+      },
+      {
+        label: t("settings.organizer.sponsoredListings"),
+        desc: t("settings.organizer.sponsoredListingsSubtitle"),
+        value: SPONSORED_LISTING_VALUE,
+        iconBg: "#FEF3C7",
+      },
+    ],
+    [t],
+  );
 
   // Step state: 0 = review, 1 = edit campaign type, 2 = payment, 3 = payment success, 4 = setting up
   const [step, setStep] = useState(0);
   const [paying, setPaying] = useState(false);
-  const [selectedType, setSelectedType] = useState(CAMPAIGN_TYPES[2].value);
+  const [selectedType, setSelectedType] = useState(SPONSORED_LISTING_VALUE);
   const [editMode, setEditMode] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
@@ -116,7 +121,7 @@ const SponsoredCampaignReviewModal = React.forwardRef<
             </ThemedText>
           </View>
           <TouchableOpacity onPress={onEdit} style={{ marginLeft: 8 }}>
-            <ThemedText className="text-[13px] underline">Edit</ThemedText>
+            <ThemedText className="text-[13px] underline">{t("settings.organizer.edit")}</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -135,12 +140,12 @@ const SponsoredCampaignReviewModal = React.forwardRef<
         >
           <View style={{ flex: 1 }}>
             <ThemedText weight="700" className="text-[15px] mb-2">
-              Campaign Type
+              {t("settings.campaign.campaignType")}
             </ThemedText>
             <ThemedText className="text-[14px] mb-1">{selectedType}</ThemedText>
           </View>
           <TouchableOpacity onPress={() => setEditMode(true)}>
-            <ThemedText className="text-[13px] underline">Edit</ThemedText>
+            <ThemedText className="text-[13px] underline">{t("settings.organizer.edit")}</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -165,11 +170,11 @@ const SponsoredCampaignReviewModal = React.forwardRef<
                 flex: 1,
               }}
             >
-              Payment for selected plan is required to continue{" "}
+              {t("settings.campaign.paymentRequired")}{" "}
               <ThemedText
                 style={{ color: "#F04438", textDecorationLine: "underline" }}
               >
-                Pay Here
+                {t("settings.campaign.payHere")}
               </ThemedText>
             </ThemedText>
           </View>
@@ -209,7 +214,7 @@ const SponsoredCampaignReviewModal = React.forwardRef<
               />
             </View>
             <ThemedText style={{ color: "#039855", fontSize: 14, flex: 1 }}>
-              Payment Successfully confirmed
+              {t("settings.campaign.paymentConfirmed")}
             </ThemedText>
           </View>
         )}
@@ -225,13 +230,13 @@ const SponsoredCampaignReviewModal = React.forwardRef<
           }}
         >
           <ThemedText weight="700" className="text-[15px] mb-2">
-            Sponsored Post Details
+            {t("settings.campaign.sponsoredPostDetails")}
           </ThemedText>
           <ThemedText className="text-[14px] mb-1">
-            Title: {payload.postTitle}
+            {t("settings.campaign.titleLabel")} {payload.postTitle}
           </ThemedText>
           <ThemedText className="text-[14px] mb-1">
-            Caption: {payload.caption}
+            {t("settings.campaign.captionLabel")} {payload.caption}
           </ThemedText>
           {payload.postImage && (
             <Image
@@ -258,19 +263,23 @@ const SponsoredCampaignReviewModal = React.forwardRef<
           >
             <ChevronLeft size={16} color={isDark ? "#E4E7EC" : "#101828"} />
             <ThemedText weight="500" className="text-[15px]">
-              Back
+              {t("common.back")}
             </ThemedText>
           </TouchableOpacity>
           {!paymentConfirmed ? (
             <GradientButton
-              label="Next"
+              label={t("common.next")}
               onPress={() => setStep(2)}
               height={46}
               style={{ minWidth: 140 }}
             />
           ) : (
             <GradientButton
-              label={settingUp ? "Setting up Campaign" : "Start Campaign"}
+              label={
+                settingUp
+                  ? t("settings.campaign.settingUpCampaign")
+                  : t("settings.campaign.startCampaign")
+              }
               onPress={() => {
                 setSettingUp(true);
                 setTimeout(() => {
@@ -304,7 +313,7 @@ const SponsoredCampaignReviewModal = React.forwardRef<
           >
             <View className="flex-row items-start justify-between gap-4 mb-2">
               <ThemedText weight="700" className="text-2xl">
-                Sponsored Post
+                {t("settings.campaign.sponsoredPost")}
               </ThemedText>
               <TouchableOpacity
                 activeOpacity={0.85}
@@ -325,7 +334,7 @@ const SponsoredCampaignReviewModal = React.forwardRef<
             <ThemedText
               className={`text-[15px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
             >
-              Review And Start Campaign
+              {t("settings.campaign.reviewAndStart")}
             </ThemedText>
             <View
               style={{
@@ -344,7 +353,7 @@ const SponsoredCampaignReviewModal = React.forwardRef<
                 }}
               >
                 <ThemedText weight="700" className="text-[15px] mb-2">
-                  Campaign Type
+                  {t("settings.campaign.campaignType")}
                 </ThemedText>
                 <TouchableOpacity onPress={() => setEditMode(false)}>
                   <ThemedText style={{ color: "#F04438", fontWeight: "600" }}>
@@ -358,7 +367,7 @@ const SponsoredCampaignReviewModal = React.forwardRef<
               >
                 You only have access to campaigns available on your plan
               </ThemedText>
-              {CAMPAIGN_TYPES.map((type, idx) => (
+              {campaignTypes.map((type, idx) => (
                 <TouchableOpacity
                   key={type.value}
                   onPress={() => setSelectedType(type.value)}
@@ -542,7 +551,7 @@ const SponsoredCampaignReviewModal = React.forwardRef<
             <ThemedText
               className={`text-[15px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
             >
-              Review And Start Campaign
+              {t("settings.campaign.reviewAndStart")}
             </ThemedText>
           </View>
           <TouchableOpacity

@@ -1,6 +1,7 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import { useUpdateUser } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
@@ -31,6 +32,7 @@ type Errors = {
 };
 
 export default function CompleteProfileScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const saveProfile = useAuthStore((s) => s.saveProfile);
   const refreshUser = useAuthStore((s) => s.refreshUser);
@@ -69,9 +71,9 @@ export default function CompleteProfileScreen() {
 
   const handleContinue = async () => {
     const newErrors: Errors = {};
-    if (!firstName.trim()) newErrors.firstName = "First name is required";
-    if (!lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!phone.trim()) newErrors.phone = "Phone number is required";
+    if (!firstName.trim()) newErrors.firstName = t("auth.completeProfile.firstNameRequired");
+    if (!lastName.trim()) newErrors.lastName = t("auth.completeProfile.lastNameRequired");
+    if (!phone.trim()) newErrors.phone = t("auth.completeProfile.phoneRequired");
     if (Object.keys(newErrors).length) {
       setErrors(newErrors);
       return;
@@ -116,8 +118,8 @@ export default function CompleteProfileScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {/* Progress bar */}
       <View className="bg-[#F5F0EF]" style={{ paddingTop: insets.top }}>
@@ -142,14 +144,13 @@ export default function CompleteProfileScreen() {
             weight="700"
             className="text-[#101928] text-2xl leading-8"
           >
-            Complete Profile{"\n"}Information
+            {t("auth.completeProfile.title")}
           </ThemedText>
           <ThemedText
             weight="400"
             className="text-[#667085] text-[13px] leading-5 mt-1.5"
           >
-            Fill in the necessary information so we know who you are and setup
-            your account
+            {t("auth.completeProfile.subtitle")}
           </ThemedText>
         </View>
 
@@ -161,7 +162,7 @@ export default function CompleteProfileScreen() {
               weight="500"
               className="text-[#344054] text-[13px] mb-1.5"
             >
-              First Name
+              {t("auth.completeProfile.firstName")}
             </ThemedText>
             <View
               className={`rounded-xl h-12 px-4 justify-center bg-white border ${
@@ -170,12 +171,12 @@ export default function CompleteProfileScreen() {
             >
               <TextInput
                 value={firstName}
-                onChangeText={(t) => {
-                  setFirstName(t);
+                onChangeText={(text) => {
+                  setFirstName(text);
                   if (errors.firstName)
                     setErrors((e) => ({ ...e, firstName: undefined }));
                 }}
-                placeholder="Enter first name"
+                placeholder={t("auth.completeProfile.firstNamePlaceholder")}
                 placeholderTextColor="#98A2B3"
                 style={{ fontSize: 14, color: "#101928" }}
               />
@@ -196,7 +197,7 @@ export default function CompleteProfileScreen() {
               weight="500"
               className="text-[#344054] text-[13px] mb-1.5"
             >
-              Last Name
+              {t("auth.completeProfile.lastName")}
             </ThemedText>
             <View
               className={`rounded-xl h-12 px-4 justify-center bg-white border ${
@@ -205,12 +206,12 @@ export default function CompleteProfileScreen() {
             >
               <TextInput
                 value={lastName}
-                onChangeText={(t) => {
-                  setLastName(t);
+                onChangeText={(text) => {
+                  setLastName(text);
                   if (errors.lastName)
                     setErrors((e) => ({ ...e, lastName: undefined }));
                 }}
-                placeholder="Enter last name"
+                placeholder={t("auth.completeProfile.lastNamePlaceholder")}
                 placeholderTextColor="#98A2B3"
                 style={{ fontSize: 14, color: "#101928" }}
               />
@@ -231,7 +232,7 @@ export default function CompleteProfileScreen() {
               weight="500"
               className="text-[#344054] text-[13px] mb-1.5"
             >
-              Phone Number
+              {t("auth.completeProfile.phoneLabel")}
             </ThemedText>
             <View
               className={`rounded-xl h-12 flex-row overflow-hidden border ${
@@ -256,8 +257,8 @@ export default function CompleteProfileScreen() {
               {/* Number input */}
               <TextInput
                 value={phone}
-                onChangeText={(t) => {
-                  setPhone(t);
+                onChangeText={(text) => {
+                  setPhone(text);
                   if (errors.phone)
                     setErrors((e) => ({ ...e, phone: undefined }));
                 }}
@@ -315,7 +316,7 @@ export default function CompleteProfileScreen() {
         style={{ paddingBottom: insets.bottom + 16, paddingTop: 14 }}
       >
         <GradientButton
-          label={isPending ? "Saving..." : "Continue"}
+          label={isPending ? t("auth.completeProfile.saving") : t("auth.completeProfile.continue")}
           onPress={handleContinue}
           disabled={isPending}
           height={52}

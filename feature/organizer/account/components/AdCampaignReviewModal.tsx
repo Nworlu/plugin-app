@@ -1,5 +1,6 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import {
   BottomSheetBackdrop,
@@ -37,37 +38,41 @@ type AdCampaignReviewModalProps = {
   onDismiss: () => void;
 };
 
-const CAMPAIGN_TYPES = [
-  {
-    label: "Social Media Ads",
-    desc: "(Facebook & Instagram)",
-    value: "Social Media Ads - NGN 8,000",
-    iconBg: "#E0E7FF",
-    checked: true,
-  },
-  {
-    label: "Email Campaigns",
-    desc: "(Ads to 5000 email list)",
-    value: "Email Campaigns - NGN 25,000",
-    iconBg: "#F1F5F9",
-    checked: false,
-  },
-  {
-    label: "Sponsored Listings",
-    desc: "(Highlight on Homepage)",
-    value: "Sponsored Listings - NGN 35,000",
-    iconBg: "#FEF3C7",
-    checked: false,
-  },
-];
+const SOCIAL_MEDIA_VALUE = "Social Media Ads - NGN 8,000";
+const EMAIL_CAMPAIGN_VALUE = "Email Campaigns - NGN 25,000";
+const SPONSORED_LISTING_VALUE = "Sponsored Listings - NGN 35,000";
 
 const AdCampaignReviewModal = React.forwardRef<
   BottomSheetModal,
   AdCampaignReviewModalProps
 >(({ visible, payload, onBack, onEdit, onSubmit, onDismiss }, ref) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const snapPoints = useMemo(() => ["80%"], []);
+  const campaignTypes = useMemo(
+    () => [
+      {
+        label: t("settings.organizer.socialMediaAds"),
+        desc: t("settings.organizer.socialMediaAdsSubtitle"),
+        value: SOCIAL_MEDIA_VALUE,
+        iconBg: "#E0E7FF",
+      },
+      {
+        label: t("settings.organizer.emailCampaigns"),
+        desc: t("settings.organizer.emailCampaignsSubtitle"),
+        value: EMAIL_CAMPAIGN_VALUE,
+        iconBg: "#F1F5F9",
+      },
+      {
+        label: t("settings.organizer.sponsoredListings"),
+        desc: t("settings.organizer.sponsoredListingsSubtitle"),
+        value: SPONSORED_LISTING_VALUE,
+        iconBg: "#FEF3C7",
+      },
+    ],
+    [t],
+  );
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -83,7 +88,7 @@ const AdCampaignReviewModal = React.forwardRef<
 
   // Campaign type edit mode
   const [editMode, setEditMode] = useState(false);
-  const [selectedType, setSelectedType] = useState(CAMPAIGN_TYPES[0].value);
+  const [selectedType, setSelectedType] = useState(SOCIAL_MEDIA_VALUE);
   const [paying, setPaying] = useState(false);
   // Step state for modal flow
   const [step, setStep] = useState(0);
@@ -128,7 +133,7 @@ const AdCampaignReviewModal = React.forwardRef<
             </ThemedText>
           </View>
           <TouchableOpacity onPress={onEdit} style={{ marginLeft: 8 }}>
-            <ThemedText className="text-[13px] underline">Edit</ThemedText>
+            <ThemedText className="text-[13px] underline">{t("settings.organizer.edit")}</ThemedText>
           </TouchableOpacity>
         </View>
         {/* Campaign Type */}
@@ -146,12 +151,12 @@ const AdCampaignReviewModal = React.forwardRef<
         >
           <View style={{ flex: 1 }}>
             <ThemedText weight="700" className="text-[15px] mb-2">
-              Campaign Type
+              {t("settings.campaign.campaignType")}
             </ThemedText>
             <ThemedText className="text-[14px] mb-1">{selectedType}</ThemedText>
           </View>
           <TouchableOpacity onPress={() => setEditMode(true)}>
-            <ThemedText className="text-[13px] underline">Edit</ThemedText>
+            <ThemedText className="text-[13px] underline">{t("settings.organizer.edit")}</ThemedText>
           </TouchableOpacity>
         </View>
         {/* Payment warning */}
@@ -174,11 +179,11 @@ const AdCampaignReviewModal = React.forwardRef<
               flex: 1,
             }}
           >
-            Payment for selected plan is required to continue{" "}
+            {t("settings.campaign.paymentRequired")}{" "}
             <ThemedText
               style={{ color: "#F04438", textDecorationLine: "underline" }}
             >
-              Pay Here
+              {t("settings.campaign.payHere")}
             </ThemedText>
           </ThemedText>
         </View>
@@ -201,11 +206,11 @@ const AdCampaignReviewModal = React.forwardRef<
           >
             <ChevronLeft size={16} color={isDark ? "#E4E7EC" : "#101828"} />
             <ThemedText weight="500" className="text-[15px]">
-              Back
+              {t("common.back")}
             </ThemedText>
           </TouchableOpacity>
           <GradientButton
-            label="Next"
+            label={t("common.next")}
             onPress={() => setStep(1)}
             height={46}
             style={{ minWidth: 140 }}
@@ -222,16 +227,16 @@ const AdCampaignReviewModal = React.forwardRef<
             className="text-xl"
             style={{ marginBottom: 12 }}
           >
-            Payment Required
+            {t("settings.campaign.paymentRequiredTitle")}
           </ThemedText>
           <ThemedText
             className="text-[15px] mb-4"
             style={{ textAlign: "center" }}
           >
-            To continue, please pay for the selected campaign plan.
+            {t("settings.campaign.paymentRequiredDesc")}
           </ThemedText>
           <GradientButton
-            label={paying ? "Processing..." : "Pay NGN 8,000"}
+            label={paying ? t("settings.campaign.processing") : "Pay NGN 8,000"}
             onPress={() => {
               setPaying(true);
               setTimeout(() => {
@@ -277,16 +282,16 @@ const AdCampaignReviewModal = React.forwardRef<
             className="text-xl"
             style={{ marginBottom: 12, color: "#12B76A" }}
           >
-            Payment Successful
+            {t("settings.campaign.paymentSuccessful")}
           </ThemedText>
           <ThemedText
             className="text-[15px] mb-4"
             style={{ textAlign: "center" }}
           >
-            Your payment has been confirmed. You can now start your campaign.
+            {t("settings.campaign.paymentSuccessfulDesc")}
           </ThemedText>
           <GradientButton
-            label="Start Campaign"
+            label={t("settings.campaign.startCampaign")}
             onPress={onSubmit}
             height={46}
             style={{ minWidth: 180 }}
@@ -321,18 +326,18 @@ const AdCampaignReviewModal = React.forwardRef<
         <View className="flex-row items-start justify-between gap-4 mb-2">
           <View className="flex-1">
             <ThemedText weight="700" className="text-2xl">
-              Create an ad campaign
+              {t("settings.campaign.createAdCampaign")}
             </ThemedText>
             <ThemedText
               className={`text-[15px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
             >
-              Advertise on Facebook and Instagram
+              {t("settings.campaign.advertiseFacebook")}
             </ThemedText>
             <ThemedText
               className={`text-[15px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
               style={{ fontWeight: "600" }}
             >
-              Review And Start Campaign
+              {t("settings.campaign.reviewAndStart")}
             </ThemedText>
           </View>
           <TouchableOpacity
@@ -411,7 +416,7 @@ const AdCampaignReviewModal = React.forwardRef<
                 }}
               >
                 <ThemedText weight="700" className="text-[15px] mb-2">
-                  Campaign Type
+                  {t("settings.campaign.campaignType")}
                 </ThemedText>
                 <TouchableOpacity onPress={() => setEditMode(false)}>
                   <ThemedText style={{ color: "#F04438", fontWeight: "600" }}>
@@ -425,7 +430,7 @@ const AdCampaignReviewModal = React.forwardRef<
               >
                 You only have access to campaigns available on your plan
               </ThemedText>
-              {CAMPAIGN_TYPES.map((type, idx) => (
+              {campaignTypes.map((type, idx) => (
                 <TouchableOpacity
                   key={type.value}
                   onPress={() => setSelectedType(type.value)}

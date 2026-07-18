@@ -3,15 +3,18 @@ import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
 import { ProfileInputField } from "@/feature/organizer/account/components";
 import { useUpdateUser } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
-import { ChevronDown, ChevronLeft } from "lucide-react-native";
+import { ChevronLeft } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
+import PhoneInput from "react-native-phone-number-input";
 
 const ProfileInformationScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   const user = useAuthStore((s) => s.user);
@@ -50,11 +53,11 @@ const ProfileInformationScreen = () => {
   const handleSave = () => {
     if (!canSave) return;
     updateUser(
-      { 
+      {
         name: { firstname: firstName, lastname: lastName },
         email,
         contact: { phone, country: user?.contact?.country },
-       },
+      },
       {
         onSuccess: async () => {
           await refreshUser();
@@ -88,7 +91,7 @@ const ProfileInformationScreen = () => {
             weight="700"
             className={`text-[15px] ${isDark ? "text-white" : "text-[#101828]"}`}
           >
-            Profile Information
+            {t("settings.profile.title")}
           </ThemedText>
         </View>
 
@@ -105,18 +108,18 @@ const ProfileInformationScreen = () => {
         </View>
 
         <ProfileInputField
-          label="Email Address"
+          label={t("settings.profile.emailLabel")}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
         />
         <ProfileInputField
-          label="Enter First Name"
+          label={t("settings.profile.firstNameLabel")}
           value={firstName}
           onChangeText={setFirstName}
         />
         <ProfileInputField
-          label="Enter Last Name"
+          label={t("settings.profile.lastNameLabel")}
           value={lastName}
           onChangeText={setLastName}
         />
@@ -125,50 +128,55 @@ const ProfileInformationScreen = () => {
           <ThemedText
             className={`text-[17px] mb-2 ${isDark ? "text-[#6B7280]" : "text-[#98A2B3]"}`}
           >
-            Enter Phone Number
+            {t("settings.profile.phonePlaceholder")}
           </ThemedText>
-          <View
-            className={`h-[56px] rounded-lg px-3 flex-row items-center gap-2 border ${
-              isDark
-                ? "bg-[#111] border-[#2A2A2A]"
-                : "bg-white border-[#D0D5DD]"
-            }`}
-          >
-            <TouchableOpacity
-              activeOpacity={0.85}
-              className={`flex-row items-center gap-1 rounded-md px-2 h-[36px] border ${
-                isDark ? "border-[#2A2A2A]" : "border-[#EAECF0]"
-              }`}
-            >
-              <ThemedText
-                className={`text-[12px] ${isDark ? "text-[#9CA3AF]" : ""}`}
-              >
-                FR
-              </ThemedText>
-              <ThemedText
-                className={`text-[14px] ${isDark ? "text-white" : "text-[#101828]"}`}
-              >
-                234
-              </ThemedText>
-              <ChevronDown size={14} color={isDark ? "#9CA3AF" : "#667085"} />
-            </TouchableOpacity>
-            <View
-              className={`w-[1px] h-6 ${isDark ? "bg-[#2A2A2A]" : "bg-[#EAECF0]"}`}
-            />
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              style={{ color: isDark ? "#E5E7EB" : "#1D2939" }}
-              className="flex-1 text-[16px]"
-              placeholder="76 - 346 - 9888"
-              placeholderTextColor={isDark ? "#4B5563" : "#98A2B3"}
-            />
-          </View>
+          <PhoneInput
+            defaultValue={phone}
+            defaultCode="NG"
+            layout="first"
+            onChangeFormattedText={(formatted) => setPhone(formatted)}
+            containerStyle={{
+              width: "100%",
+              height: 56,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: isDark ? "#2D5A8C" : "#D0D5DD",
+              backgroundColor: isDark ? "#1A1F2A" : "#FFFFFF",
+            }}
+            textContainerStyle={{
+              paddingVertical: 0,
+              borderTopRightRadius: 14,
+              borderBottomRightRadius: 14,
+              backgroundColor: isDark ? "#1A1F2A" : "#FFFFFF",
+            }}
+            countryPickerButtonStyle={{
+              borderTopLeftRadius: 14,
+              borderBottomLeftRadius: 14,
+              backgroundColor: isDark ? "#1A1F2A" : "#FFFFFF",
+            }}
+            codeTextStyle={{
+              color: isDark ? "#E5E7EB" : "#1D2939",
+              fontFamily: "Pally",
+              fontSize: 16,
+            }}
+            textInputStyle={{
+              color: isDark ? "#E5E7EB" : "#1D2939",
+              fontFamily: "Pally",
+              fontSize: 16,
+            }}
+            textInputProps={{
+              placeholder: "76 - 346 - 9888",
+              placeholderTextColor: isDark ? "#667085" : "#98A2B3",
+            }}
+          />
         </View>
 
         <GradientButton
-          label={isPending ? "Saving..." : "Save Changes"}
+          label={
+            isPending
+              ? t("settings.profile.saving")
+              : t("settings.profile.saveChanges")
+          }
           onPress={handleSave}
           disabled={!canSave || isPending}
           height={56}

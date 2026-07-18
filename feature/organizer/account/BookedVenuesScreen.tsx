@@ -3,6 +3,7 @@ import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
 import { ThemedText } from "@/components/themed-text";
 import { BookedVenue, useBookings } from "@/providers/BookingsProvider";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router } from "expo-router";
 import { Building2, CalendarDays, Users } from "lucide-react-native";
@@ -14,9 +15,11 @@ import { ScrollView, TouchableOpacity, View } from "react-native";
 const BookingCard = ({
   booking,
   isDark,
+  t,
 }: {
   booking: BookedVenue;
   isDark: boolean;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }) => {
   const bookedDate = new Date(booking.bookedAt).toLocaleDateString("en-NG", {
     day: "numeric",
@@ -74,7 +77,7 @@ const BookingCard = ({
           }}
         >
           <ThemedText weight="500" style={{ color: "#16A34A", fontSize: 11 }}>
-            Confirmed
+            {t("settings.bookedVenues.confirmed")}
           </ThemedText>
         </View>
       </View>
@@ -106,7 +109,9 @@ const BookingCard = ({
             weight="400"
             style={{ fontSize: 12, color: isDark ? "#D1D5DB" : "#344054" }}
           >
-            {booking.expectedGuests} guests
+            {t("settings.bookedVenues.guests", {
+              count: booking.expectedGuests,
+            })}
           </ThemedText>
         </View>
 
@@ -134,7 +139,7 @@ const BookingCard = ({
           weight="400"
           style={{ fontSize: 11, color: isDark ? "#6B7280" : "#98A2B3" }}
         >
-          Booked {bookedDate}
+          {t("settings.bookedVenues.bookedOn", { date: bookedDate })}
         </ThemedText>
         <ThemedText weight="700" style={{ fontSize: 15, color: "#D9302A" }}>
           ₦{booking.totalCost.toLocaleString("en-NG")}
@@ -146,7 +151,13 @@ const BookingCard = ({
 
 /* ─── Empty state ──────────────────────────────────────────────── */
 
-const EmptyState = ({ isDark }: { isDark: boolean }) => (
+const EmptyState = ({
+  isDark,
+  t,
+}: {
+  isDark: boolean;
+  t: (key: string) => string;
+}) => (
   <View
     style={{
       flex: 1,
@@ -178,7 +189,7 @@ const EmptyState = ({ isDark }: { isDark: boolean }) => (
         marginBottom: 8,
       }}
     >
-      No bookings yet
+      {t("settings.bookedVenues.noBookingsYet")}
     </ThemedText>
     <ThemedText
       weight="400"
@@ -189,7 +200,7 @@ const EmptyState = ({ isDark }: { isDark: boolean }) => (
         lineHeight: 22,
       }}
     >
-      When you book a venue it will appear here. Browse venues to get started.
+      {t("settings.bookedVenues.emptyDescription")}
     </ThemedText>
     <TouchableOpacity
       activeOpacity={0.85}
@@ -203,7 +214,7 @@ const EmptyState = ({ isDark }: { isDark: boolean }) => (
       }}
     >
       <ThemedText weight="700" style={{ color: "#fff", fontSize: 14 }}>
-        Browse Venues
+        {t("settings.bookedVenues.browseVenues")}
       </ThemedText>
     </TouchableOpacity>
   </View>
@@ -213,14 +224,20 @@ const EmptyState = ({ isDark }: { isDark: boolean }) => (
 
 const BookedVenuesScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
   const { bookings } = useBookings();
+
+  const bookingCountLabel =
+    bookings.length === 1
+      ? t("settings.bookedVenues.bookingCountOne", { count: bookings.length })
+      : t("settings.bookedVenues.bookingCountOther", { count: bookings.length });
 
   return (
     <AppSafeArea>
       <View style={{ flex: 1, paddingTop: 12, paddingHorizontal: 16 }}>
         <BackHeader
-          label="Back"
+          label={t("common.back")}
           onPress={() => router.back()}
           iconColor={isDark ? "#E4E7EC" : "#1D2739"}
         />
@@ -234,7 +251,7 @@ const BookedVenuesScreen = () => {
             color: isDark ? "#F9FAFB" : "#101928",
           }}
         >
-          Booked Venues
+          {t("settings.bookedVenues.title")}
         </ThemedText>
         <ThemedText
           weight="400"
@@ -244,11 +261,11 @@ const BookedVenuesScreen = () => {
             marginBottom: 20,
           }}
         >
-          {bookings.length} booking{bookings.length !== 1 ? "s" : ""}
+          {bookingCountLabel}
         </ThemedText>
 
         {bookings.length === 0 ? (
-          <EmptyState isDark={isDark} />
+          <EmptyState isDark={isDark} t={t} />
         ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -256,7 +273,7 @@ const BookedVenuesScreen = () => {
           >
             {bookings.map((booking, i) => (
               <AnimatedEntry key={booking.id} index={i}>
-                <BookingCard booking={booking} isDark={isDark} />
+                <BookingCard booking={booking} isDark={isDark} t={t} />
               </AnimatedEntry>
             ))}
           </ScrollView>

@@ -1,5 +1,6 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import {
   BottomSheetBackdrop,
@@ -32,6 +33,7 @@ const CreateSponsoredCampaignModal = forwardRef<
   BottomSheetModal,
   CreateSponsoredCampaignModalProps
 >(({ onClose, onDismiss, onBack, onSubmit }, ref) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const snapPoints = useMemo(() => ["72%"], []);
@@ -95,12 +97,12 @@ const CreateSponsoredCampaignModal = forwardRef<
         <View className="flex-row items-start justify-between gap-4">
           <View className="flex-1">
             <ThemedText weight="700" className="text-2xl">
-              Sponsored Post
+              {t("settings.campaign.sponsoredPost")}
             </ThemedText>
             <ThemedText
               className={`text-[15px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
             >
-              Highlight your campaign on homepage placement
+              {t("settings.campaign.sponsoredPostSubtitle")}
             </ThemedText>
           </View>
 
@@ -128,7 +130,7 @@ const CreateSponsoredCampaignModal = forwardRef<
         >
 
           <ThemedText weight="700" className="text-[15px] mb-2 mt-4">
-            Post image
+            {t("settings.campaign.postImage")}
           </ThemedText>
           <TouchableOpacity
             style={{
@@ -157,7 +159,7 @@ const CreateSponsoredCampaignModal = forwardRef<
                 <ThemedText
                   className={`text-[13px] ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
                 >
-                  Upload image
+                  {t("settings.campaign.uploadImageAlt")}
                 </ThemedText>
               </>
             )}
@@ -186,12 +188,12 @@ const CreateSponsoredCampaignModal = forwardRef<
           >
             <ChevronLeft size={16} color={isDark ? "#E4E7EC" : "#101828"} />
             <ThemedText weight="500" className="text-[15px]">
-              Back
+              {t("common.back")}
             </ThemedText>
           </TouchableOpacity>
 
           <GradientButton
-            label="Save Campaign"
+            label={t("settings.campaign.saveCampaign")}
             onPress={() => onSubmit({ postTitle, caption, postImage })}
             disabled={!canSubmit}
             height={46}

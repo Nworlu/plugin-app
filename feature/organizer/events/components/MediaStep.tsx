@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -12,22 +13,26 @@ import { Image, TouchableOpacity, View } from "react-native";
 
 const MAX_PHOTOS = 6;
 
-const OptionalBadge = ({ isDark }: { isDark: boolean }) => (
-  <View
-    style={{
-      backgroundColor: isDark ? "#2D1F00" : "#FEF3C7",
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 6,
-    }}
-  >
-    <ThemedText style={{ fontSize: 11, color: "#92400E", fontWeight: "700" }}>
-      OPTIONAL
-    </ThemedText>
-  </View>
-);
+const OptionalBadge = ({ isDark }: { isDark: boolean }) => {
+  const { t } = useTranslation();
+  return (
+    <View
+      style={{
+        backgroundColor: isDark ? "#2D1F00" : "#FEF3C7",
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+      }}
+    >
+      <ThemedText style={{ fontSize: 11, color: "#92400E", fontWeight: "700" }}>
+        {t("events.wizard.optional")}
+      </ThemedText>
+    </View>
+  );
+};
 
 export default function MediaStep() {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -104,7 +109,7 @@ export default function MediaStep() {
           >
             <ImageIcon size={26} color={isDark ? "#555" : "#C0C9D4"} />
             <ThemedText style={{ fontSize: 12, color: mutedText }}>
-              Add Photo
+              {t("events.wizard.basicInfo.addPhoto")}
             </ThemedText>
           </TouchableOpacity>
         )}
@@ -114,12 +119,11 @@ export default function MediaStep() {
 
   return (
     <View>
-      {/* Title */}
       <ThemedText
         weight="700"
         style={{ fontSize: 22, marginBottom: 4, color: titleColor }}
       >
-        Add photos that highlight key{"\n"}moments or themes of the event.
+        {t("events.wizard.media.title")}
       </ThemedText>
       <ThemedText
         weight="700"
@@ -130,10 +134,9 @@ export default function MediaStep() {
           color: titleColor,
         }}
       >
-        Event Details
+        {t("events.wizard.eventDetails")}
       </ThemedText>
 
-      {/* ADD AGENDA — completed */}
       <View
         style={{
           borderWidth: 1,
@@ -156,14 +159,13 @@ export default function MediaStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            ADD AGENDA
+            {t("events.wizard.policy.addAgenda")}
           </ThemedText>
           <OptionalBadge isDark={isDark} />
           <ChevronDown size={16} color={mutedText} />
         </View>
       </View>
 
-      {/* ADD PHOTO/VIDEOS — expandable */}
       <View
         style={{
           borderWidth: 1,
@@ -209,7 +211,7 @@ export default function MediaStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            ADD PHOTO/VIDEOS
+            {t("events.wizard.policy.addPhotos")}
           </ThemedText>
           <OptionalBadge isDark={isDark} />
           <ChevronDown
@@ -231,25 +233,22 @@ export default function MediaStep() {
                 lineHeight: 18,
               }}
             >
-              Add photos to show what your event will be about.{"\n"}You can
-              upload up to 6 images.
+              {t("events.wizard.media.photosHint")}
             </ThemedText>
 
-            {/* Counter */}
             <ThemedText
               style={{ fontSize: 13, color: mutedText, marginBottom: 14 }}
             >
               <ThemedText weight="700" style={{ color: titleColor }}>
-                {uploadedCount} of 6
+                {t("events.wizard.media.ofSix", { count: uploadedCount })}
               </ThemedText>
-              {"  ·  Photos/Videos uploaded"}
+              {"  ·  "}
+              {t("events.wizard.media.photosUploaded")}
             </ThemedText>
 
-            {/* Row 1 */}
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
               {[0, 1, 2].map((idx) => renderSlot(idx))}
             </View>
-            {/* Row 2 */}
             <View style={{ flexDirection: "row", gap: 8 }}>
               {[3, 4, 5].map((idx) => renderSlot(idx))}
             </View>
@@ -257,7 +256,6 @@ export default function MediaStep() {
         )}
       </View>
 
-      {/* REFUND POLICY — collapsed */}
       <View
         style={{
           borderWidth: 1,
@@ -287,7 +285,7 @@ export default function MediaStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            REFUND POLICY
+            {t("events.wizard.policy.refundPolicy")}
           </ThemedText>
           <ChevronDown size={16} color={mutedText} />
         </View>

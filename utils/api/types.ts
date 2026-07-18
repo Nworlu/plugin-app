@@ -330,6 +330,7 @@ export type RawEvent = {
 
 export type Ticket = {
   id: string;
+  _id: string;
   ticketNumber: string;
   eventId: string;
   eventName: string;
@@ -352,6 +353,26 @@ export type Ticket = {
 export type ScanTicketResponse = {
   ticket: Ticket;
   alreadyCheckedIn: boolean;
+};
+
+export type EventAttendee = {
+  _id?: string;
+  id?: string;
+  email?: string;
+  holderInfo?: {
+    email?: string;
+    name?: string;
+  };
+  attendeeEmail?: string;
+  ticketName?: string;
+  ticketData?: {
+    name?: string;
+  };
+  checkedIn?: boolean;
+  status?: string;
+  purchaseDate?: string;
+  checkedInAt?: string;
+  createdAt?: string;
 };
 
 // ─── Payment ──────────────────────────────────────────────────────────────────

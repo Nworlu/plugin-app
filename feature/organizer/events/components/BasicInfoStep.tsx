@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import * as ImagePicker from "expo-image-picker";
 import { ImageIcon, Pencil, Trash2 } from "lucide-react-native";
@@ -33,10 +34,11 @@ export default function BasicInfoStep({
   setDescription,
   onImagePicked,
 }: Props) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
-  const placeholderColor = isDark ? "#555" : "#98A2B3";
+  const placeholderColor = isDark ? "#667085" : "#98A2B3";
 
   const pickImage = async (
     field: "banner" | "thumbnail",
@@ -52,8 +54,6 @@ export default function BasicInfoStep({
     });
     if (!result.canceled && result.assets[0]) {
       const { uri, base64 } = result.assets[0];
-      // Always normalise to JPEG — GCS signed URLs require exact Content-Type match.
-      // Expo on iOS can return image/heic even when quality compression is applied.
       const normalizedMime = "image/jpeg";
       setter(uri);
       if (base64 && onImagePicked) {
@@ -68,20 +68,19 @@ export default function BasicInfoStep({
         weight="700"
         className={`text-[22px] mb-1 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Tell us about your event
+        {t("events.wizard.basicInfo.title")}
       </ThemedText>
       <ThemedText
         weight="700"
         className={`text-[15px] mt-4 mb-3 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Basic Event Information
+        {t("events.wizard.basicInfo.sectionTitle")}
       </ThemedText>
 
-      {/* Event Banner */}
       <ThemedText
         className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
       >
-        Event banner *
+        {t("events.wizard.basicInfo.eventBanner")}
       </ThemedText>
       {eventBanner ? (
         <View className="mb-4 relative">
@@ -128,19 +127,18 @@ export default function BasicInfoStep({
             weight="700"
             className="text-[13px] text-[#F04438] mb-0.5"
           >
-            Add Photo
+            {t("events.wizard.basicInfo.addPhoto")}
           </ThemedText>
           <ThemedText className="text-[11px] text-[#F04438]">
-            Resolution size: 320 x 489 pixel
+            {t("events.wizard.basicInfo.resolutionHint")}
           </ThemedText>
         </TouchableOpacity>
       )}
 
-      {/* Thumbnail */}
       <ThemedText
         className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
       >
-        Thumbnail *
+        {t("events.wizard.basicInfo.thumbnail")}
       </ThemedText>
       {thumbnail ? (
         <View className="mb-4 relative w-[120px] h-[120px]">
@@ -185,60 +183,61 @@ export default function BasicInfoStep({
             <ImageIcon size={18} color={isDark ? "#667085" : "#98A2B3"} />
           </View>
           <ThemedText weight="700" className="text-[12px] text-[#F04438]">
-            Add Photo
+            {t("events.wizard.basicInfo.addPhoto")}
           </ThemedText>
         </TouchableOpacity>
       )}
 
-      {/* Event Name */}
       <ThemedText
         className={`text-[13px] mb-[6px] mt-1 ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
       >
-        Event Name
+        {t("events.wizard.basicInfo.eventName")}
       </ThemedText>
       <TextInput
         value={eventName}
         onChangeText={setEventName}
-        placeholder="E.g., 'Summer Music Festival 2024'"
+        placeholder={t("events.wizard.basicInfo.eventNamePlaceholder")}
         placeholderTextColor={placeholderColor}
         style={{
           borderWidth: 1,
-          borderColor:
-            eventName.length > 0 ? "#F04438" : isDark ? "#2C2C2E" : "#E4E7EC",
-          borderRadius: 10,
-          padding: 12,
-          fontSize: 14,
+          borderColor: isDark ? "#2D5A8C" : "#D0D5DD",
+          borderRadius: 14,
+          paddingHorizontal: 16,
+          height: 56,
+          fontSize: 16,
           color: isDark ? "#F2F4F7" : "#101828",
-          backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+          backgroundColor: isDark ? "#1A1F2A" : "#FFFFFF",
           marginBottom: 16,
+          fontFamily: "Pally",
         }}
       />
 
-      {/* Description */}
       <ThemedText
         className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
       >
-        Description
+        {t("events.wizard.basicInfo.description")}
       </ThemedText>
       <TextInput
         value={description}
         onChangeText={setDescription}
-        placeholder="E.g., 'Summer Music Festival 2024'"
+        placeholder={t("events.wizard.basicInfo.eventNamePlaceholder")}
         placeholderTextColor={placeholderColor}
         multiline
-        numberOfLines={4}
+        numberOfLines={5}
         style={{
           borderWidth: 1,
-          borderColor:
-            description.length > 0 ? "#F04438" : isDark ? "#2C2C2E" : "#E4E7EC",
-          borderRadius: 10,
-          padding: 12,
-          fontSize: 14,
-          minHeight: 100,
+          borderColor: isDark ? "#344054" : "#D0D5DD",
+          borderRadius: 14,
+          paddingHorizontal: 16,
+          paddingTop: 14,
+          paddingBottom: 14,
+          fontSize: 16,
+          minHeight: 132,
           textAlignVertical: "top",
           color: isDark ? "#F2F4F7" : "#101828",
-          backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+          backgroundColor: isDark ? "#10131A" : "#FFFFFF",
           marginBottom: 16,
+          fontFamily: "Pally",
         }}
       />
     </View>

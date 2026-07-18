@@ -1,4 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import type { Withdrawal, WithdrawalStats } from "@/utils/api/types";
 import {
@@ -10,17 +12,15 @@ import { Check, ChevronDown } from "lucide-react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-type PeriodKey = "this-month" | "last-3-months" | "last-6-months" | "all-time";
+type PeriodKey = "last-3-months" | "last-6-months" | "all-time";
 
-const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
-  { key: "this-month", label: "This Month" },
-  { key: "last-3-months", label: "Last 3 Months" },
-  { key: "last-6-months", label: "Last 6 Months" },
-  { key: "all-time", label: "All Time" },
+const PERIOD_OPTIONS: { key: PeriodKey; labelKey: string }[] = [
+  { key: "last-3-months", labelKey: "earnings.last3Months" },
+  { key: "last-6-months", labelKey: "earnings.last6Months" },
+  { key: "all-time", labelKey: "earnings.allTimePeriod" },
 ];
 
 const PERIOD_DAYS: Record<PeriodKey, number | null> = {
-  "this-month": 30,
   "last-3-months": 90,
   "last-6-months": 180,
   "all-time": null,
@@ -126,10 +126,11 @@ const WithdrawalSummaryCard = ({
   stats,
   history = [],
 }: WithdrawalSummaryCardProps) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const periodSheetRef = useRef<BottomSheetModal>(null);
-  const [periodKey, setPeriodKey] = useState<PeriodKey>("this-month");
+  const [periodKey, setPeriodKey] = useState<PeriodKey>("last-3-months");
 
   const snapPoints = useMemo(() => ["35%"], []);
   const renderBackdrop = useCallback(
@@ -172,27 +173,26 @@ const WithdrawalSummaryCard = ({
 
   const pendingFraction = total > 0 ? pending / total : 0;
   const selectedPeriodLabel =
-    PERIOD_OPTIONS.find((o) => o.key === periodKey)?.label ?? "This Month";
+    t(
+      PERIOD_OPTIONS.find((o) => o.key === periodKey)?.labelKey ??
+        "earnings.last3Months",
+    );
 
   return (
     <>
-      <View
-        className="mt-5 rounded-3xl px-4 py-5"
-        style={{
-          borderWidth: 1,
-          borderColor: isDark ? "#374151" : "#E4E7EC",
-          backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
-        }}
+      <GlassCard
+        isDark={isDark}
+        style={{ marginTop: 20, paddingHorizontal: 16, paddingVertical: 20 }}
       >
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
             <ThemedText weight="700" className="text-[18px]">
-              Withdrawal Summary
+              {t("earnings.withdrawalSummary")}
             </ThemedText>
             <ThemedText
               className={`text-[14px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
             >
-              A summary of withdrawal
+              {t("earnings.summarySubtitle")}
             </ThemedText>
           </View>
 
@@ -220,19 +220,19 @@ const WithdrawalSummaryCard = ({
           <View className="flex-1 gap-5">
             <LegendItem
               color="#FF5A52"
-              label="TOTAL PENDING"
+              label={t("earnings.totalPending")}
               value={`₦ ${pending.toLocaleString()}`}
               isDark={isDark}
             />
             <LegendItem
               color="#44C062"
-              label="TOTAL COMPLETED"
+              label={t("earnings.totalCompleted")}
               value={`₦ ${completed.toLocaleString()}`}
               isDark={isDark}
             />
           </View>
         </View>
-      </View>
+      </GlassCard>
 
       <BottomSheetModal
         ref={periodSheetRef}
@@ -258,7 +258,7 @@ const WithdrawalSummaryCard = ({
           }}
         >
           <ThemedText weight="700" className="text-[18px] mb-4">
-            Select Period
+            {t("earnings.selectPeriod")}
           </ThemedText>
           <View
             style={{
@@ -293,7 +293,7 @@ const WithdrawalSummaryCard = ({
                     weight={isSelected ? "500" : "400"}
                     className="text-[15px]"
                   >
-                    {option.label}
+                    {t(option.labelKey)}
                   </ThemedText>
                   {isSelected ? <Check size={18} color="#16A34A" /> : null}
                 </TouchableOpacity>

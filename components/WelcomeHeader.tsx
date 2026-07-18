@@ -2,7 +2,6 @@ import { ThemedText } from "@/components/themed-text";
 import { TabListType } from "@/feature/organizer/constants/home";
 import { useTheme } from "@/providers/ThemeProvider";
 import { getIsActive } from "@/utils/services";
-import { LinearGradient } from "expo-linear-gradient";
 import { Bell } from "lucide-react-native";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -24,7 +23,7 @@ const WelcomeHeader = <T extends TabListType>({
   onBellPress,
   unreadCount = 0,
 }: WelcomeHeaderProps<T>) => {
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, colors } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   return (
@@ -82,53 +81,100 @@ const WelcomeHeader = <T extends TabListType>({
         )}
       </View>
 
-      <View className="flex-row gap-2">
-        {data.map((item, index) => {
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "stretch",
+          backgroundColor: isDark ? colors.surfaceMuted : "#EEF2F7",
+          borderRadius: 14,
+          padding: 4,
+          borderWidth: 1,
+          borderColor: isDark ? colors.border : "#E4E7EC",
+        }}
+      >
+        {data.map((item) => {
           const isActive = getIsActive(activeTab.tag, item.tag);
+          const showCount = item.hasNumber && (item.count ?? 0) > 0;
+
           return (
             <TouchableOpacity
               onPress={() => onTabChange(item)}
-              key={index}
-              activeOpacity={0.75}
+              key={item.tag}
+              activeOpacity={0.8}
+              style={{ flex: 1 }}
             >
-              {isActive ? (
-                <LinearGradient
-                  colors={
-                    isDark
-                      ? ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.05)"]
-                      : ["rgba(255,255,255,0.90)", "rgba(230,238,255,0.70)"]
-                  }
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+              <View
+                style={{
+                  flex: 1,
+                  minHeight: 40,
+                  borderRadius: 10,
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: isActive ? colors.surface : "transparent",
+                  shadowColor: isActive ? "#000" : "transparent",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isActive ? (isDark ? 0.2 : 0.06) : 0,
+                  shadowRadius: 3,
+                  elevation: isActive ? 1 : 0,
+                }}
+              >
+                <View
                   style={{
-                    borderRadius: 999,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                    borderWidth: 1,
-                    borderColor: isDark
-                      ? "rgba(255,255,255,0.30)"
-                      : "rgba(0,0,0,0.14)",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                   }}
                 >
                   <ThemedText
-                    weight="500"
-                    className={`text-xs ${isDark ? "text-white" : "text-[#101928]"}`}
+                    weight={isActive ? "500" : "400"}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    className={`text-xs ${
+                      isActive
+                        ? isDark
+                          ? "text-white"
+                          : "text-[#101928]"
+                        : isDark
+                          ? "text-[#9CA3AF]"
+                          : "text-[#586170]"
+                    }`}
                   >
-                    {item.title} 
-                    {/* {item.hasNumber && `(${item.count ?? 0})`} */}
+                    {item.title}
                   </ThemedText>
-                </LinearGradient>
-              ) : (
-                <View style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
-                  <ThemedText
-                    weight="400"
-                    className={`text-xs ${isDark ? "text-[#9CA3AF]" : "text-[#586170]"}`}
-                  >
-                    {item.title} 
-                    {/* {item.hasNumber && `(${item.count ?? 0})`} */}
-                  </ThemedText>
+                  {showCount && (
+                    <View
+                      style={{
+                        minWidth: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        paddingHorizontal: 6,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: isActive
+                          ? colors.primary
+                          : isDark
+                            ? "#374151"
+                            : "#D0D5DD",
+                      }}
+                    >
+                      <ThemedText
+                        weight="700"
+                        style={{
+                          fontSize: 10,
+                          lineHeight: 12,
+                          color: isActive ? "#FFFFFF" : colors.textMuted,
+                        }}
+                      >
+                        {item.count}
+                      </ThemedText>
+                    </View>
+                  )}
                 </View>
-              )}
+              </View>
             </TouchableOpacity>
           );
         })}

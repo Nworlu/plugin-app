@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { useUpdateUser } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useAuthStore } from "@/store/auth-store";
 import * as Location from "expo-location";
 import { router } from "expo-router";
@@ -52,16 +53,38 @@ const LOCATIONS: { region: string; items: LocationItem[] }[] = [
 
 // Flatten list for FlatList data
 type RowItem =
-  | { type: "header"; region: string; key: string }
+  | { type: "header"; region: string; regionKey: string; key: string }
   | { type: "item"; name: string; region: string; key: string };
 
+const REGION_KEYS: Record<string, string> = {
+  Africa: "auth.location.africa",
+  Europe: "auth.location.europe",
+  Americas: "auth.location.americas",
+};
+
 export default function ChooseLocationScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { profile, saveProfile, user } = useAuthStore();
   const { mutate: updateUser } = useUpdateUser(user?._id ?? "");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState("");
   const [locating, setLocating] = useState(false);
+
+  const finalizeProfile = async (location: string) => {
+    const nextProfile = profile
+      ? { ...profile, location }
+      : {
+          firstName: user?.name?.firstname ?? "",
+          lastName: user?.name?.lastname ?? "",
+          phone: user?.contact?.phone ?? "",
+          countryCode: user?.contact?.country ?? "",
+          location,
+          notifyUpdates: false,
+          notifyAttending: false,
+        };
+    await saveProfile(nextProfile, true);
+  };
 
   const rows = useMemo<RowItem[]>(() => {
     const q = query.trim().toLowerCase();
@@ -75,6 +98,7 @@ export default function ChooseLocationScreen() {
           matched.push({
             type: "header",
             region: group.region,
+            regionKey: REGION_KEYS[group.region] ?? group.region,
             key: `h-${group.region}`,
           });
           filtered.forEach((i) =>
@@ -94,6 +118,7 @@ export default function ChooseLocationScreen() {
       all.push({
         type: "header",
         region: group.region,
+        regionKey: REGION_KEYS[group.region] ?? group.region,
         key: `h-${group.region}`,
       });
       group.items.forEach((i) =>
@@ -109,6 +134,11 @@ export default function ChooseLocationScreen() {
   }, [query]);
 
   const handleSelect = (name: string, country?: string) => {
+    if (!user?._id) {
+      router.replace("/(auth)/signup");
+      return;
+    }
+
     setSelected(name);
     updateUser(
       {
@@ -121,9 +151,7 @@ export default function ChooseLocationScreen() {
       },
       {
         onSettled: async () => {
-          if (profile) {
-            await saveProfile({ ...profile, location: name }, true);
-          }
+          await finalizeProfile(name);
           setTimeout(() => {
             router.replace("/(organizer)/(tabs)/" as any);
           }, 300);
@@ -139,7 +167,7 @@ export default function ChooseLocationScreen() {
       if (status !== "granted") return;
       const loc = await Location.getCurrentPositionAsync({});
       const [geo] = await Location.reverseGeocodeAsync(loc.coords);
-      const name = geo?.city ?? geo?.region ?? geo?.country ?? "Unknown";
+      const name = geo?.city ?? geo?.region ?? geo?.country ?? t("auth.location.unknown");
       handleSelect(name, geo?.country ?? name);
     } finally {
       setLocating(false);
@@ -158,7 +186,7 @@ export default function ChooseLocationScreen() {
           <ThemedText className="text-[#344054]">‹</ThemedText>
         </TouchableOpacity>
         <ThemedText weight="700" className="text-[#101928] text-lg flex-1">
-          Choose Location
+          {t("auth.location.chooseTitle")}
         </ThemedText>
       </View>
 
@@ -168,7 +196,7 @@ export default function ChooseLocationScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search"
+          placeholder={t("auth.location.search")}
           placeholderTextColor="#98A2B3"
           className="flex-1 text-[14px] text-[#101928]"
         />
@@ -192,7 +220,7 @@ export default function ChooseLocationScreen() {
                 weight="700"
                 className="text-[#98A2B3] text-xs uppercase tracking-widest px-4 pt-4 pb-2"
               >
-                {item.region}
+                {t(item.regionKey)}
               </ThemedText>
             );
           }
@@ -242,7 +270,7 @@ export default function ChooseLocationScreen() {
             <MapPin size={16} color="#D9302A" />
           )}
           <ThemedText weight="700" className="text-[#D9302A] text-[14px]">
-            {locating ? "Detecting..." : "Use Current Location"}
+            {locating ? t("auth.location.detecting") : t("auth.location.useCurrent")}
           </ThemedText>
         </TouchableOpacity>
       </View>

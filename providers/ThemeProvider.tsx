@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useColorScheme } from "nativewind";
+import { useColorScheme as useNativeWindColorScheme } from "nativewind";
 import {
   createContext,
   useCallback,
@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Appearance } from "react-native";
+import { useColorScheme as useRNColorScheme } from "react-native";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -24,26 +24,29 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+function resolveTheme(
+  themeMode: ThemeMode,
+  nativeWindScheme: "light" | "dark" | undefined,
+  systemScheme: "light" | "dark" | null | undefined,
+): "light" | "dark" {
+  if (themeMode === "light" || themeMode === "dark") {
+    return themeMode;
+  }
+
+  if (nativeWindScheme === "dark" || nativeWindScheme === "light") {
+    return nativeWindScheme;
+  }
+
+  return systemScheme === "dark" ? "dark" : "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { setColorScheme } = useColorScheme();
-  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => {
-    const current = Appearance.getColorScheme();
-    // console.log("📱 Initial system theme:", current);
-    return current === "dark" ? "dark" : "light";
-  });
+  const { colorScheme: nativeWindScheme, setColorScheme } =
+    useNativeWindColorScheme();
+  const systemScheme = useRNColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>("system");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    const sub = Appearance.addChangeListener(({ colorScheme }) => {
-      const theme = colorScheme === "dark" ? "dark" : "light";
-      setSystemTheme(theme);
-    });
-
-    return () => sub.remove();
-  }, []);
-
-  // Load saved theme
   useEffect(() => {
     (async () => {
       try {
@@ -56,72 +59,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           setThemeModeState(storedTheme);
         }
       } catch (error) {
-        console.error("❌ Error loading theme:", error);
+        console.error("Error loading theme:", error);
       } finally {
         setIsLoaded(true);
       }
     })();
   }, []);
 
-  // Sync system theme by polling Appearance.getColorScheme()
-  //   useEffect(() => {
-  //     console.log("🔄 Starting theme sync polling");
-
-  //     const syncTheme = () => {
-  //       const current = Appearance.getColorScheme();
-  //       const newTheme = current === "dark" ? "dark" : "light";
-
-  //       if (newTheme !== systemTheme) {
-  //         console.log("🎨 Theme change detected:", systemTheme, "→", newTheme);
-  //         setSystemTheme(newTheme);
-  //       }
-  //     };
-
-  //     // Check immediately
-  //     syncTheme();
-
-  //     // Then check every second (aggressive but reliable)
-  //     const interval = setInterval(syncTheme, 1000);
-
-  //     return () => {
-  //       console.log("🧹 Stopping theme sync polling");
-  //       clearInterval(interval);
-  //     };
-  //   }, [systemTheme]);
-
-  // Also check when app becomes active (for when user changes in Settings)
-  //   useEffect(() => {
-  //     const subscription = AppState.addEventListener(
-  //       "change",
-  //       (nextAppState: AppStateStatus) => {
-  //         if (
-  //           appState.current.match(/inactive|background/) &&
-  //           nextAppState === "active"
-  //         ) {
-  //           const current = Appearance.getColorScheme();
-  //           console.log("✨ App became active - checking theme", { current });
-  //           const newTheme = current === "dark" ? "dark" : "light";
-  //           setSystemTheme(newTheme);
-  //         }
-  //         appState.current = nextAppState;
-  //       }
-  //     );
-
-  //     return () => subscription.remove();
-  //   }, []);
-
-  const resolvedTheme: "light" | "dark" =
-    themeMode === "system" ? systemTheme : themeMode;
-
-  // Sync NativeWind with resolved theme
   useEffect(() => {
-    setColorScheme(resolvedTheme);
-  }, [resolvedTheme, setColorScheme]);
+    if (!isLoaded) return;
+    setColorScheme(themeMode);
+  }, [isLoaded, themeMode, setColorScheme]);
+
+  const resolvedTheme = resolveTheme(themeMode, nativeWindScheme, systemScheme);
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
     AsyncStorage.setItem(THEME_MODE_KEY, mode).catch((error) => {
-      console.error("❌ Error saving theme:", error);
+      console.error("Error saving theme:", error);
     });
   }, []);
 
@@ -134,10 +89,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }),
     [themeMode, setThemeMode, resolvedTheme],
   );
-
-  if (!isLoaded) {
-    return null;
-  }
 
   return (
     <ThemeContext.Provider value={contextValue}>

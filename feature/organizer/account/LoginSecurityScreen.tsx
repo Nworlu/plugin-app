@@ -1,6 +1,7 @@
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import { DEVICE_SESSIONS } from "@/feature/organizer/account/constants/account";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router } from "expo-router";
 import { ChevronLeft, Laptop2, ShieldCheck } from "lucide-react-native";
@@ -9,6 +10,7 @@ import { ScrollView, TouchableOpacity, View } from "react-native";
 
 const LoginSecurityScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   return (
@@ -32,7 +34,7 @@ const LoginSecurityScreen = () => {
             weight="700"
             className={`text-[15px] ${isDark ? "text-white" : "text-[#101828]"}`}
           >
-            Login and Security
+            {t("settings.security.title")}
           </ThemedText>
         </View>
 
@@ -59,13 +61,12 @@ const LoginSecurityScreen = () => {
               weight="700"
               className={`text-[12px] ${isDark ? "text-[#E5E7EB]" : "text-[#1D2939]"}`}
             >
-              Your Account is Safe with Plugin
+              {t("settings.security.safeTitle")}
             </ThemedText>
             <ThemedText
               className={`text-[11px] mt-1 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
             >
-              We password protect this account and use one-time code (OTP) to
-              your email, so only you can access your account.
+              {t("settings.security.safeDescription")}
             </ThemedText>
           </View>
         </View>
@@ -73,7 +74,7 @@ const LoginSecurityScreen = () => {
         <ThemedText
           className={`text-[28px] mt-5 ${isDark ? "text-[#6B7280]" : "text-[#8D8484]"}`}
         >
-          Device Sessions
+          {t("settings.security.deviceSessions")}
         </ThemedText>
 
         <View className="mt-2">
@@ -111,7 +112,7 @@ const LoginSecurityScreen = () => {
 
               <TouchableOpacity activeOpacity={0.85} className="pt-0.5">
                 <ThemedText weight="500" className="text-[#D92D20] text-[12px]">
-                  Logout Device
+                  {t("settings.security.logoutDevice")}
                 </ThemedText>
               </TouchableOpacity>
             </View>

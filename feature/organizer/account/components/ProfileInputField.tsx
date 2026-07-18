@@ -34,29 +34,29 @@ const ProfileInputField = ({
         editable={editable}
         keyboardType={keyboardType}
         style={{
-          height: 42,
-          borderRadius: 6,
+          height: 56,
+          borderRadius: 14,
           borderWidth: 1,
-          paddingHorizontal: 12,
-          fontSize: 13,
+          paddingHorizontal: 16,
+          fontSize: 16,
           fontFamily: "Pally",
           color: isDark ? "#E5E7EB" : "#1D2939",
           backgroundColor: editable
             ? isDark
-              ? "#111"
+              ? "#1A1F2A"
               : "#FFFFFF"
             : isDark
-              ? "#1A1A1A"
-              : "#F9FAFB",
+              ? "#242B38"
+              : "#F8FAFC",
           borderColor: editable
             ? isDark
-              ? "#2A2A2A"
+              ? "#2D5A8C"
               : "#D0D5DD"
             : isDark
-              ? "#1F1F1F"
+              ? "#3A4A5A"
               : "#E4E7EC",
         }}
-        placeholderTextColor={isDark ? "#4B5563" : "#98A2B3"}
+        placeholderTextColor={isDark ? "#667085" : "#98A2B3"}
       />
     </View>
   );

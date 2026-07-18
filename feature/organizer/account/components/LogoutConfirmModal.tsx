@@ -1,5 +1,6 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { LogOut } from "lucide-react-native";
 import React from "react";
@@ -17,6 +18,7 @@ const LogoutConfirmModal = ({
   onCancel,
 }: LogoutConfirmModalProps) => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   const card = isDark ? "#1C1C1E" : "#FFFFFF";
@@ -92,7 +94,7 @@ const LogoutConfirmModal = ({
                 weight="700"
                 style={{ fontSize: 20, color: textMain, textAlign: "center" }}
               >
-                Log Out
+                {t("settings.logout.title")}
               </ThemedText>
               <ThemedText
                 style={{
@@ -103,8 +105,7 @@ const LogoutConfirmModal = ({
                   lineHeight: 21,
                 }}
               >
-                Are you sure you want to log out of your account? You'll need to
-                sign in again to access Plugin.
+                {t("settings.logout.message")}
               </ThemedText>
             </View>
 
@@ -116,7 +117,7 @@ const LogoutConfirmModal = ({
               style={{ paddingHorizontal: 20, paddingVertical: 20, gap: 10 }}
             >
               <GradientButton
-                label="Log Out"
+                label={t("settings.logout.confirm")}
                 onPress={onConfirm}
                 height={50}
                 borderRadius={14}
@@ -139,7 +140,7 @@ const LogoutConfirmModal = ({
                   weight="600"
                   style={{ fontSize: 15, color: textMain }}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </ThemedText>
               </TouchableOpacity>
             </View>

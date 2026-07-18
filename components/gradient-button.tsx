@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTheme } from "@/providers/ThemeProvider";
 import { LinearGradient } from "expo-linear-gradient";
 import { LoaderCircle } from "lucide-react-native";
 import React from "react";
@@ -27,7 +28,13 @@ const GradientButton = ({
   style,
   innerStyle,
 }: GradientButtonProps) => {
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
+  const enabledColors: [string, string] = [colors.primary, colors.accent];
+  const disabledColors: [string, string] =
+    colors.background === "#060A12"
+      ? ["#7A2F35", "#7F523C"]
+      : ["#E7A7AD", "#F2BC99"];
 
   return (
     <TouchableOpacity
@@ -37,7 +44,7 @@ const GradientButton = ({
       style={[{ borderRadius, overflow: "hidden" }, style]}
     >
       <LinearGradient
-        colors={isDisabled ? ["#F3B1B7", "#F6B991"] : ["#C0162C", "#F26A21"]}
+        colors={isDisabled ? disabledColors : enabledColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={[

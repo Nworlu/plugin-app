@@ -1,22 +1,32 @@
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { AppImage } from "@/components/app-image";
 import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
+import EventActionMenu, {
+  EventActionMenuItem,
+} from "@/feature/organizer/events/components/EventActionMenu";
 import EventActionRow from "@/feature/organizer/events/components/EventActionRow";
 import { useEvent, useEventSummary, useTicketsForEvent } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import {
+  ChevronDown,
+  ChevronUp,
   CircleHelp,
   Ellipsis,
+  Eye,
   LayoutDashboard,
+  Link2,
   Megaphone,
+  Pencil,
   Scan,
   Ticket,
   Users,
 } from "lucide-react-native";
-import React from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Dimensions, Share, TouchableOpacity, View } from "react-native";
 
 function EventInsightsSkeleton({ isDark }: { isDark: boolean }) {
   const card = isDark ? "#1C1C1E" : "#FFFFFF";
@@ -90,9 +100,22 @@ function EventInsightsSkeleton({ isDark }: { isDark: boolean }) {
 }
 
 const EventInsightsScreen = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  const menuWidth = 230;
+  const menuItemHeight = 48;
+  const menuPaddingTop = 6;
+  const menuHeight = menuItemHeight * 3 + menuPaddingTop;
+  const window = Dimensions.get("window");
+
+  const [isMoreMenuVisible, setIsMoreMenuVisible] = useState(false);
+  const [selectedMenuActionId, setSelectedMenuActionId] = useState<
+    string | null
+  >(null);
+  const [menuPosition, setMenuPosition] = useState({ x: 16, y: 16 });
+  const [isActionsOpen, setIsActionsOpen] = useState(true);
 
   const { data: event, isLoading } = useEvent(eventId ?? "");
   const { data: tickets } = useTicketsForEvent(eventId ?? "");
@@ -109,34 +132,57 @@ const EventInsightsScreen = () => {
   const salePercent =
     ticketsTotal > 0 ? Math.round((ticketsSold / ticketsTotal) * 100) : 0;
 
-  const actions = [
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      Icon: LayoutDashboard,
-      destructive: true,
-    },
-    {
-      id: "attendees",
-      label: "Manage attendees",
-      Icon: Users,
-      destructive: false,
-    },
-    { id: "tickets", label: "Ticket Sales", Icon: Ticket, destructive: false },
-    {
-      id: "promotions",
-      label: "Promotions",
-      Icon: Megaphone,
-      destructive: false,
-    },
-    { id: "check-in", label: "Check-in Agent", Icon: Scan, destructive: false },
-    {
-      id: "support",
-      label: "Support Center",
-      Icon: CircleHelp,
-      destructive: false,
-    },
-  ] as const;
+  const menuActions = useMemo<readonly EventActionMenuItem[]>(
+    () => [
+      { id: "edit", label: t("events.manage.edit"), Icon: Pencil },
+      { id: "preview", label: t("events.manage.preview"), Icon: Eye },
+      { id: "copy", label: t("events.manage.copyLink"), Icon: Link2 },
+    ],
+    [t],
+  );
+
+  const actions = useMemo(
+    () =>
+      [
+        {
+          id: "dashboard",
+          label: t("events.dashboard.title"),
+          Icon: LayoutDashboard,
+          destructive: true,
+        },
+        {
+          id: "attendees",
+          label: t("events.dashboard.manageAttendees"),
+          Icon: Users,
+          destructive: false,
+        },
+        {
+          id: "tickets",
+          label: t("events.dashboard.ticketSales"),
+          Icon: Ticket,
+          destructive: false,
+        },
+        {
+          id: "promotions",
+          label: t("events.dashboard.promotions"),
+          Icon: Megaphone,
+          destructive: false,
+        },
+        {
+          id: "check-in",
+          label: t("events.dashboard.checkInAgent"),
+          Icon: Scan,
+          destructive: false,
+        },
+        {
+          id: "support",
+          label: t("events.dashboard.supportCenter"),
+          Icon: CircleHelp,
+          destructive: false,
+        },
+      ] as const,
+    [t],
+  );
 
   const handleAction = (actionId: string) => {
     const id = eventId ?? "";
@@ -164,11 +210,49 @@ const EventInsightsScreen = () => {
     }
   };
 
+  const closeMenu = () => {
+    setIsMoreMenuVisible(false);
+  };
+
+  const handleOpenMoreMenu = (x: number, y: number) => {
+    const left = Math.min(
+      Math.max(12, x - menuWidth + 28),
+      window.width - menuWidth - 12,
+    );
+    const top = Math.min(Math.max(12, y + 12), window.height - menuHeight - 24);
+
+    setMenuPosition({ x: left, y: top });
+    setSelectedMenuActionId(null);
+    setIsMoreMenuVisible(true);
+  };
+
+  const handleMenuAction = async (actionId: string) => {
+    setSelectedMenuActionId(actionId);
+    closeMenu();
+
+    if (actionId === "edit" && eventId) {
+      router.push({ pathname: "/(organizer)/edit-event", params: { eventId } });
+      return;
+    }
+
+    if (actionId === "preview" && eventId) {
+      router.push({ pathname: "/event-preview", params: { eventId } });
+      return;
+    }
+
+    if (actionId === "copy" && eventId) {
+      const appLink = `plugin://event-preview?eventId=${eventId}`;
+      await Share.share({
+        message: appLink,
+      });
+    }
+  };
+
   return (
     <AppSafeArea>
       <View className="flex-1 px-4 pt-3">
         <BackHeader
-          label="Back"
+          label={t("common.back")}
           onPress={() => router.back()}
           rightNode={<View />}
         />
@@ -190,12 +274,20 @@ const EventInsightsScreen = () => {
               <View className="flex-row items-center justify-between">
                 <View className="self-start rounded-full bg-[#3F8CE8] px-2 py-0.5 mb-1">
                   <ThemedText weight="500" className="text-white text-[10px]">
-                    {event?.isPublished ? "Published" : "Draft"}
+                    {event?.isPublished
+                      ? t("events.edit.published")
+                      : t("events.edit.draft")}
                   </ThemedText>
                 </View>
 
                 <TouchableOpacity
                   activeOpacity={0.85}
+                  onPress={(pressEvent) =>
+                    handleOpenMoreMenu(
+                      pressEvent.nativeEvent.pageX,
+                      pressEvent.nativeEvent.pageY,
+                    )
+                  }
                   className={`w-8 h-8 rounded-full border items-center justify-center ${isDark ? "border-[#4B5563]" : "border-[#E4E7EC]"}`}
                 >
                   <Ellipsis size={16} color={isDark ? "#D1D5DB" : "#667185"} />
@@ -203,10 +295,12 @@ const EventInsightsScreen = () => {
               </View>
               <View className="flex-row items-center gap-3">
                 {(event?.eventBanner ?? event?.thumbnail) ? (
-                  <Image
-                    source={{ uri: (event?.eventBanner ?? event?.thumbnail)! }}
-                    className="w-[48px] h-[48px] rounded-lg"
-                    resizeMode="cover"
+                  <AppImage
+                    source={(event?.eventBanner ?? event?.thumbnail)!}
+                    recyclingKey={event?._id}
+                    style={{ width: 48, height: 48, borderRadius: 8 }}
+                    contentFit="cover"
+                    priority="high"
                   />
                 ) : (
                   <View className="w-[48px] h-[48px] rounded-lg bg-[#F2F4F7]" />
@@ -255,7 +349,7 @@ const EventInsightsScreen = () => {
                     weight="400"
                     className={`text-[14px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
                   >
-                    Sale progress
+                    {t("events.dashboard.saleProgress")}
                   </ThemedText>
                   <ThemedText
                     weight="500"
@@ -270,7 +364,7 @@ const EventInsightsScreen = () => {
                     className={`h-2 rounded-full overflow-hidden flex-1 ${isDark ? "bg-[#6B7280]" : "bg-[#E4E7EC]"}`}
                   >
                     <View
-                      style={{ width: `${Math.max(8, salePercent)}%` }}
+                      style={{ width: `${salePercent}%` }}
                       className="h-full bg-[#D92D20] rounded-full"
                     />
                   </View>
@@ -287,20 +381,62 @@ const EventInsightsScreen = () => {
             <View
               className={`border-t ${isDark ? "border-[#374151]" : "border-[#F0F2F5]"}`}
             >
-              {actions.map((action, index) => (
-                <EventActionRow
-                  key={action.id}
-                  label={action.label}
-                  Icon={action.Icon}
-                  destructive={action.destructive}
-                  highlighted={index === 0}
-                  onPress={() => handleAction(action.id)}
-                />
-              ))}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setIsActionsOpen((open) => !open)}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: isDark ? "#161618" : "#F9FAFB",
+                }}
+              >
+                <ThemedText
+                  weight="700"
+                  className={`text-[14px] ${isDark ? "text-[#E5E7EB]" : "text-[#344054]"}`}
+                >
+                  {t("events.dashboard.menuSection")}
+                </ThemedText>
+                {isActionsOpen ? (
+                  <ChevronUp size={18} color={isDark ? "#9CA3AF" : "#667085"} />
+                ) : (
+                  <ChevronDown
+                    size={18}
+                    color={isDark ? "#9CA3AF" : "#667085"}
+                  />
+                )}
+              </TouchableOpacity>
+
+              {isActionsOpen
+                ? actions.map((action, index) => (
+                    <EventActionRow
+                      key={action.id}
+                      label={action.label}
+                      Icon={action.Icon}
+                      destructive={action.destructive}
+                      highlighted={index === 0}
+                      onPress={() => handleAction(action.id)}
+                    />
+                  ))
+                : null}
             </View>
           </View>
         )}
       </View>
+
+      <EventActionMenu
+        visible={isMoreMenuVisible}
+        position={menuPosition}
+        width={menuWidth}
+        selectedActionId={selectedMenuActionId}
+        actions={menuActions}
+        onClose={closeMenu}
+        onSelect={(actionId) => {
+          void handleMenuAction(actionId);
+        }}
+      />
     </AppSafeArea>
   );
 };

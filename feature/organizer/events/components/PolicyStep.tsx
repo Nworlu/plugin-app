@@ -1,23 +1,27 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { CheckCircle2, ChevronDown } from "lucide-react-native";
 import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
-const OptionalBadge = ({ isDark }: { isDark: boolean }) => (
-  <View
-    style={{
-      backgroundColor: isDark ? "#2D1F00" : "#FEF3C7",
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 6,
-    }}
-  >
-    <ThemedText style={{ fontSize: 11, color: "#92400E", fontWeight: "700" }}>
-      OPTIONAL
-    </ThemedText>
-  </View>
-);
+const OptionalBadge = ({ isDark }: { isDark: boolean }) => {
+  const { t } = useTranslation();
+  return (
+    <View
+      style={{
+        backgroundColor: isDark ? "#2D1F00" : "#FEF3C7",
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+      }}
+    >
+      <ThemedText style={{ fontSize: 11, color: "#92400E", fontWeight: "700" }}>
+        {t("events.wizard.optional")}
+      </ThemedText>
+    </View>
+  );
+};
 
 const POLICY_SECTIONS = [
   {
@@ -51,6 +55,7 @@ const POLICY_SECTIONS = [
 ];
 
 export default function PolicyStep() {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -66,13 +71,11 @@ export default function PolicyStep() {
 
   return (
     <View>
-      {/* Title */}
       <ThemedText
         weight="700"
         style={{ fontSize: 22, marginBottom: 4, color: titleColor }}
       >
-        Tick to confirm you have read and{"\n"}accepted Plugin&apos;s refund
-        policy.
+        {t("events.wizard.policy.title")}
       </ThemedText>
       <ThemedText
         weight="700"
@@ -83,10 +86,9 @@ export default function PolicyStep() {
           color: titleColor,
         }}
       >
-        Event Details
+        {t("events.wizard.eventDetails")}
       </ThemedText>
 
-      {/* ADD AGENDA — completed */}
       <View
         style={{
           borderWidth: 1,
@@ -109,14 +111,13 @@ export default function PolicyStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            ADD AGENDA
+            {t("events.wizard.policy.addAgenda")}
           </ThemedText>
           <OptionalBadge isDark={isDark} />
           <ChevronDown size={16} color={mutedText} />
         </View>
       </View>
 
-      {/* ADD PHOTO/VIDEOS — completed */}
       <View
         style={{
           borderWidth: 1,
@@ -139,14 +140,13 @@ export default function PolicyStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            ADD PHOTO/VIDEOS
+            {t("events.wizard.policy.addPhotos")}
           </ThemedText>
           <OptionalBadge isDark={isDark} />
           <ChevronDown size={16} color={mutedText} />
         </View>
       </View>
 
-      {/* REFUND POLICY — expandable */}
       <View
         style={{
           borderWidth: 1,
@@ -192,7 +192,7 @@ export default function PolicyStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            REFUND POLICY
+            {t("events.wizard.policy.refundPolicy")}
           </ThemedText>
           <ChevronDown
             size={16}
@@ -213,33 +213,16 @@ export default function PolicyStep() {
                 lineHeight: 18,
               }}
             >
-              Add photos to show what your event will be about.{"\n"}You can
-              upload up to 6 images.
+              {t("events.wizard.media.photosHint")}
             </ThemedText>
 
-            {/* Policy header */}
             <ThemedText
               weight="700"
               style={{ fontSize: 16, color: titleColor, marginBottom: 10 }}
             >
-              Refund Policy for Organizers
+              {t("events.wizard.policy.refundPolicyTitle")}
             </ThemedText>
 
-            {/* Intro */}
-            <ThemedText
-              style={{
-                fontSize: 13,
-                color: bodyColor,
-                lineHeight: 20,
-                marginBottom: 14,
-              }}
-            >
-              Our platform has a comprehensive refund policy designed to protect
-              attendees and maintain event integrity. Organizers must adhere to
-              the following guidelines:
-            </ThemedText>
-
-            {/* Policy sections */}
             {POLICY_SECTIONS.map((section) => (
               <View key={section.title} style={{ marginBottom: 12 }}>
                 <ThemedText
@@ -262,7 +245,6 @@ export default function PolicyStep() {
               </View>
             ))}
 
-            {/* Checkbox */}
             <TouchableOpacity
               onPress={() => setPolicyAgreed((v) => !v)}
               style={{
@@ -312,17 +294,13 @@ export default function PolicyStep() {
                   flex: 1,
                 }}
               >
-                I have read and agree to the refund policies and guidelines
-                outlined above. By checking this box, I acknowledge and accept
-                responsibility for adhering to these terms as an event
-                organizer.
+                {t("events.wizard.policy.agreeRefund")}
               </ThemedText>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* FEATURED GUEST — optional */}
       <View
         style={{
           borderWidth: 1,
@@ -368,7 +346,7 @@ export default function PolicyStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            FEATURED GUEST
+            {t("events.wizard.policy.featuredGuest")}
           </ThemedText>
           <OptionalBadge isDark={isDark} />
           <ChevronDown
@@ -385,13 +363,12 @@ export default function PolicyStep() {
             <ThemedText
               style={{ fontSize: 12, color: mutedText, lineHeight: 18 }}
             >
-              Add featured guests or speakers to highlight on your event page.
+              {t("events.wizard.policy.featuredHint")}
             </ThemedText>
           </View>
         )}
       </View>
 
-      {/* ADD VENDORS — optional */}
       <View
         style={{
           borderWidth: 1,
@@ -436,7 +413,7 @@ export default function PolicyStep() {
             weight="700"
             style={{ fontSize: 13, color: titleColor, flex: 1 }}
           >
-            ADD VENDORS
+            {t("events.wizard.policy.addVendors")}
           </ThemedText>
           <OptionalBadge isDark={isDark} />
           <ChevronDown
@@ -453,7 +430,7 @@ export default function PolicyStep() {
             <ThemedText
               style={{ fontSize: 12, color: mutedText, lineHeight: 18 }}
             >
-              Add vendors or sponsors participating in your event.
+              {t("events.wizard.policy.vendorsHint")}
             </ThemedText>
           </View>
         )}

@@ -2,12 +2,13 @@ import AppSafeArea from "@/components/app-safe-area";
 import { SkeletonBox, SkeletonRow } from "@/components/skeleton-box";
 import { ThemedText } from "@/components/themed-text";
 import { useSettings, useUpdateSettings } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import type { UserSettings } from "@/utils/api/types";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import { Switch, TouchableOpacity, View } from "react-native";
 
 function NotificationSettingsSkeleton({ isDark }: { isDark: boolean }) {
@@ -50,33 +51,31 @@ type SettingsKey = keyof UserSettings;
 
 type NotificationItem = {
   id: SettingsKey;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
 };
 
-const NOTIFICATION_ITEMS: NotificationItem[] = [
+const NOTIFICATION_ITEM_CONFIG: NotificationItem[] = [
   {
-    id: "emailNotifications",
-    title: "Email Notifications",
-    description:
-      "Receive emails for booking confirmations, event updates, and important announcements.",
+    id: "email",
+    titleKey: "settings.notifications.email",
+    descriptionKey: "settings.notifications.emailDesc",
   },
   {
-    id: "pushNotifications",
-    title: "Push Notifications",
-    description:
-      "Get real-time push alerts for event reminders, booking updates, and activity on your account.",
+    id: "push",
+    titleKey: "settings.notifications.push",
+    descriptionKey: "settings.notifications.pushDesc",
   },
   {
-    id: "smsNotifications",
-    title: "SMS Notifications",
-    description:
-      "Receive text messages for booking confirmations and essential event information.",
+    id: "sms",
+    titleKey: "settings.notifications.sms",
+    descriptionKey: "settings.notifications.smsDesc",
   },
 ];
 
 const NotificationsScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   const user = useAuthStore((s) => s.user);
@@ -84,6 +83,16 @@ const NotificationsScreen = () => {
 
   const { data: settings, isLoading } = useSettings(userId);
   const { mutate: updateSettings } = useUpdateSettings(userId);
+
+  const notificationItems = useMemo(
+    () =>
+      NOTIFICATION_ITEM_CONFIG.map((item) => ({
+        ...item,
+        title: t(item.titleKey),
+        description: t(item.descriptionKey),
+      })),
+    [t],
+  );
 
   const handleToggle = (key: SettingsKey, value: boolean) => {
     updateSettings({ [key]: value });
@@ -106,7 +115,7 @@ const NotificationsScreen = () => {
             weight="700"
             className={`text-[15px] ${isDark ? "text-white" : "text-[#101828]"}`}
           >
-            Notifications
+            {t("settings.notifications.title")}
           </ThemedText>
         </View>
       </View>
@@ -119,7 +128,7 @@ const NotificationsScreen = () => {
         <NotificationSettingsSkeleton isDark={isDark} />
       ) : (
         <View className="px-4 mt-6">
-          {NOTIFICATION_ITEMS.map((item, index) => {
+          {notificationItems.map((item, index) => {
             const enabled = settings?.[item.id] ?? false;
             return (
               <View key={item.id} className="pt-4 pb-5">
@@ -146,7 +155,7 @@ const NotificationsScreen = () => {
                 >
                   {item.description}
                 </ThemedText>
-                {index < NOTIFICATION_ITEMS.length - 1 ? (
+                {index < notificationItems.length - 1 ? (
                   <View
                     className={`h-[1px] mt-4 ${isDark ? "bg-[#222]" : "bg-[#EAECF0]"}`}
                   />

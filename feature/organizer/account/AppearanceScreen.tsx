@@ -1,42 +1,54 @@
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import { ThemeMode, useTheme } from "@/providers/ThemeProvider";
+import { useTranslation } from "@/hooks/use-translation";
 import { router } from "expo-router";
 import { ChevronLeft, Monitor, Moon, Sun } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type ThemeOption = {
   mode: ThemeMode;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   Icon: React.ComponentType<{ size: number; color: string }>;
 };
 
-const THEME_OPTIONS: ThemeOption[] = [
+const THEME_OPTION_CONFIG: ThemeOption[] = [
   {
     mode: "light",
-    label: "Light",
-    description: "Always use light appearance",
+    labelKey: "settings.appearance.light",
+    descriptionKey: "settings.appearance.lightDesc",
     Icon: Sun,
   },
   {
     mode: "dark",
-    label: "Dark",
-    description: "Always use dark appearance",
+    labelKey: "settings.appearance.dark",
+    descriptionKey: "settings.appearance.darkDesc",
     Icon: Moon,
   },
   {
     mode: "system",
-    label: "System default",
-    description: "Follows your device settings",
+    labelKey: "settings.appearance.system",
+    descriptionKey: "settings.appearance.systemDesc",
     Icon: Monitor,
   },
 ];
 
 const AppearanceScreen = () => {
   const { resolvedTheme, themeMode, setThemeMode } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
+
+  const themeOptions = useMemo(
+    () =>
+      THEME_OPTION_CONFIG.map((option) => ({
+        ...option,
+        label: t(option.labelKey),
+        description: t(option.descriptionKey),
+      })),
+    [t],
+  );
 
   return (
     <AppSafeArea>
@@ -54,7 +66,7 @@ const AppearanceScreen = () => {
             weight="700"
             className={`text-[15px] ${isDark ? "text-white" : "text-[#101828]"}`}
           >
-            Appearance
+            {t("settings.appearance.title")}
           </ThemedText>
         </View>
 
@@ -65,16 +77,15 @@ const AppearanceScreen = () => {
         <ThemedText
           className={`text-[13px] mt-6 mb-4 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
         >
-          Choose how Plugin looks to you. Select a theme or sync with your
-          device settings.
+          {t("settings.appearance.subtitle")}
         </ThemedText>
 
         <View
           className={`rounded-2xl overflow-hidden border ${isDark ? "border-[#2A2A2A] bg-[#111]" : "border-[#EAECF0] bg-white"}`}
         >
-          {THEME_OPTIONS.map(({ mode, label, description, Icon }, index) => {
+          {themeOptions.map(({ mode, label, description, Icon }, index) => {
             const isSelected = themeMode === mode;
-            const isLast = index === THEME_OPTIONS.length - 1;
+            const isLast = index === themeOptions.length - 1;
 
             return (
               <TouchableOpacity

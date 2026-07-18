@@ -2,6 +2,7 @@ import { ThemedText } from "@/components/themed-text";
 import NativeDateTimePicker from "@/feature/organizer/events/components/NativeDateTimePicker";
 import { Ticket } from "@/feature/organizer/events/types";
 import { useOrganizer } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import {
   Calendar,
@@ -22,6 +23,8 @@ type Props = {
   thumbnail: string | null;
   startDate: Date;
   startTime: Date;
+  endDate: Date;
+  endTime: Date;
   address: string;
   city: string;
   country: string;
@@ -61,12 +64,15 @@ export default function ReviewStep({
   thumbnail,
   startDate,
   startTime,
+  endDate,
+  endTime,
   address,
   city,
   country,
   tickets,
   userId,
 }: Props) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -79,6 +85,31 @@ export default function ReviewStep({
   const [publishOption, setPublishOption] = useState<"now" | "schedule">("now");
   const [scheduleDate, setScheduleDate] = useState(new Date());
   const [scheduleTime, setScheduleTime] = useState(new Date());
+
+  const mergeDateAndTime = (datePart: Date, timePart: Date): Date => {
+    const merged = new Date(datePart);
+    merged.setHours(
+      timePart.getHours(),
+      timePart.getMinutes(),
+      timePart.getSeconds(),
+      timePart.getMilliseconds(),
+    );
+    return merged;
+  };
+
+  const scheduleError = (() => {
+    if (publishOption !== "schedule") return null;
+    const scheduleAt = mergeDateAndTime(scheduleDate, scheduleTime);
+    const eventStartAt = mergeDateAndTime(startDate, startTime);
+    const eventEndAt = mergeDateAndTime(endDate, endTime);
+    if (scheduleAt.getTime() < eventStartAt.getTime()) {
+      return t("events.wizard.review.scheduleBeforeStart");
+    }
+    if (scheduleAt.getTime() > eventEndAt.getTime()) {
+      return t("events.wizard.review.scheduleAfterEnd");
+    }
+    return null;
+  })();
 
   // Private / invitees state
   const [inviteMessage, setInviteMessage] = useState("");
@@ -138,7 +169,7 @@ export default function ReviewStep({
         weight="700"
         className={`text-[22px] leading-[30px] mb-6 ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        Almost there, you&apos;re ready to publish your first event
+        {t("events.wizard.review.title")}
       </ThemedText>
 
       {/* Event preview card */}
@@ -165,7 +196,7 @@ export default function ReviewStep({
               weight="700"
               className={`text-[15px] leading-[22px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
             >
-              {eventName || "Event Title"}
+              {eventName || t("events.wizard.review.eventTitle")}
             </ThemedText>
             {showFull && description ? (
               <ThemedText className="text-[12px] text-[#667085] leading-[18px]">
@@ -224,7 +255,7 @@ export default function ReviewStep({
           className="px-[14px] pt-[6px] pb-[14px]"
         >
           <ThemedText className="text-[13px] text-[#667085]">
-            {showFull ? "Show less \u2227" : "Show more \u2228"}
+            {showFull ? t("events.wizard.review.showLess") : t("events.wizard.review.showMore")}
           </ThemedText>
         </TouchableOpacity>
       </View>
@@ -233,7 +264,7 @@ export default function ReviewStep({
         weight="700"
         className={`text-[14px] tracking-[0.5px] mb-[18px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        {"WHO'S ORGANIZING THIS EVENT ?"}
+        {t("events.wizard.review.whoOrganizing")}
       </ThemedText>
 
       {/* Organizer card */}
@@ -263,7 +294,7 @@ export default function ReviewStep({
             className={`text-[15px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
             numberOfLines={1}
           >
-            {organizer?.name ?? "Loading..."}
+            {organizer?.name ?? t("events.wizard.review.loading")}
           </ThemedText>
           {organizer?.tagline ? (
             <ThemedText
@@ -280,7 +311,7 @@ export default function ReviewStep({
         weight="700"
         className={`text-[14px] tracking-[0.5px] mb-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        WHO CAN SEE YOUR EVENT?
+        {t("events.wizard.review.whoCanSee")}
       </ThemedText>
 
       {/* Public option */}
@@ -312,11 +343,11 @@ export default function ReviewStep({
           weight="700"
           className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
         >
-          Public
+          {t("events.wizard.review.public")}
         </ThemedText>
       </TouchableOpacity>
       <ThemedText className="text-[12px] text-[#667085] mb-3 ml-0.5">
-        Shared on Eventdey and search engines
+        {t("events.wizard.review.publicDesc")}
       </ThemedText>
 
       {/* Private option */}
@@ -348,13 +379,13 @@ export default function ReviewStep({
           weight="700"
           className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
         >
-          Private
+          {t("events.wizard.review.private")}
         </ThemedText>
       </TouchableOpacity>
       <ThemedText
         className={`text-[12px] text-[#667085] ml-0.5 ${visibility === "private" ? "mb-5" : "mb-7"}`}
       >
-        Only available to a selected audience
+        {t("events.wizard.review.privateDesc")}
       </ThemedText>
 
       {/* ── PRIVATE: Invite message + add invitees ── */}
@@ -363,14 +394,13 @@ export default function ReviewStep({
           <ThemedText
             className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
           >
-            Invite message
+            {t("events.wizard.review.inviteMessage")}
           </ThemedText>
 
-          {/* Text area */}
           <TextInput
             value={inviteMessage}
             onChangeText={(v) => setInviteMessage(v.slice(0, 30))}
-            placeholder="Enter a brief message you want your invitees to see when"
+            placeholder={t("events.wizard.review.invitePlaceholder")}
             placeholderTextColor={placeholderColor}
             multiline
             numberOfLines={4}
@@ -382,7 +412,7 @@ export default function ReviewStep({
             style={{ textAlignVertical: "top" }}
           />
           <ThemedText className="text-[11px] text-[#667085] mb-3">
-            30 char max
+            {t("events.wizard.review.charMax")}
           </ThemedText>
 
           {/* Info banner */}
@@ -401,7 +431,7 @@ export default function ReviewStep({
             <ThemedText
               className={`text-[12px] flex-1 leading-[18px] ${isDark ? "text-[#FDE68A]" : "text-[#92400E]"}`}
             >
-              This message would be sent to invitees added to this event
+              {t("events.wizard.review.inviteBanner")}
             </ThemedText>
           </View>
 
@@ -416,7 +446,7 @@ export default function ReviewStep({
                 className={`flex-row items-center px-[14px] py-[10px] border-b ${isDark ? "border-b-[#2C2C2E]" : "border-b-[#E4E7EC]"}`}
               >
                 <ThemedText className="flex-1 text-[13px] text-[#667085]">
-                  Invitee
+                  {t("events.wizard.review.invitee")}
                 </ThemedText>
                 <TouchableOpacity
                   onPress={() => {
@@ -460,7 +490,9 @@ export default function ReviewStep({
                     className={`rounded-lg px-3 py-[6px] ${isDark ? "bg-[#0D2E1A]" : "bg-[#ECFDF3]"}`}
                   >
                     <ThemedText className="text-[13px] text-[#12B76A] tracking-[2px]">
-                      Code: {inv.passcode.split("").join(" ")}
+                      {t("events.wizard.review.code", {
+                        code: inv.passcode.split("").join(" "),
+                      })}
                     </ThemedText>
                   </View>
                 ) : null}
@@ -478,12 +510,12 @@ export default function ReviewStep({
                 <ThemedText
                   className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Full Name *
+                  {t("events.wizard.review.fullName")}
                 </ThemedText>
                 <TextInput
                   value={inviteeName}
                   onChangeText={setInviteeName}
-                  placeholder="Enter full name"
+                  placeholder={t("events.wizard.review.enterFullName")}
                   placeholderTextColor={placeholderColor}
                   className={`border rounded-[10px] px-[14px] py-3 text-[14px] ${
                     isDark
@@ -498,7 +530,7 @@ export default function ReviewStep({
                 <ThemedText
                   className={`text-[13px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Phone number
+                  {t("events.wizard.review.phoneNumber")}
                 </ThemedText>
                 <View
                   className={`flex-row items-center border rounded-[10px] overflow-hidden ${isDark ? "border-[#2C2C2E] bg-[#1C1C1E]" : "border-[#E4E7EC] bg-white"}`}
@@ -532,7 +564,7 @@ export default function ReviewStep({
                 <ThemedText
                   className={`text-[13px] mb-[10px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                 >
-                  Ticket pass code
+                  {t("events.wizard.review.ticketPasscode")}
                 </ThemedText>
                 <View className="flex-row items-center gap-[10px]">
                   {/* 4 boxes */}
@@ -565,7 +597,7 @@ export default function ReviewStep({
                   >
                     <RefreshCw size={13} color="#D92D20" />
                     <ThemedText className="text-[13px] text-[#D92D20]">
-                      Generate passcode
+                      {t("events.wizard.review.generatePasscode")}
                     </ThemedText>
                   </TouchableOpacity>
                 </View>
@@ -587,7 +619,7 @@ export default function ReviewStep({
                     weight="700"
                     className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -612,7 +644,7 @@ export default function ReviewStep({
                           : "text-[#F97066]"
                     }`}
                   >
-                    Add
+                    {t("events.wizard.review.add")}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
@@ -628,19 +660,18 @@ export default function ReviewStep({
                 weight="700"
                 className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
               >
-                Add invitees
+                {t("events.wizard.review.addInvitees")}
               </ThemedText>
             </TouchableOpacity>
           )}
         </View>
       )}
 
-      {/* ── WHEN SHOULD WE PUBLISH ── */}
       <ThemedText
         weight="700"
         className={`text-[14px] tracking-[0.5px] mb-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
       >
-        WHEN SHOULD WE PUBLISH YOUR EVENT?
+        {t("events.wizard.review.whenPublish")}
       </ThemedText>
 
       {/* Publish Now */}
@@ -672,7 +703,7 @@ export default function ReviewStep({
           weight="700"
           className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
         >
-          Publish Now
+          {t("events.wizard.review.publishNow")}
         </ThemedText>
       </TouchableOpacity>
 
@@ -705,37 +736,44 @@ export default function ReviewStep({
           weight="700"
           className={`text-[14px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
         >
-          Schedule later
+          {t("events.wizard.review.scheduleLater")}
         </ThemedText>
       </TouchableOpacity>
 
       {/* Date + time pickers when schedule selected */}
       {publishOption === "schedule" && (
-        <View className="flex-row gap-3 mt-1 mb-[10px]">
-          <View className="flex-1">
-            <ThemedText
-              className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-            >
-              Start date
-            </ThemedText>
-            <NativeDateTimePicker
-              mode="date"
-              value={scheduleDate}
-              onChange={setScheduleDate}
-            />
+        <View className="mt-1 mb-[10px]">
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <ThemedText
+                className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+              >
+                {t("events.wizard.dateTime.startDate")}
+              </ThemedText>
+              <NativeDateTimePicker
+                mode="date"
+                value={scheduleDate}
+                onChange={setScheduleDate}
+              />
+            </View>
+            <View className="flex-1">
+              <ThemedText
+                className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
+              >
+                {t("events.wizard.dateTime.startTime")}
+              </ThemedText>
+              <NativeDateTimePicker
+                mode="time"
+                value={scheduleTime}
+                onChange={setScheduleTime}
+              />
+            </View>
           </View>
-          <View className="flex-1">
-            <ThemedText
-              className={`text-[12px] mb-[6px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
-            >
-              Start time
+          {scheduleError ? (
+            <ThemedText className="text-[12px] text-[#F04438] mt-2">
+              {scheduleError}
             </ThemedText>
-            <NativeDateTimePicker
-              mode="time"
-              value={scheduleTime}
-              onChange={setScheduleTime}
-            />
-          </View>
+          ) : null}
         </View>
       )}
 
@@ -748,7 +786,7 @@ export default function ReviewStep({
               weight="700"
               className={`text-[14px] tracking-[0.5px] ${isDark ? "text-[#F2F4F7]" : "text-[#101828]"}`}
             >
-              TICKETS
+              {t("events.wizard.review.tickets")}
             </ThemedText>
           </View>
           <View className="gap-[10px]">
@@ -769,7 +807,7 @@ export default function ReviewStep({
                   {ticket.price ? (
                     <ThemedText className="text-[13px] text-[#667085]">
                       {"\u20A6"} {Number(ticket.price).toLocaleString("en-NG")}{" "}
-                      per ticket
+                      {t("events.wizard.tickets.perTicket")}
                     </ThemedText>
                   ) : (
                     <ThemedText className="text-[12px] text-[#12B76A] capitalize">
@@ -797,7 +835,9 @@ export default function ReviewStep({
                         <ThemedText
                           className={`text-[12px] ${isDark ? "text-[#D0D5DD]" : "text-[#344054]"}`}
                         >
-                          {ticket.quantity} capacity
+                          {t("events.wizard.tickets.capacity", {
+                            count: ticket.quantity,
+                          })}
                         </ThemedText>
                       </View>
                     ) : null}

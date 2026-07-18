@@ -1,5 +1,6 @@
 import GradientButton from "@/components/gradient-button";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { AlertTriangle, CheckCircle, Info, XCircle } from "lucide-react-native";
 import React from "react";
@@ -24,15 +25,17 @@ export default function AlertModal({
   visible,
   title,
   message,
-  confirmLabel = "OK",
+  confirmLabel,
   cancelLabel,
   onConfirm,
   onCancel,
   destructive = false,
   iconType = "info",
 }: AlertModalProps) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const resolvedConfirmLabel = confirmLabel ?? t("common.ok");
 
   const card = isDark ? "#111827" : "#FFFFFF";
   const border = isDark ? "#1F2937" : "#EAECF0";
@@ -195,12 +198,12 @@ export default function AlertModal({
                     weight="700"
                     style={{ fontSize: 15, color: "#FFFFFF" }}
                   >
-                    {confirmLabel}
+                    {resolvedConfirmLabel}
                   </ThemedText>
                 </TouchableOpacity>
               ) : (
                 <GradientButton
-                  label={confirmLabel}
+                  label={resolvedConfirmLabel}
                   onPress={onConfirm}
                   height={46}
                   style={{ flex: 1 }}
@@ -209,7 +212,7 @@ export default function AlertModal({
             </View>
           ) : (
             <GradientButton
-              label={confirmLabel}
+              label={resolvedConfirmLabel}
               onPress={onConfirm}
               height={46}
               style={{ width: "100%" }}

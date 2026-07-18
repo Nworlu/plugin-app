@@ -2,6 +2,7 @@ import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
 import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import { useOrganizer } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -13,7 +14,7 @@ import {
   Megaphone,
   MoreVertical,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Image,
   Modal,
@@ -31,6 +32,7 @@ const OrganizerSettingsScreen = () => {
   const [menuVisible, setMenuVisible] = useState(false);
 
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   const user = useAuthStore((s) => s.user);
@@ -44,6 +46,36 @@ const OrganizerSettingsScreen = () => {
   const border = isDark ? "#1F2937" : "#EAECF0";
   const textMain = isDark ? "#F9FAFB" : "#101828";
   const textMuted = isDark ? "#9CA3AF" : "#667085";
+
+  const campaignPlans = useMemo(
+    () => [
+      {
+        key: "social",
+        title: t("settings.organizer.socialMediaAds"),
+        subtitle: t("settings.organizer.socialMediaAdsSubtitle"),
+        amount: "N 8,000",
+        icon: <Megaphone size={28} color="#9F7AEA" />,
+        bgColor: "#E5EAF2",
+      },
+      {
+        key: "email",
+        title: t("settings.organizer.emailCampaigns"),
+        subtitle: t("settings.organizer.emailCampaignsSubtitle"),
+        amount: "N 25,000",
+        icon: <Mail size={30} color="#344054" />,
+        bgColor: "#DDEBE2",
+      },
+      {
+        key: "sponsored",
+        title: t("settings.organizer.sponsoredListings"),
+        subtitle: t("settings.organizer.sponsoredListingsSubtitle"),
+        amount: "N 35,000",
+        icon: <Layers size={30} color="#344054" />,
+        bgColor: "#F2EAA8",
+      },
+    ],
+    [t],
+  );
 
   return (
     <AppSafeArea>
@@ -75,7 +107,7 @@ const OrganizerSettingsScreen = () => {
             <ChevronLeft size={24} color={textMain} />
           </TouchableOpacity>
           <ThemedText weight="700" className="text-[24px] ml-2">
-            Organizer Settings
+            {t("settings.organizer.settingsTitle")}
           </ThemedText>
         </View>
 
@@ -109,7 +141,7 @@ const OrganizerSettingsScreen = () => {
               weight="700"
               className={`text-[15px] ${activeTab === "profile" ? "text-[#F04438]" : "text-[#667085]"}`}
             >
-              Organizer Profile
+              {t("settings.organizer.profileTab")}
             </ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
@@ -128,7 +160,7 @@ const OrganizerSettingsScreen = () => {
               weight="700"
               className={`text-[15px] ${activeTab === "plans" ? "text-[#F04438]" : "text-[#667085]"}`}
             >
-              Campaign Plans
+              {t("settings.organizer.plansTab")}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -144,14 +176,12 @@ const OrganizerSettingsScreen = () => {
           >
             <View style={{ marginTop: 0, marginBottom: 18 }}>
               <ThemedText weight="700" className="text-[20px] mb-1">
-                Organizer profiles
+                {t("settings.organizer.profilesHeading")}
               </ThemedText>
               <ThemedText
                 className={`mb-5 text-[15px] ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
               >
-                Each profile describes a unique organizer and shows all of their
-                events on one page. Having a complete profile can encourage
-                attendees to follow you.
+                {t("settings.organizer.profilesDescription")}
               </ThemedText>
               <TouchableOpacity
                 style={{
@@ -167,8 +197,8 @@ const OrganizerSettingsScreen = () => {
               >
                 <ThemedText weight="700" className="text-[16px] text-[#F04438]">
                   {organizer
-                    ? "Edit Organizer Profile"
-                    : "Add Organizer Profile"}
+                    ? t("settings.organizer.editOrganizerProfile")
+                    : t("settings.organizer.addOrganizerProfile")}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -303,7 +333,9 @@ const OrganizerSettingsScreen = () => {
                             );
                           }}
                         >
-                          <ThemedText className="text-[15px]">Edit</ThemedText>
+                          <ThemedText className="text-[15px]">
+                            {t("settings.organizer.edit")}
+                          </ThemedText>
                         </Pressable>
                       </View>
                     </View>
@@ -326,32 +358,7 @@ const OrganizerSettingsScreen = () => {
             contentContainerStyle={{ padding: 18, paddingBottom: 32 }}
           >
             {/* Use the same campaign types as StartCampaignScreen */}
-            {[
-              {
-                key: "social",
-                title: "Social Media Ads",
-                subtitle: "( Facebook & Instagram )",
-                amount: "N 8,000",
-                icon: <Megaphone size={28} color="#9F7AEA" />,
-                bgColor: "#E5EAF2",
-              },
-              {
-                key: "email",
-                title: "Email Campaigns",
-                subtitle: "( Ads to 5000 email list )",
-                amount: "N 25,000",
-                icon: <Mail size={30} color="#344054" />,
-                bgColor: "#DDEBE2",
-              },
-              {
-                key: "sponsored",
-                title: "Sponsored Listings",
-                subtitle: "( Highlight on Homepage )",
-                amount: "N 35,000",
-                icon: <Layers size={30} color="#344054" />,
-                bgColor: "#F2EAA8",
-              },
-            ].map((campaign) => (
+            {campaignPlans.map((campaign) => (
               <GlassCard
                 key={campaign.key}
                 isDark={isDark}

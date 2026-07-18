@@ -2,6 +2,7 @@ import AlertModal from "@/components/alert-modal";
 import { ThemedText } from "@/components/themed-text";
 import EditEventField from "@/feature/organizer/events/components/EditEventField";
 import { useEvent, useGetSignedUrl, usePatchEvent } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
@@ -18,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const EditEventScreen = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const bgPage = isDark ? "#0D0D0D" : "#F5F5F5";
@@ -71,9 +73,11 @@ const EditEventScreen = () => {
   }, [event]);
 
   useEffect(() => {
+    const saveTimer = saveTimerRef.current;
+    const toastTimer = toastTimerRef.current;
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (saveTimer) clearTimeout(saveTimer);
+      if (toastTimer) clearTimeout(toastTimer);
     };
   }, []);
 
@@ -160,7 +164,7 @@ const EditEventScreen = () => {
         setIsEditing(false);
       }, 1400);
     } catch (e: any) {
-      setSaveError(e?.message ?? "Failed to save. Please try again.");
+      setSaveError(e?.message ?? t("events.create.saveFailedDefault"));
       setIsSaving(false);
     }
   };
@@ -175,10 +179,12 @@ const EditEventScreen = () => {
   };
 
   const isPublished = event?.isPublished;
-  const statusLabel = isPublished ? "Published" : "Draft";
+  const statusLabel = isPublished
+    ? t("events.edit.published")
+    : t("events.edit.draft");
 
   const formatDate = (iso?: string) => {
-    if (!iso) return "Date not set";
+    if (!iso) return t("events.edit.dateNotSet");
     return new Date(iso).toLocaleDateString("en-GB", {
       weekday: "short",
       day: "numeric",
@@ -193,7 +199,7 @@ const EditEventScreen = () => {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: bgPage }}>
       <AlertModal
         visible={!!saveError}
-        title="Save Failed"
+        title={t("events.create.saveFailed")}
         message={saveError ?? ""}
         iconType="error"
         onConfirm={() => setSaveError(null)}
@@ -218,7 +224,7 @@ const EditEventScreen = () => {
           >
             <ArrowLeft size={18} color="#667185" />
             <ThemedText weight="400" className="text-[#667185] text-[14px]">
-              Back to events
+              {t("events.edit.backToEvents")}
             </ThemedText>
           </TouchableOpacity>
 
@@ -268,7 +274,7 @@ const EditEventScreen = () => {
                 className="text-[18px] leading-6"
                 numberOfLines={1}
               >
-                {isLoading ? "Loading…" : title || "Untitled Event"}
+                {isLoading ? t("events.edit.loading") : title || t("events.edit.untitled")}
               </ThemedText>
               <ThemedText className="text-[#667185] text-[14px] mt-1">
                 {formatDate(subtitleDate)}
@@ -302,7 +308,7 @@ const EditEventScreen = () => {
                 weight="400"
                 className="text-[#666268] text-[15px] mb-3"
               >
-                Event banner *
+                {t("events.edit.eventBanner")}
               </ThemedText>
               <View className="relative overflow-hidden rounded-[8px] bg-[#D9D9D9]">
                 {bannerUri ? (
@@ -367,7 +373,7 @@ const EditEventScreen = () => {
                 weight="400"
                 className="text-[#666268] text-[15px] mt-4 mb-3"
               >
-                Thumbnail *
+                {t("events.edit.thumbnail")}
               </ThemedText>
               <View className="relative self-start overflow-hidden rounded-[8px] bg-[#D9D9D9]">
                 {thumbnailUri ? (
@@ -434,7 +440,7 @@ const EditEventScreen = () => {
 
               {/* Event Name */}
               <EditEventField
-                label="Event Name"
+                label={t("events.edit.eventName")}
                 value={title}
                 onChangeText={setTitle}
                 editable={isEditing && !isSaving}
@@ -447,7 +453,7 @@ const EditEventScreen = () => {
                   weight="400"
                   className="text-[#828994] text-[15px] mb-2"
                 >
-                  Description
+                  {t("events.edit.description")}
                 </ThemedText>
                 <View
                   style={{
@@ -479,7 +485,7 @@ const EditEventScreen = () => {
                     textAlignVertical="top"
                     selectionColor="#D92D20"
                     placeholderTextColor="#98A2B3"
-                    placeholder="Describe your event…"
+                    placeholder={t("events.edit.descriptionPlaceholder")}
                     style={{
                       minHeight: 118,
                       fontSize: 15,
@@ -531,7 +537,7 @@ const EditEventScreen = () => {
                         : "#344054",
                   }}
                 >
-                  Cancel
+                  {t("events.edit.cancel")}
                 </ThemedText>
               </TouchableOpacity>
 
@@ -546,14 +552,14 @@ const EditEventScreen = () => {
                   <>
                     <ActivityIndicator size="small" color="#fff" />
                     <ThemedText weight="500" className="text-white text-[16px]">
-                      Saving…
+                      {t("events.edit.saving")}
                     </ThemedText>
                   </>
                 ) : (
                   <>
                     <Save size={16} color="#FFFFFF" />
                     <ThemedText weight="500" className="text-white text-[16px]">
-                      Save Changes
+                      {t("events.edit.saveChanges")}
                     </ThemedText>
                   </>
                 )}
@@ -567,7 +573,7 @@ const EditEventScreen = () => {
               style={{ backgroundColor: "#D92D20" }}
             >
               <ThemedText weight="500" className="text-white text-[16px]">
-                Edit Details
+                {t("events.edit.editDetails")}
               </ThemedText>
             </TouchableOpacity>
           )}
@@ -586,10 +592,10 @@ const EditEventScreen = () => {
                     weight="500"
                     className="text-[#101928] text-[18px] leading-7"
                   >
-                    Changes Saved
+                    {t("events.edit.changesSaved")}
                   </ThemedText>
                   <ThemedText className="text-[#475467] text-[14px] mt-0.5">
-                    Event updated successfully
+                    {t("events.edit.eventUpdatedSuccess")}
                   </ThemedText>
                 </View>
               </View>

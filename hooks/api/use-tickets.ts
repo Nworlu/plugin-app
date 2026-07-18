@@ -7,6 +7,8 @@ export const ticketKeys = {
   all: ["tickets"] as const,
   userEvents: () => [...ticketKeys.all, "user-events"] as const,
   forEvent: (eventId: string) => [...ticketKeys.all, "event", eventId] as const,
+  attendeesForEvent: (eventId: string) =>
+    [...ticketKeys.all, "attendees", eventId] as const,
   byBooking: (bookingId: string) =>
     [...ticketKeys.all, "booking", bookingId] as const,
 };
@@ -24,6 +26,18 @@ export function useTicketsForEvent(eventId: string) {
     queryFn: () => ticketsApi.getForEvent(eventId),
     enabled: !!eventId,
     select: (res) => res?.tickets?.tickets ?? [],
+  });
+}
+
+export function useAttendeesForEvent(eventId: string) {
+  return useQuery({
+    queryKey: ticketKeys.attendeesForEvent(eventId),
+    queryFn: () => ticketsApi.getAttendeesForEvent(eventId),
+    enabled: !!eventId,
+    select: (res) => {
+      if (Array.isArray(res)) return res;
+      return res?.attendees ?? [];
+    },
   });
 }
 

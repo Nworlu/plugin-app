@@ -1,13 +1,17 @@
+import { useTheme } from "@/providers/ThemeProvider";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { Plus } from "lucide-react-native";
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Platform, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface CustomBottomTabProps extends BottomTabBarProps {
   onCenterButtonPress?: () => void;
 }
+
+const TAB_BAR_HEIGHT = 64;
 
 const CustomBottomTab = ({
   descriptors,
@@ -15,9 +19,28 @@ const CustomBottomTab = ({
   navigation,
   onCenterButtonPress,
 }: CustomBottomTabProps) => {
+  const { colors, resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, Platform.OS === "android" ? 8 : 0);
+
   return (
     <View className="relative">
-      <View className="w-full h-24 bg-[#130403] flex-row">
+      <View
+        className="w-full flex-row"
+        style={{
+          height: TAB_BAR_HEIGHT + bottomInset,
+          paddingBottom: bottomInset,
+          backgroundColor: colors.tabBarBackground,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: isDark ? 0.24 : 0.06,
+          shadowRadius: 12,
+          elevation: 12,
+        }}
+      >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
@@ -25,14 +48,12 @@ const CustomBottomTab = ({
           // Check if this is the center button
           const isCenterButton = route.name === "center-button";
 
-          console.log(route.name, "route.name");
-
           const label =
             options.tabBarLabel !== undefined
               ? options.tabBarLabel
               : options.title !== undefined
-              ? options.title
-              : route.name;
+                ? options.title
+                : route.name;
 
           const onPress = () => {
             // Trigger haptic feedback
@@ -73,7 +94,7 @@ const CustomBottomTab = ({
 
             const iconElement = options.tabBarIcon({
               focused: isFocused,
-              color: isFocused ? "transparent" : "#666268",
+              color: isFocused ? "transparent" : colors.tabIconInactive,
               size: 32,
             });
 
@@ -92,28 +113,38 @@ const CustomBottomTab = ({
                   onPress={onPress}
                   activeOpacity={1}
                   onLongPress={onLongPress}
-                  className="absolute -top-8 items-center justify-center"
+                  className="absolute items-center justify-center"
                   style={{
-                    width: 70,
-                    height: 70,
-                    borderRadius: 35,
+                    top: -28,
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
                   }}
                 >
                   <LinearGradient
-                    colors={["#BC1622", "#F4702D"]}
+                    colors={[colors.primary, colors.accent]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={{
-                      width: 70,
-                      height: 70,
-                      borderRadius: 35,
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
                       alignItems: "center",
                       justifyContent: "center",
                       borderWidth: 4,
-                      borderColor: "#FFFFFF",
+                      borderColor: colors.tabBarBackground,
+                      shadowColor: colors.primary,
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.28,
+                      shadowRadius: 10,
+                      elevation: 8,
                     }}
                   >
-                    <Plus size={32} color="#FFFFFF" strokeWidth={3} />
+                    <Plus
+                      size={28}
+                      color={colors.inverseText}
+                      strokeWidth={3}
+                    />
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -128,14 +159,20 @@ const CustomBottomTab = ({
               accessibilityLabel={options.tabBarAccessibilityLabel}
               onPress={onPress}
               onLongPress={onLongPress}
-              className="flex-1 items-center justify-center relative"
+              className="flex-1 items-center justify-center relative pt-1"
             >
               {isFocused && (
                 <LinearGradient
-                  colors={["#FCE0DC", "#BC1622", "#F4702D"]}
+                  colors={[colors.accentSoft, colors.primary, colors.accent]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={{ width: 61, height: 2, position: "absolute", top: 0 }}
+                  style={{
+                    width: 48,
+                    height: 3,
+                    borderRadius: 999,
+                    position: "absolute",
+                    top: 0,
+                  }}
                 />
               )}
               {/* Render the icon with gradient */}
@@ -143,13 +180,20 @@ const CustomBottomTab = ({
 
               {/* Render the label */}
               <Text
-                className="text-xs mt-1"
-                style={{ color: isFocused ? "#FCE0DC" : "#CFD9E870" }}
+                className="text-[11px] mt-1"
+                style={{
+                  color: isFocused
+                    ? colors.tabLabelActive
+                    : colors.tabLabelInactive,
+                  fontFamily: isFocused ? "Pally-Medium" : "Pally",
+                }}
               >
                 {typeof label === "function"
                   ? label({
                       focused: isFocused,
-                      color: isFocused ? "#FCE0DC" : "#CFD9E870",
+                      color: isFocused
+                        ? colors.tabLabelActive
+                        : colors.tabLabelInactive,
                       position: "below-icon",
                       children: route.name,
                     })

@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { WalletCards, X } from "lucide-react-native";
 import React from "react";
@@ -10,6 +11,7 @@ type TopUpBannerProps = {
 };
 
 const TopUpBanner = ({ amount, onDismiss }: TopUpBannerProps) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -26,7 +28,7 @@ const TopUpBanner = ({ amount, onDismiss }: TopUpBannerProps) => {
       <ThemedText
         className={`flex-1 text-sm leading-5 ${isDark ? "text-[#A7F3D0]" : "text-[#667085]"}`}
       >
-        Your Earnings has been topped up with{" "}
+        {t("earnings.topUpBanner")}{" "}
         <ThemedText weight="700" className="text-[#16A34A] text-base">
           {amount}
         </ThemedText>

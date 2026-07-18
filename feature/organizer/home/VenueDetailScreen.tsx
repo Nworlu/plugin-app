@@ -1,12 +1,14 @@
 import AppSafeArea from "@/components/app-safe-area";
 import BackHeader from "@/components/back-header";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
 import { Venue, venuesList } from "@/feature/organizer/constants/home";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router, useLocalSearchParams } from "expo-router";
 import { MapPin, Star, Users, Wifi, Zap } from "lucide-react-native";
 import React, { useMemo } from "react";
-import { Image, ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 
 const AmenityBadge = ({
   label,
@@ -31,6 +33,7 @@ const AmenityBadge = ({
 );
 
 const VenueDetailScreen = () => {
+  const { t } = useTranslation();
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -45,7 +48,7 @@ const VenueDetailScreen = () => {
       <AppSafeArea>
         <View className="flex-1 items-center justify-center px-6">
           <ThemedText weight="500" className="text-base text-center">
-            Venue not found.
+            {t("homeExtras.venueNotFound")}
           </ThemedText>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -53,7 +56,7 @@ const VenueDetailScreen = () => {
             onPress={() => router.back()}
           >
             <ThemedText weight="500" className="text-[#D9302A]">
-              Go back
+              {t("homeExtras.goBack")}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -69,7 +72,7 @@ const VenueDetailScreen = () => {
         {/* Header */}
         <View className="px-4 pt-3 pb-2">
           <BackHeader
-            label="Back"
+            label={t("shared.back")}
             onPress={() => router.back()}
             iconColor={isDark ? "#E4E7EC" : "#1D2739"}
           />
@@ -81,10 +84,12 @@ const VenueDetailScreen = () => {
           contentContainerStyle={{ paddingBottom: 120 }}
         >
           {/* Hero image */}
-          <Image
+          <AppImage
             source={venue.image}
+            recyclingKey={venue.id}
+            priority="high"
             style={{ width: "100%", height: 240 }}
-            resizeMode="cover"
+            contentFit="cover"
           />
 
           {/* Content */}
@@ -143,7 +148,7 @@ const VenueDetailScreen = () => {
                   weight="400"
                   className={`text-[11px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
                 >
-                  Capacity
+                  {t("homeExtras.capacity")}
                 </ThemedText>
               </View>
 
@@ -163,7 +168,7 @@ const VenueDetailScreen = () => {
                   weight="400"
                   className={`text-[11px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
                 >
-                  Amenities
+                  {t("homeExtras.amenities")}
                 </ThemedText>
               </View>
 
@@ -182,7 +187,7 @@ const VenueDetailScreen = () => {
                   weight="400"
                   className={`text-[11px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
                 >
-                  Per day
+                  {t("homeExtras.perDay")}
                 </ThemedText>
               </View>
             </View>
@@ -193,7 +198,7 @@ const VenueDetailScreen = () => {
                 weight="700"
                 className={`text-[15px] ${isDark ? "text-[#E5E7EB]" : "text-[#2E394C]"}`}
               >
-                About this venue
+                {t("homeExtras.aboutVenue")}
               </ThemedText>
               <ThemedText
                 weight="400"
@@ -209,7 +214,7 @@ const VenueDetailScreen = () => {
                 weight="700"
                 className={`text-[15px] ${isDark ? "text-[#E5E7EB]" : "text-[#2E394C]"}`}
               >
-                Amenities
+                {t("homeExtras.amenities")}
               </ThemedText>
               <View className="flex-row flex-wrap gap-2">
                 {venue.amenities.map((amenity) => (
@@ -238,7 +243,7 @@ const VenueDetailScreen = () => {
               weight="400"
               className={`text-[13px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
             >
-              Starting from
+              {t("homeExtras.startingFrom")}
             </ThemedText>
             <ThemedText
               weight="700"
@@ -250,7 +255,7 @@ const VenueDetailScreen = () => {
                 className={`text-[13px] ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
               >
                 {" "}
-                / day
+                {t("homeExtras.perDaySlash")}
               </ThemedText>
             </ThemedText>
           </View>
@@ -266,7 +271,7 @@ const VenueDetailScreen = () => {
             className="w-full h-14 rounded-2xl items-center justify-center bg-[#D9302A]"
           >
             <ThemedText weight="700" className="text-white text-[15px]">
-              Book this Venue
+              {t("homeExtras.bookThisVenue")}
             </ThemedText>
           </TouchableOpacity>
         </View>

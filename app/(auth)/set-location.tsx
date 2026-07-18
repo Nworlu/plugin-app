@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { useUpdateUser } from "@/hooks/api";
+import { useTranslation } from "@/hooks/use-translation";
 import { useAuthStore } from "@/store/auth-store";
 import * as Location from "expo-location";
 import { router } from "expo-router";
@@ -9,12 +10,33 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SetLocationScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { profile, saveProfile, user } = useAuthStore();
   const { mutate: updateUser } = useUpdateUser(user?._id ?? "");
   const [searching, setSearching] = useState(false);
 
+  const finalizeProfile = async (location: string) => {
+    const nextProfile = profile
+      ? { ...profile, location }
+      : {
+          firstName: user?.name?.firstname ?? "",
+          lastName: user?.name?.lastname ?? "",
+          phone: user?.contact?.phone ?? "",
+          countryCode: user?.contact?.country ?? "",
+          location,
+          notifyUpdates: false,
+          notifyAttending: false,
+        };
+    await saveProfile(nextProfile, true);
+  };
+
   const handleUseLocation = async () => {
+    if (!user?._id) {
+      router.replace("/(auth)/signup");
+      return;
+    }
+
     setSearching(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -26,7 +48,7 @@ export default function SetLocationScreen() {
       const loc = await Location.getCurrentPositionAsync({});
       const [geo] = await Location.reverseGeocodeAsync(loc.coords);
       const locationName =
-        geo?.city ?? geo?.region ?? geo?.country ?? "Unknown";
+        geo?.city ?? geo?.region ?? geo?.country ?? t("auth.location.unknown");
       const country = geo?.country ?? "";
       updateUser(
         {
@@ -39,9 +61,7 @@ export default function SetLocationScreen() {
         },
         {
           onSettled: async () => {
-            if (profile) {
-              await saveProfile({ ...profile, location: locationName }, true);
-            }
+            await finalizeProfile(locationName);
             router.replace("/(organizer)/(tabs)/" as any);
           },
         },
@@ -58,7 +78,14 @@ export default function SetLocationScreen() {
   };
 
   const handleSkip = () => {
-    router.replace("/(organizer)/(tabs)/" as any);
+    if (!user?._id) {
+      router.replace("/(auth)/signup");
+      return;
+    }
+
+    finalizeProfile(profile?.location ?? "")
+      .then(() => router.replace("/(organizer)/(tabs)/" as any))
+      .catch(() => router.replace("/(auth)/signup"));
   };
 
   if (searching) {
@@ -75,7 +102,7 @@ export default function SetLocationScreen() {
         {/* Globe illustration */}
         <ThemedText style={{ fontSize: 80, marginBottom: 24 }}>🌍</ThemedText>
         <ThemedText weight="700" className="text-white text-xl">
-          Searching location ....
+          {t("auth.location.searching")}
         </ThemedText>
         <ActivityIndicator color="#fff" size="large" className="mt-6" />
       </View>
@@ -105,7 +132,7 @@ export default function SetLocationScreen() {
       <View className="relative self-center flex-row items-center gap-2 bg-black/30 rounded-full px-4 py-2 mb-8">
         <MapPin size={14} color="#fff" />
         <ThemedText weight="500" className="text-white text-[13px]">
-          Set Location
+          {t("auth.location.setLocation")}
         </ThemedText>
       </View>
 
@@ -118,7 +145,7 @@ export default function SetLocationScreen() {
         weight="700"
         className="relative text-white text-[26px] leading-9 text-center px-8 mb-2"
       >
-        S👀 WHAT&apos;S{"\n"}HAPPENING NEAR YOU
+        {t("auth.location.headline")}
       </ThemedText>
 
       <View className="flex-1" />
@@ -135,7 +162,7 @@ export default function SetLocationScreen() {
         >
           <MapPin size={16} color="#fff" />
           <ThemedText weight="700" className="text-white text-[15px]">
-            Use Current Location
+            {t("auth.location.useCurrent")}
           </ThemedText>
         </TouchableOpacity>
 
@@ -145,7 +172,7 @@ export default function SetLocationScreen() {
           className="h-[52px] rounded-[14px] border-2 border-white/60 bg-white/10 items-center justify-center"
         >
           <ThemedText weight="700" className="text-white text-[15px]">
-            Choose Location
+            {t("auth.location.chooseLocation")}
           </ThemedText>
         </TouchableOpacity>
 
@@ -155,7 +182,7 @@ export default function SetLocationScreen() {
           className="items-center py-2"
         >
           <ThemedText weight="500" className="text-white/80 text-sm">
-            Skip for later
+            {t("auth.location.skip")}
           </ThemedText>
         </TouchableOpacity>
       </View>

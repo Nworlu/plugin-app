@@ -1,54 +1,57 @@
 import GradientButton from "@/components/gradient-button";
+import { AppImage } from "@/components/app-image";
 import { ThemedText } from "@/components/themed-text";
-import { useAuthStore } from "@/store/auth-store";
-import { router } from "expo-router";
-import { Search } from "lucide-react-native";
-import React, { useRef, useState } from "react";
 import {
-  Dimensions,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  View,
-  ViewToken,
-} from "react-native";
+  ONBOARDING_SLIDES,
+} from "@/constants/onboarding-slides";
+import { useTranslation } from "@/hooks/use-translation";
+import { useAuthStore } from "@/store/auth-store";
+import { preloadOnboardingImages } from "@/utils/image-preload";
+import { router } from "expo-router";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions, FlatList, View, ViewToken } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
 const PHOTO_HEIGHT = Math.round(height * 0.58);
 
-const SLIDES = [
+const SLIDE_TEXT_KEYS = [
   {
-    id: "1",
-    image: require("@/assets/images/event/event-1.png"),
-    tag: "For Organisers",
-    title: "Amplify your\ninfluence",
-    description:
-      "Host unforgettable events, grow your brand and connect with influencers, artists and industry professionals",
+    tag: "auth.onboarding.slide1Tag",
+    title: "auth.onboarding.slide1Title",
+    description: "auth.onboarding.slide1Description",
   },
   {
-    id: "2",
-    image: require("@/assets/images/event/event-2.jpg"),
-    tag: "Ticket Sales",
-    title: "Sell tickets\nwith ease",
-    description:
-      "Set up ticket tiers, manage sales and handle check-ins all from one powerful organiser dashboard",
+    tag: "auth.onboarding.slide2Tag",
+    title: "auth.onboarding.slide2Title",
+    description: "auth.onboarding.slide2Description",
   },
   {
-    id: "3",
-    image: require("@/assets/images/event/event-3.jpg"),
-    tag: "Growth & Insights",
-    title: "Understand\nyour earnings",
-    description:
-      "Monitor revenue, analyse event performance and grow your audience with crystal-clear financial insights",
+    tag: "auth.onboarding.slide3Tag",
+    title: "auth.onboarding.slide3Title",
+    description: "auth.onboarding.slide3Description",
   },
-];
+] as const;
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { completeOnboarding } = useAuthStore();
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+
+  const slides = useMemo(
+    () =>
+      ONBOARDING_SLIDES.map((slide, index) => ({
+        ...slide,
+        ...SLIDE_TEXT_KEYS[index],
+      })),
+    [],
+  );
+
+  useEffect(() => {
+    preloadOnboardingImages().catch(() => {});
+  }, []);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -60,12 +63,7 @@ export default function OnboardingScreen() {
 
   const handleLoginSignup = async () => {
     await completeOnboarding();
-    router.push("/(auth)/signup");
-  };
-
-  const handleBrowseEvents = async () => {
-    await completeOnboarding();
-    router.replace("/(organizer)/(tabs)/" as any);
+    router.replace("/(auth)/signup");
   };
 
   return (
@@ -73,34 +71,36 @@ export default function OnboardingScreen() {
       {/* Swipeable slides */}
       <FlatList
         ref={flatListRef}
-        data={SLIDES}
+        data={slides}
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        initialNumToRender={slides.length}
+        windowSize={slides.length}
+        removeClippedSubviews={false}
         onViewableItemsChanged={onViewableItemsChanged.current}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         className="flex-1"
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <View style={{ width }} className="flex-1">
             {/* Hero image with rounded bottom corners */}
-            <View
-              className="overflow-hidden rounded-b-[36px]"
-              style={{ height: PHOTO_HEIGHT }}
-            >
-              <Image
+            <View className="overflow-hidden" style={{ height: PHOTO_HEIGHT }}>
+              <AppImage
                 source={item.image}
                 style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
+                contentFit="cover"
+                priority={index === 0 ? "high" : "normal"}
+                recyclingKey={item.id}
               />
             </View>
 
             {/* Slide text */}
             <View className="flex-1 px-6 pt-6">
               {/* Tag badge */}
-              <View className="self-start bg-[#FDECEA] rounded-full px-3 py-1 mb-3">
+              <View className="self-start bg-[#FDECEA] px-3 py-1 mb-3">
                 <ThemedText weight="500" className="text-[#D9302A] text-xs">
-                  {item.tag}
+                  {t(item.tag)}
                 </ThemedText>
               </View>
 
@@ -108,13 +108,13 @@ export default function OnboardingScreen() {
                 weight="700"
                 className="text-[#101928] text-[26px] leading-[34px]"
               >
-                {item.title}
+                {t(item.title)}
               </ThemedText>
               <ThemedText
                 weight="400"
                 className="text-[#667085] text-sm leading-6 mt-2.5"
               >
-                {item.description}
+                {t(item.description)}
               </ThemedText>
             </View>
           </View>
@@ -123,12 +123,12 @@ export default function OnboardingScreen() {
 
       {/* Fixed bottom controls */}
       <View
-        className="px-6 bg-[#F5F0EF]"
+        className="px-6 bg-[#F5F0EF] rounded-xl"
         style={{ paddingBottom: insets.bottom + 20, paddingTop: 4 }}
       >
         {/* Pagination dots */}
         <View className="flex-row items-center gap-1.5 mb-5">
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <View
               key={i}
               className={`h-2 rounded-full ${
@@ -140,14 +140,14 @@ export default function OnboardingScreen() {
 
         {/* Primary CTA */}
         <GradientButton
-          label="Login / Sign up"
+          label={t("auth.onboarding.cta")}
           onPress={handleLoginSignup}
           height={52}
           borderRadius={14}
         />
 
         {/* Secondary CTA */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           activeOpacity={0.85}
           onPress={handleBrowseEvents}
           className="flex-row items-center justify-center gap-2 rounded-[14px] border border-[#D9302A] mt-3"
@@ -157,7 +157,7 @@ export default function OnboardingScreen() {
           <ThemedText weight="700" className="text-[#D9302A] text-[15px]">
             Browse Events
           </ThemedText>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );

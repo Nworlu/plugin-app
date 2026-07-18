@@ -14,6 +14,7 @@ type MetricCardProps = {
 const MetricCard = ({ title, subtitle, icon, className }: MetricCardProps) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const isPlainTitle = typeof title === "string" || typeof title === "number";
 
   return (
     <GlassCard
@@ -33,13 +34,17 @@ const MetricCard = ({ title, subtitle, icon, className }: MetricCardProps) => {
           {icon}
         </View>
       ) : null}
-      <View>
-        <ThemedText
-          weight="500"
-          className={`text-3xl leading-10 ${isDark ? "text-[#F9FAFB]" : "text-[#1D2739]"}`}
-        >
-          {title}
-        </ThemedText>
+      <View className="flex-1">
+        {isPlainTitle ? (
+          <ThemedText
+            weight="700"
+            className={`text-xl ${isDark ? "text-[#F9FAFB]" : "text-[#1D2739]"}`}
+          >
+            {title}
+          </ThemedText>
+        ) : (
+          title
+        )}
         <ThemedText
           weight="500"
           className={`text-base ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}

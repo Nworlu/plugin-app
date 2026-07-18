@@ -1,46 +1,45 @@
+import AlertModal from "@/components/alert-modal";
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
+import { getLanguageByCode, LANGUAGES } from "@/constants/languages";
+import { resolveLocale, translate } from "@/constants/i18n/translations";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useLocaleStore } from "@/store/locale-store";
 import { router } from "expo-router";
-import { Check, ChevronLeft, Search } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
-import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
-
-type Language = {
-  code: string;
-  name: string;
-  nativeName: string;
-};
-
-const LANGUAGES: Language[] = [
-  { code: "en", name: "English", nativeName: "English" },
-  { code: "fr", name: "French", nativeName: "Français" },
-  { code: "es", name: "Spanish", nativeName: "Español" },
-  { code: "de", name: "German", nativeName: "Deutsch" },
-  { code: "pt", name: "Portuguese", nativeName: "Português" },
-  { code: "it", name: "Italian", nativeName: "Italiano" },
-  { code: "ar", name: "Arabic", nativeName: "العربية" },
-  { code: "zh", name: "Chinese (Simplified)", nativeName: "中文(简体)" },
-  { code: "ja", name: "Japanese", nativeName: "日本語" },
-  { code: "ko", name: "Korean", nativeName: "한국어" },
-  { code: "ru", name: "Russian", nativeName: "Русский" },
-  { code: "hi", name: "Hindi", nativeName: "हिन्दी" },
-  { code: "yo", name: "Yoruba", nativeName: "Èdè Yorùbá" },
-  { code: "ig", name: "Igbo", nativeName: "Igbo" },
-  { code: "ha", name: "Hausa", nativeName: "Hausa" },
-  { code: "sw", name: "Swahili", nativeName: "Kiswahili" },
-  { code: "nl", name: "Dutch", nativeName: "Nederlands" },
-  { code: "pl", name: "Polish", nativeName: "Polski" },
-  { code: "tr", name: "Turkish", nativeName: "Türkçe" },
-  { code: "id", name: "Indonesian", nativeName: "Bahasa Indonesia" },
-];
+import { Check, ChevronLeft, Globe, Search } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ScrollView,
+  Switch,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const TranslationScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
-  const [selectedCode, setSelectedCode] = useState("en");
+  const languageCode = useLocaleStore((s) => s.languageCode);
+  const autoTranslate = useLocaleStore((s) => s.autoTranslate);
+  const isLoaded = useLocaleStore((s) => s.isLoaded);
+  const hydrate = useLocaleStore((s) => s.hydrate);
+  const setLanguage = useLocaleStore((s) => s.setLanguage);
+  const setAutoTranslate = useLocaleStore((s) => s.setAutoTranslate);
+
   const [query, setQuery] = useState("");
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertType, setAlertType] = useState<"success" | "info">("success");
+
+  useEffect(() => {
+    if (!isLoaded) {
+      hydrate();
+    }
+  }, [hydrate, isLoaded]);
 
   const bg = isDark ? "#060A12" : "#F7F8FC";
   const card = isDark ? "#111827" : "#FFFFFF";
@@ -50,20 +49,56 @@ const TranslationScreen = () => {
   const textMuted = isDark ? "#9CA3AF" : "#667085";
   const divider = isDark ? "#1F2937" : "#F2F4F7";
 
+  const currentLanguage = getLanguageByCode(languageCode);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return LANGUAGES;
     return LANGUAGES.filter(
-      (l) =>
-        l.name.toLowerCase().includes(q) ||
-        l.nativeName.toLowerCase().includes(q),
+      (language) =>
+        language.name.toLowerCase().includes(q) ||
+        language.nativeName.toLowerCase().includes(q),
     );
   }, [query]);
+
+  const handleSelectLanguage = async (code: string) => {
+    if (code === languageCode) {
+      return;
+    }
+
+    const language = getLanguageByCode(code);
+    if (!language) {
+      return;
+    }
+
+    await setLanguage(code);
+
+    const newLocale = resolveLocale(code);
+
+    if (language.supported) {
+      setAlertTitle(translate(newLocale, "translation.languageUpdated"));
+      setAlertMessage(
+        translate(newLocale, "translation.languageUpdatedMessage", {
+          language: language.nativeName,
+        }),
+      );
+      setAlertType("success");
+    } else {
+      setAlertTitle(translate(newLocale, "translation.preferenceSaved"));
+      setAlertMessage(
+        translate(newLocale, "translation.preferenceSavedMessage", {
+          language: language.name,
+        }),
+      );
+      setAlertType("info");
+    }
+
+    setAlertVisible(true);
+  };
 
   return (
     <AppSafeArea style={{ flex: 1, backgroundColor: bg }}>
       <View style={{ flex: 1 }}>
-        {/* Header */}
         <View
           style={{
             flexDirection: "row",
@@ -94,21 +129,69 @@ const TranslationScreen = () => {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <ThemedText weight="700" style={{ fontSize: 17, color: textMain }}>
-              Language & Translation
+              {t("translation.title")}
             </ThemedText>
             <ThemedText
               style={{ fontSize: 12, color: textMuted, marginTop: 1 }}
             >
-              Choose your preferred language
+              {t("translation.subtitle")}
             </ThemedText>
           </View>
         </View>
 
-        {/* Search */}
         <View
           style={{
             marginHorizontal: 16,
             marginTop: 16,
+            marginBottom: 12,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: border,
+            backgroundColor: card,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: isDark ? "#1F2937" : "#F2F4F7",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Globe size={16} color="#BC1622" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <ThemedText weight="700" style={{ fontSize: 14, color: textMain }}>
+              {t("translation.autoTranslate")}
+            </ThemedText>
+            <ThemedText
+              style={{ fontSize: 12, color: textMuted, marginTop: 2 }}
+            >
+              {t("translation.autoTranslateHint")}
+            </ThemedText>
+          </View>
+          <Switch
+            value={autoTranslate}
+            onValueChange={setAutoTranslate}
+            trackColor={{
+              false: isDark ? "#374151" : "#E4E7EC",
+              true: "#EA4335",
+            }}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor={isDark ? "#374151" : "#E4E7EC"}
+          />
+        </View>
+
+        <View
+          style={{
+            marginHorizontal: 16,
             marginBottom: 8,
             flexDirection: "row",
             alignItems: "center",
@@ -125,7 +208,7 @@ const TranslationScreen = () => {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search language..."
+            placeholder={t("translation.searchPlaceholder")}
             placeholderTextColor={isDark ? "#4B5563" : "#98A2B3"}
             style={{
               flex: 1,
@@ -136,7 +219,6 @@ const TranslationScreen = () => {
           />
         </View>
 
-        {/* Currently selected badge */}
         <View
           style={{
             marginHorizontal: 16,
@@ -157,15 +239,19 @@ const TranslationScreen = () => {
           }}
         >
           <ThemedText style={{ fontSize: 12, color: "#F04438", flex: 1 }}>
-            Current:{" "}
+            {t("common.current")}:{" "}
             <ThemedText weight="700" style={{ fontSize: 12, color: "#F04438" }}>
-              {LANGUAGES.find((l) => l.code === selectedCode)?.name ??
-                "English"}
+              {currentLanguage?.name ?? "English"}
             </ThemedText>
+            {currentLanguage && !currentLanguage.supported ? (
+              <ThemedText style={{ fontSize: 12, color: "#F04438" }}>
+                {" "}
+                ({t("common.partialSupport")})
+              </ThemedText>
+            ) : null}
           </ThemedText>
         </View>
 
-        {/* Language list */}
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
@@ -188,18 +274,18 @@ const TranslationScreen = () => {
                 padding: 32,
               }}
             >
-              No language found
+              {t("translation.noLanguageFound")}
             </ThemedText>
           ) : (
-            filtered.map((lang, index) => {
-              const isSelected = lang.code === selectedCode;
+            filtered.map((language, index) => {
+              const isSelected = language.code === languageCode;
               const isLast = index === filtered.length - 1;
 
               return (
                 <TouchableOpacity
-                  key={lang.code}
+                  key={language.code}
                   activeOpacity={0.75}
-                  onPress={() => setSelectedCode(lang.code)}
+                  onPress={() => handleSelectLanguage(language.code)}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -215,7 +301,6 @@ const TranslationScreen = () => {
                       : "transparent",
                   }}
                 >
-                  {/* Language code pill */}
                   <View
                     style={{
                       width: 40,
@@ -234,7 +319,7 @@ const TranslationScreen = () => {
                         textTransform: "uppercase",
                       }}
                     >
-                      {lang.code}
+                      {language.code}
                     </ThemedText>
                   </View>
 
@@ -246,16 +331,17 @@ const TranslationScreen = () => {
                         color: isSelected ? "#F04438" : textMain,
                       }}
                     >
-                      {lang.name}
+                      {language.name}
                     </ThemedText>
                     <ThemedText
                       style={{ fontSize: 12, color: textMuted, marginTop: 1 }}
                     >
-                      {lang.nativeName}
+                      {language.nativeName}
+                      {!language.supported ? ` · ${t("common.comingSoon")}` : ""}
                     </ThemedText>
                   </View>
 
-                  {isSelected && (
+                  {isSelected ? (
                     <View
                       style={{
                         width: 24,
@@ -268,13 +354,22 @@ const TranslationScreen = () => {
                     >
                       <Check size={14} color="#fff" strokeWidth={3} />
                     </View>
-                  )}
+                  ) : null}
                 </TouchableOpacity>
               );
             })
           )}
         </ScrollView>
       </View>
+
+      <AlertModal
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        confirmLabel={t("common.gotIt")}
+        iconType={alertType}
+        onConfirm={() => setAlertVisible(false)}
+      />
     </AppSafeArea>
   );
 };

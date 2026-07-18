@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Trash2, X } from "lucide-react-native";
 import React from "react";
@@ -13,6 +14,7 @@ const DeleteEventSuccessModal = ({
   visible,
   onClose,
 }: DeleteEventSuccessModalProps) => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -62,14 +64,13 @@ const DeleteEventSuccessModal = ({
               weight="700"
               className={`text-[26px] leading-8 mt-8 text-center ${isDark ? "text-[#E5E7EB]" : "text-[#101928]"}`}
             >
-              Event Deleted
+              {t("events.delete.successTitle")}
             </ThemedText>
 
             <ThemedText
               className={`text-[16px] leading-6 mt-4 text-center ${isDark ? "text-[#9CA3AF]" : "text-[#667185]"}`}
             >
-              All event data, including ticket sales and other sensitive
-              information has be permanently deleted.
+              {t("events.delete.successMessageExtended")}
             </ThemedText>
           </View>
         </Pressable>

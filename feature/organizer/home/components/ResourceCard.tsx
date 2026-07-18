@@ -1,9 +1,10 @@
 import { ThemedText } from "@/components/themed-text";
+import { AppImage } from "@/components/app-image";
+import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import { useTheme } from "@/providers/ThemeProvider";
-import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 type ResourceCardProps = {
   title: string;
@@ -26,27 +27,10 @@ const ResourceCard = ({
   const isDark = resolvedTheme === "dark";
 
   return (
-    <LinearGradient
-      colors={
-        isDark
-          ? ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.02)"]
-          : ["rgba(255,255,255,0.85)", "rgba(255,255,255,0.55)"]
-      }
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <GlassCard
+      isDark={isDark}
       style={{
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: isDark
-          ? "rgba(255,255,255,0.08)"
-          : "rgba(255,255,255,0.90)",
-        overflow: "hidden",
         height: 120,
-        shadowColor: isDark ? "#000" : "#7090C8",
-        shadowOpacity: isDark ? 0.35 : 0.1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 14,
-        elevation: 4,
       }}
     >
       <View
@@ -62,10 +46,11 @@ const ResourceCard = ({
             justifyContent: "center",
           }}
         >
-          <Image
+          <AppImage
             source={image}
             style={{ width: 84, height: 84 }}
-            resizeMode="contain"
+            contentFit="contain"
+            priority="normal"
           />
         </View>
 
@@ -104,7 +89,7 @@ const ResourceCard = ({
           </TouchableOpacity>
         </View>
       </View>
-    </LinearGradient>
+    </GlassCard>
   );
 };
 

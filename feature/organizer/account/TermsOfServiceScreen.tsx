@@ -1,25 +1,29 @@
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { router } from "expo-router";
 import { ChevronLeft, Handshake } from "lucide-react-native";
 import React from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 
-const TermsSection = ({ isDark }: { isDark: boolean }) => (
+const TermsSection = ({ isDark }: { isDark: boolean }) => {
+  const { t } = useTranslation();
+
+  return (
   <View className="mt-6">
     <ThemedText
       weight="700"
       className={`text-[22px] leading-8 ${isDark ? "text-[#F87171]" : "text-[#8F2D2A]"}`}
     >
-      Personal Information
+      {t("settings.legal.personalInformation")}
     </ThemedText>
 
     <ThemedText
       weight="700"
       className={`text-[18px] mt-4 ${isDark ? "text-[#E5E7EB]" : "text-[#344054]"}`}
     >
-      What We Collect:
+      {t("settings.legal.whatWeCollect")}
     </ThemedText>
     <ThemedText
       className={`text-[14px] mt-1.5 leading-6 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
@@ -32,7 +36,7 @@ const TermsSection = ({ isDark }: { isDark: boolean }) => (
       weight="700"
       className={`text-[18px] mt-5 ${isDark ? "text-[#E5E7EB]" : "text-[#344054]"}`}
     >
-      Purpose:
+      {t("settings.legal.purpose")}
     </ThemedText>
     <ThemedText
       className={`text-[14px] mt-1.5 leading-6 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
@@ -41,10 +45,12 @@ const TermsSection = ({ isDark }: { isDark: boolean }) => (
       and provide customer support.
     </ThemedText>
   </View>
-);
+  );
+};
 
 const TermsOfServiceScreen = () => {
   const { resolvedTheme } = useTheme();
+  const { t } = useTranslation();
   const isDark = resolvedTheme === "dark";
 
   return (
@@ -64,7 +70,7 @@ const TermsOfServiceScreen = () => {
             weight="700"
             className={`text-[15px] ${isDark ? "text-white" : "text-[#101828]"}`}
           >
-            Terms of service
+            {t("settings.legal.termsOfService")}
           </ThemedText>
         </View>
       </View>
@@ -78,19 +84,18 @@ const TermsOfServiceScreen = () => {
           weight="700"
           className={`text-[32px] leading-[40px] ${isDark ? "text-white" : "text-[#101828]"}`}
         >
-          Terms of service
+          {t("settings.legal.termsOfService")}
         </ThemedText>
         <ThemedText
           className={`text-[13px] mt-1 ${isDark ? "text-[#6B7280]" : "text-[#98A2B3]"}`}
         >
-          Effective Date: July 15, 2024
+          {t("settings.legal.effectiveDate")}
         </ThemedText>
 
         <ThemedText
           className={`text-[15px] leading-6 mt-5 ${isDark ? "text-[#9CA3AF]" : "text-[#667085]"}`}
         >
-          This privacy policy explains how we collect, use, share, and protect
-          your personal information when you use our website and mobile app.
+          {t("settings.legal.intro")}
         </ThemedText>
 
         <View

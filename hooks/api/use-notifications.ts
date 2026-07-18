@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/store/auth-store";
 import { notificationsApi } from "@/utils/api/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -7,16 +8,22 @@ export const notificationKeys = {
 };
 
 export function useNotifications() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   return useQuery({
     queryKey: notificationKeys.all,
     queryFn: () => notificationsApi.getAll(),
+    enabled: isAuthenticated,
   });
 }
 
 export function useUnreadNotificationCount() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   return useQuery({
     queryKey: notificationKeys.unreadCount(),
     queryFn: () => notificationsApi.getUnreadCount(),
+    enabled: isAuthenticated,
   });
 }
 

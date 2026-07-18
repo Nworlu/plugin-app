@@ -551,10 +551,32 @@ export type Withdrawal = {
   accountId: string;
 };
 
-export type WithdrawalStats = {
-  totalWithdrawn: number;
-  pendingAmount: number;
-  withdrawalCount: number;
+/** ASSUMED — field names not confirmed against the real backend response for GET /withdrawal/summary */
+export type PayoutSummary = {
+  balance: number;
+  canRequestWithdrawal: boolean;
+  reason?: string;
+};
+
+/** ASSUMED — field names not confirmed against the real backend response for POST /withdrawal/ */
+export type PayoutRequestResponse = {
+  reference?: string;
+  message?: string;
+};
+
+/** ASSUMED — field name not confirmed against the real backend request body for POST /withdrawal/verify */
+export type VerifyPayoutPayload = {
+  code: string;
+};
+
+/** ASSUMED — field names not confirmed against the real backend response for GET /withdrawal/statement */
+export type StatementEntry = {
+  id: string;
+  type: string;
+  amount: number;
+  balanceAfter?: number;
+  description?: string;
+  createdAt: string;
 };
 
 // ─── Collaborators ────────────────────────────────────────────────────────────

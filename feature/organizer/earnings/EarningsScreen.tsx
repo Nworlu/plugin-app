@@ -20,7 +20,7 @@ import {
   useOrganizerStats,
   useValidateBankAccount,
   useWithdrawalHistory,
-  useWithdrawalStats,
+  useWithdrawalSummary,
 } from "@/hooks/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -200,13 +200,17 @@ const EarningsScreen = () => {
 
   const { data: withdrawalHistory, isLoading: isHistoryLoading } =
     useWithdrawalHistory();
-  const { data: withdrawalStats } = useWithdrawalStats();
+  const {
+    data: summary,
+    isLoading: isSummaryLoading,
+    isError: isSummaryError,
+  } = useWithdrawalSummary();
 
-  const isLoading = isStatsLoading || isHistoryLoading;
+  const isLoading = isStatsLoading || isHistoryLoading || isSummaryLoading;
 
-  const balance = user?.wallet ?? 0;
-  const totalEarnings =
-    withdrawalStats?.totalWithdrawn ?? orgStats?.totalRevenue ?? 0;
+  const balance = summary?.balance ?? 0;
+  const canRequestWithdrawal = summary?.canRequestWithdrawal ?? false;
+  const totalEarnings = orgStats?.totalRevenue ?? 0;
 
   const canSubmitBankAccount =
     selectedBank.length > 0 &&
@@ -403,10 +407,7 @@ const EarningsScreen = () => {
           </AnimatedEntry>
 
           <AnimatedEntry index={6}>
-            <WithdrawalSummaryCard
-              stats={withdrawalStats}
-              history={withdrawalHistory ?? []}
-            />
+            <WithdrawalSummaryCard history={withdrawalHistory ?? []} />
           </AnimatedEntry>
 
           <AnimatedEntry index={7}>
@@ -447,6 +448,9 @@ const EarningsScreen = () => {
       <WithdrawalFlowModal
         ref={withdrawalSheetRef}
         balance={balance}
+        canRequestWithdrawal={canRequestWithdrawal}
+        isSummaryError={isSummaryError}
+        withdrawalBlockedReason={summary?.reason}
         onClose={() => setShowWithdrawalModal(false)}
       />
     </AppSafeArea>

@@ -48,19 +48,25 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Plugin uses your camera to scan attendee QR codes at event check-in."
+          "cameraPermission": "Plugin uses your camera to scan attendee QR codes at event check-in.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Plugin needs access to your photo library so you can choose images for your event banner and organizer profile."
+          "photosPermission": "Plugin needs access to your photo library so you can choose images for your event banner and organizer profile.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Plugin uses your location to help you set your event venue and your current location."
+          "locationWhenInUsePermission": "Plugin uses your location to help you set your event venue and your current location.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false
         }
       ]
     ],

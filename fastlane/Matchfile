@@ -1,0 +1,8 @@
+# Private git repo that stores match's encrypted certificates/profiles.
+# Create an empty private repo for this and set MATCH_GIT_URL in fastlane/.env.
+# readonly is set per-lane in the Fastfile, not here (certs lane needs write
+# access to create/renew; the beta lane should only ever fetch).
+git_url(ENV["MATCH_GIT_URL"])
+storage_mode("git")
+type("appstore")
+app_identifier([ENV["APP_IDENTIFIER"] || "com.pluginapp"])

@@ -1,20 +1,13 @@
 import AppSafeArea from "@/components/app-safe-area";
 import { ThemedText } from "@/components/themed-text";
-import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import { useOrganizer } from "@/hooks/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/auth-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import {
-  ChevronLeft,
-  Layers,
-  Mail,
-  Megaphone,
-  MoreVertical,
-} from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import { ChevronLeft, MoreVertical } from "lucide-react-native";
+import React, { useState } from "react";
 import {
   Image,
   Modal,
@@ -27,7 +20,6 @@ import {
 import OrganizerProfileForm from "./components/OrganizerProfileForm";
 
 const OrganizerSettingsScreen = () => {
-  const [activeTab, setActiveTab] = useState<"profile" | "plans">("profile");
   const profileSheetRef = React.useRef<BottomSheetModal>(null);
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -46,36 +38,6 @@ const OrganizerSettingsScreen = () => {
   const border = isDark ? "#1F2937" : "#EAECF0";
   const textMain = isDark ? "#F9FAFB" : "#101828";
   const textMuted = isDark ? "#9CA3AF" : "#667085";
-
-  const campaignPlans = useMemo(
-    () => [
-      {
-        key: "social",
-        title: t("settings.organizer.socialMediaAds"),
-        subtitle: t("settings.organizer.socialMediaAdsSubtitle"),
-        amount: "N 8,000",
-        icon: <Megaphone size={28} color="#9F7AEA" />,
-        bgColor: "#E5EAF2",
-      },
-      {
-        key: "email",
-        title: t("settings.organizer.emailCampaigns"),
-        subtitle: t("settings.organizer.emailCampaignsSubtitle"),
-        amount: "N 25,000",
-        icon: <Mail size={30} color="#344054" />,
-        bgColor: "#DDEBE2",
-      },
-      {
-        key: "sponsored",
-        title: t("settings.organizer.sponsoredListings"),
-        subtitle: t("settings.organizer.sponsoredListingsSubtitle"),
-        amount: "N 35,000",
-        icon: <Layers size={30} color="#344054" />,
-        bgColor: "#F2EAA8",
-      },
-    ],
-    [t],
-  );
 
   return (
     <AppSafeArea>
@@ -111,69 +73,13 @@ const OrganizerSettingsScreen = () => {
           </ThemedText>
         </View>
 
-        {/* Tabs (pill style) */}
-        <View
-          style={{
-            flexDirection: "row",
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
             paddingHorizontal: 18,
-            marginTop: 10,
-            marginBottom: 18,
+            paddingTop: 10,
           }}
         >
-          <TouchableOpacity
-            style={{
-              backgroundColor:
-                activeTab === "profile"
-                  ? "#FDECEC"
-                  : isDark
-                    ? "#1F2937"
-                    : "#fff",
-              borderRadius: 8,
-              paddingVertical: 6,
-              paddingHorizontal: 16,
-              marginRight: 8,
-              borderWidth: activeTab === "profile" ? 0 : 1,
-              borderColor: border,
-            }}
-            onPress={() => setActiveTab("profile")}
-          >
-            <ThemedText
-              weight="700"
-              className={`text-[15px] ${activeTab === "profile" ? "text-[#F04438]" : "text-[#667085]"}`}
-            >
-              {t("settings.organizer.profileTab")}
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{
-              backgroundColor:
-                activeTab === "plans" ? "#FDECEC" : isDark ? "#1F2937" : "#fff",
-              borderRadius: 8,
-              paddingVertical: 6,
-              paddingHorizontal: 16,
-              borderWidth: activeTab === "plans" ? 0 : 1,
-              borderColor: border,
-            }}
-            onPress={() => setActiveTab("plans")}
-          >
-            <ThemedText
-              weight="700"
-              className={`text-[15px] ${activeTab === "plans" ? "text-[#F04438]" : "text-[#667085]"}`}
-            >
-              {t("settings.organizer.plansTab")}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Content */}
-        {activeTab === "profile" && (
-          <ScrollView
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingHorizontal: 18,
-              paddingTop: 0,
-            }}
-          >
             <View style={{ marginTop: 0, marginBottom: 18 }}>
               <ThemedText weight="700" className="text-[20px] mb-1">
                 {t("settings.organizer.profilesHeading")}
@@ -351,43 +257,7 @@ const OrganizerSettingsScreen = () => {
               onClose={() => profileSheetRef.current?.dismiss()}
               onSuccess={() => profileSheetRef.current?.dismiss()}
             />
-          </ScrollView>
-        )}
-        {activeTab === "plans" && (
-          <ScrollView
-            contentContainerStyle={{ padding: 18, paddingBottom: 32 }}
-          >
-            {/* Use the same campaign types as StartCampaignScreen */}
-            {campaignPlans.map((campaign) => (
-              <GlassCard
-                key={campaign.key}
-                isDark={isDark}
-                style={{ padding: 12, borderRadius: 16, marginBottom: 18 }}
-              >
-                <View
-                  style={{
-                    height: 110,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: campaign.bgColor,
-                  }}
-                >
-                  {campaign.icon}
-                </View>
-                <ThemedText weight="700" className="text-[17px] mt-3">
-                  {campaign.title}
-                </ThemedText>
-                <ThemedText className="text-[13px] mt-0.5 text-[#667085]">
-                  {campaign.subtitle}
-                </ThemedText>
-                <ThemedText weight="700" className="text-[22px] mt-2 leading-8">
-                  {campaign.amount}
-                </ThemedText>
-              </GlassCard>
-            ))}
-          </ScrollView>
-        )}
+        </ScrollView>
       </View>
     </AppSafeArea>
   );

@@ -322,12 +322,10 @@ const ManageEventsScreen = () => {
     };
   }, [events, stats]);
 
-  const totalEvents =
-    stats?.totalEvents ?? counts.upcoming + counts.draft + counts.past;
+  const isSearching = searchText.trim().length > 0;
 
   const filteredEvents = useMemo(() => {
     const trimmed = searchText.trim().toLowerCase();
-    const isSearching = trimmed.length > 0;
 
     // When searching, look across all statuses; otherwise filter by active tab.
     const pool = isSearching
@@ -339,9 +337,13 @@ const ManageEventsScreen = () => {
     return pool.filter((event) =>
       event.title.toLowerCase().includes(trimmed),
     );
-  }, [events, searchText, activeStatus]);
+  }, [events, searchText, activeStatus, isSearching]);
 
-  const isSearching = searchText.trim().length > 0;
+  // While searching, the header total should reflect the search results,
+  // not the unfiltered server/tab counts.
+  const totalEvents = isSearching
+    ? filteredEvents.length
+    : (stats?.totalEvents ?? counts.upcoming + counts.draft + counts.past);
 
   const focusSearchInput = useCallback(() => {
     searchInputRef.current?.focus();

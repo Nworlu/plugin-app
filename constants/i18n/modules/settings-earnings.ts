@@ -217,8 +217,6 @@ export const settingsEn = {
       settingsTitle: "Organizer Settings",
       updateProfile: "Update Profile",
       addProfile: "Add Profile",
-      profileTab: "Organizer Profile",
-      plansTab: "Campaign Plans",
       profilesHeading: "Organizer profiles",
       profilesDescription:
         "Each profile describes a unique organizer and shows all of their events on one page. Having a complete profile can encourage attendees to follow you.",
@@ -458,8 +456,6 @@ export const settingsFr = {
       settingsTitle: "Paramètres organisateur",
       updateProfile: "Mettre à jour le profil",
       addProfile: "Ajouter un profil",
-      profileTab: "Profil organisateur",
-      plansTab: "Plans de campagne",
       profilesHeading: "Profils organisateur",
       profilesDescription:
         "Chaque profil décrit un organisateur unique et affiche tous ses événements sur une seule page. Un profil complet peut encourager les participants à vous suivre.",

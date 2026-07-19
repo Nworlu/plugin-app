@@ -3,10 +3,13 @@ import type {
   AddBankPayload,
   Bank,
   BankAccount,
+  PayoutRequestResponse,
+  PayoutSummary,
+  StatementEntry,
   ValidateBankPayload,
   ValidateBankResponse,
+  VerifyPayoutPayload,
   Withdrawal,
-  WithdrawalStats,
 } from "./types";
 
 export const accountApi = {
@@ -31,13 +34,20 @@ export const accountApi = {
 };
 
 export const withdrawalApi = {
-  /** Create a withdrawal request */
-  create: (amount: number, accountId: string) =>
-    apiClient.post<Withdrawal>("withdrawal/", { amount, accountId }, true),
+  /** Get the current payout summary (available balance + eligibility) */
+  getSummary: () => apiClient.get<PayoutSummary>("withdrawal/summary", true),
+
+  /** Request a full-balance withdrawal — server derives the amount and sends an OTP */
+  request: () => apiClient.post<PayoutRequestResponse>("withdrawal/", {}, true),
+
+  /** Verify a withdrawal request with the OTP code */
+  verify: (payload: VerifyPayoutPayload) =>
+    apiClient.post<Withdrawal>("withdrawal/verify", payload, true),
 
   /** Get withdrawal history */
   getHistory: () => apiClient.get<Withdrawal[]>("withdrawal/history", true),
 
-  /** Get withdrawal statistics */
-  getStats: () => apiClient.get<WithdrawalStats>("withdrawal/statistics", true),
+  /** Get withdrawal statement */
+  getStatement: () =>
+    apiClient.get<StatementEntry[]>("withdrawal/statement", true),
 };

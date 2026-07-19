@@ -2,7 +2,7 @@ import { ThemedText } from "@/components/themed-text";
 import GlassCard from "@/feature/organizer/events/components/GlassCard";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/providers/ThemeProvider";
-import type { Withdrawal, WithdrawalStats } from "@/utils/api/types";
+import type { Withdrawal } from "@/utils/api/types";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -27,7 +27,6 @@ const PERIOD_DAYS: Record<PeriodKey, number | null> = {
 };
 
 type WithdrawalSummaryCardProps = {
-  stats?: WithdrawalStats;
   history?: Withdrawal[];
 };
 
@@ -123,7 +122,6 @@ const DonutChart = ({
 };
 
 const WithdrawalSummaryCard = ({
-  stats,
   history = [],
 }: WithdrawalSummaryCardProps) => {
   const { t } = useTranslation();
@@ -155,28 +153,20 @@ const WithdrawalSummaryCard = ({
         })
       : history;
 
-    if (filtered.length > 0) {
-      const c = filtered
-        .filter((i) => i.status.toLowerCase() !== "pending")
-        .reduce((s, i) => s + i.amount, 0);
-      const p = filtered
-        .filter((i) => i.status.toLowerCase() === "pending")
-        .reduce((s, i) => s + i.amount, 0);
-      return { completed: c, pending: p, total: c + p };
-    }
-
-    // Fall back to API stats when no history items available
-    const c = stats?.totalWithdrawn ?? 0;
-    const p = stats?.pendingAmount ?? 0;
+    const c = filtered
+      .filter((i) => i.status.toLowerCase() !== "pending")
+      .reduce((s, i) => s + i.amount, 0);
+    const p = filtered
+      .filter((i) => i.status.toLowerCase() === "pending")
+      .reduce((s, i) => s + i.amount, 0);
     return { completed: c, pending: p, total: c + p };
-  }, [periodKey, history, stats]);
+  }, [periodKey, history]);
 
   const pendingFraction = total > 0 ? pending / total : 0;
-  const selectedPeriodLabel =
-    t(
-      PERIOD_OPTIONS.find((o) => o.key === periodKey)?.labelKey ??
-        "earnings.last3Months",
-    );
+  const selectedPeriodLabel = t(
+    PERIOD_OPTIONS.find((o) => o.key === periodKey)?.labelKey ??
+      "earnings.last3Months",
+  );
 
   return (
     <>

@@ -25,7 +25,7 @@ export const earningsEn = {
     loadingBanks: "Loading banks...",
     banksLoadFailed: "Couldn't load banks. Please try again.",
     noBanksAvailable: "No banks available",
-    noBanksMatch: "No banks match \"{{query}}\"",
+    noBanksMatch: 'No banks match "{{query}}"',
     bankName: "Bank Name",
     accountNumber: "Account Number",
     enterAccountNumber: "Enter 10-digit account number",
@@ -60,7 +60,7 @@ export const earningsEn = {
     noBankAccountLinked: "No bank account linked yet",
     currentBalance: "Current Balance",
     enterOtpHint: "Enter the OTP sent to your email to confirm this withdrawal",
-    otpNotReceived: "Didn't receive the code?",
+    otpNotReceived: "Didn't get the code?",
     resendOtp: "Resend OTP",
     withdrawalFailed: "Withdrawal failed. Please try again.",
     processing: "Processing",
@@ -70,6 +70,16 @@ export const earningsEn = {
     havingIssues: "Having issues?",
     contactSupport: "Contact Support",
     accNumber: "Acc: {{number}}",
+    withdrawFullBalanceNote: "Your full available balance will be withdrawn.",
+    withdrawalNotAvailable:
+      "You're not eligible to withdraw right now. Please try again later.",
+    zeroBalanceWithdrawal: "You have no available balance to withdraw.",
+    withdrawalSummaryLoadFailed:
+      "Couldn't load your withdrawal details. Please try again.",
+    retry: "Retry",
+    resendOtpIn: "Resend in {{time}}",
+    otpResent: "Code resent",
+    resendOtpFailed: "Couldn't resend the code. Please try again.",
   },
 };
 
@@ -91,10 +101,8 @@ export const earningsFr = {
     remove: "Supprimer",
     addBankAccount: "Ajouter un compte bancaire",
     addPayoutInfo: "Ajouter les informations de paiement",
-    addPayoutDesc:
-      "Ajoutez un compte bancaire pour recevoir vos retraits",
-    addBankAccountDesc:
-      "Liez un compte bancaire pour recevoir vos paiements",
+    addPayoutDesc: "Ajoutez un compte bancaire pour recevoir vos retraits",
+    addBankAccountDesc: "Liez un compte bancaire pour recevoir vos paiements",
     noBankAccountFound: "Aucun compte bancaire trouvé",
     selectBank: "Sélectionner une banque",
     selectBankTitle: "Sélectionner une banque",
@@ -148,6 +156,17 @@ export const earningsFr = {
     havingIssues: "Des difficultés ?",
     contactSupport: "Contacter l'assistance",
     accNumber: "Cpt : {{number}}",
+    withdrawFullBalanceNote:
+      "L'intégralité de votre solde disponible sera retirée.",
+    withdrawalNotAvailable:
+      "Vous n'êtes pas autorisé à retirer pour le moment. Veuillez réessayer plus tard.",
+    zeroBalanceWithdrawal: "Vous n'avez aucun solde disponible à retirer.",
+    withdrawalSummaryLoadFailed:
+      "Impossible de charger les détails de votre retrait. Veuillez réessayer.",
+    retry: "Réessayer",
+    resendOtpIn: "Renvoyer dans {{time}}",
+    otpResent: "Code renvoyé",
+    resendOtpFailed: "Impossible de renvoyer le code. Veuillez réessayer.",
   },
 };
 
@@ -470,8 +489,7 @@ export const settingsFr = {
       socialMediaHint: "Indiquez comment vous contacter",
       facebookPlaceholder: "Lien du profil Facebook",
       instagramPlaceholder: "Lien du profil Instagram",
-      saveFailed:
-        "Échec de l'enregistrement du profil. Veuillez réessayer.",
+      saveFailed: "Échec de l'enregistrement du profil. Veuillez réessayer.",
       switchOrganization: "Changer d'organisation",
       switchOrganizationHint:
         "Sélectionnez l'organisation que vous souhaitez gérer",
